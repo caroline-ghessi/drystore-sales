@@ -31,11 +31,6 @@ export default function AtendentesPage() {
       {/* Header */}
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div className="flex items-center gap-4">
-          <Link to="/home">
-            <Button variant="ghost" size="sm" className="p-2">
-              <ArrowLeft size={18} />
-            </Button>
-          </Link>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Atendentes</h1>
             <p className="text-muted-foreground">

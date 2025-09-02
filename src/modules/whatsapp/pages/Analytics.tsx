@@ -40,11 +40,6 @@ export default function Analytics() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link to="/home">
-            <Button variant="ghost" size="sm" className="p-2">
-              <ArrowLeft size={18} />
-            </Button>
-          </Link>
           <div>
             <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
             <p className="text-muted-foreground">

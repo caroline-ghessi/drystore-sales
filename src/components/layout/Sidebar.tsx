@@ -43,8 +43,14 @@ export function Sidebar() {
 
   const menuGroups: MenuGroup[] = [
     {
-      title: 'Atendimento',
+      title: 'WhatsApp',
       items: [
+        {
+          title: 'Dashboard WhatsApp',
+          url: '/whatsapp',
+          icon: BarChart3,
+          description: 'Visão geral do módulo'
+        },
         {
           title: 'Conversas',
           url: '/conversas',
@@ -53,6 +59,23 @@ export function Sidebar() {
           description: 'Todas as conversas ativas'
         },
         {
+          title: 'Bot Inteligente',
+          url: '/whatsapp/bot',
+          icon: Bot,
+          description: 'Configuração do chatbot'
+        },
+        {
+          title: 'Vendedores',
+          url: '/whatsapp/vendedores',
+          icon: Users,
+          description: 'Monitoramento WhatsApp'
+        }
+      ]
+    },
+    {
+      title: 'Atendimento',
+      items: [
+        {
           title: 'Leads Quentes',
           url: '/leads-quentes',
           icon: Flame,
@@ -60,45 +83,28 @@ export function Sidebar() {
           description: 'Leads com alta conversão'
         },
         {
-          title: 'Bot Inteligente',
-          url: '/bot',
-          icon: Bot,
-          description: 'Configuração do chatbot'
-        },
-        {
-          title: 'Vendedores',
-          url: '/vendedores',
-          icon: Users,
-          description: 'Monitoramento WhatsApp'
-        }
-      ]
-    },
-    {
-      title: 'Gestão',
-      items: [
-        {
           title: 'Analytics',
-          url: '/analytics',
+          url: '/whatsapp/analytics',
           icon: BarChart3,
           description: 'Métricas e relatórios'
         },
         {
           title: 'Atendentes',
-          url: '/atendentes',
+          url: '/whatsapp/atendentes',
           icon: Users,
           description: 'Gerenciar equipe'
-        },
-        {
-          title: 'Templates',
-          url: '/templates',
-          icon: FileText,
-          description: 'Mensagens pré-definidas'
         }
       ]
     },
     {
       title: 'Sistema',
       items: [
+        {
+          title: 'Templates',
+          url: '/templates',
+          icon: FileText,
+          description: 'Mensagens pré-definidas'
+        },
         {
           title: 'Configurações',
           url: '/configuracoes',

@@ -64,11 +64,6 @@ export default function BotPage() {
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-4">
-                <Link to="/home">
-                  <Button variant="ghost" size="sm" className="p-2">
-                    <ArrowLeft size={18} />
-                  </Button>
-                </Link>
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-primary/10 rounded-lg">
                     <Bot className="w-6 h-6 text-primary" />
