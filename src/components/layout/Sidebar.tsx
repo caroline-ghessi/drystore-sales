@@ -77,7 +77,7 @@ export function Sidebar() {
       items: [
         {
           title: 'Leads Quentes',
-          url: '/leads-quentes',
+          url: '/whatsapp/leads-quentes',
           icon: Flame,
           badge: hotLeads,
           description: 'Leads com alta conversão'
