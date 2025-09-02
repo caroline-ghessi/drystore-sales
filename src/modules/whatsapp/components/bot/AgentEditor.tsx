@@ -1,0 +1,344 @@
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { 
+  Bot, Settings, TestTube, Save, X, Play, Pause, 
+  Zap, MessageSquare, Brain, Eye, Edit3 
+} from 'lucide-react';
+
+interface Agent {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  model: string;
+  prompt?: string;
+  temperature?: number;
+  maxTokens?: number;
+  isActive: boolean;
+  category: string;
+}
+
+interface AgentEditorProps {
+  agent: Agent | null;
+  onClose: () => void;
+  onSave: (agent: Agent) => void;
+}
+
+export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
+  const [editAgent, setEditAgent] = useState<Agent>(() => {
+    if (agent) {
+      return {
+        ...agent,
+        prompt: agent.prompt || '',
+        temperature: agent.temperature || 0.7,
+        maxTokens: agent.maxTokens || 2048
+      };
+    }
+    return {
+      id: '',
+      name: '',
+      description: '',
+      type: 'specialist',
+      model: 'gpt-4',
+      prompt: '',
+      temperature: 0.7,
+      maxTokens: 2048,
+      isActive: true,
+      category: 'energia_solar'
+    };
+  });
+
+  const [testMessage, setTestMessage] = useState('');
+  const [testResult, setTestResult] = useState('');
+  const [isTestLoading, setIsTestLoading] = useState(false);
+
+  const handleSave = () => {
+    onSave(editAgent);
+    onClose();
+  };
+
+  const handleTest = async () => {
+    setIsTestLoading(true);
+    // Simular teste do agente
+    setTimeout(() => {
+      setTestResult(`Agente ${editAgent.name} processou: "${testMessage}"\n\nResposta: Esta é uma resposta simulada do agente configurado.`);
+      setIsTestLoading(false);
+    }, 2000);
+  };
+
+  if (!agent) return null;
+
+  return (
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        <CardHeader className="border-b bg-card">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Bot className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Editor do Agente</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {agent.id ? 'Editando agente existente' : 'Criando novo agente'}
+                </p>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="p-0 overflow-y-auto max-h-[calc(90vh-120px)]">
+          <Tabs defaultValue="config" className="w-full">
+            <TabsList className="w-full justify-start border-b rounded-none h-12 bg-muted/30">
+              <TabsTrigger value="config" className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Configuração
+              </TabsTrigger>
+              <TabsTrigger value="prompt" className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Prompt
+              </TabsTrigger>
+              <TabsTrigger value="behavior" className="flex items-center gap-2">
+                <Brain className="w-4 h-4" />
+                Comportamento
+              </TabsTrigger>
+              <TabsTrigger value="test" className="flex items-center gap-2">
+                <TestTube className="w-4 h-4" />
+                Teste
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="config" className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Nome do Agente</Label>
+                    <Input
+                      id="name"
+                      value={editAgent.name}
+                      onChange={(e) => setEditAgent({...editAgent, name: e.target.value})}
+                      placeholder="Ex: Agente Energia Solar"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="type">Tipo do Agente</Label>
+                    <select 
+                      id="type"
+                      className="w-full p-2 border rounded-lg bg-background text-foreground"
+                      value={editAgent.type}
+                      onChange={(e) => setEditAgent({...editAgent, type: e.target.value})}
+                    >
+                      <option value="specialist">Especialista</option>
+                      <option value="classifier">Classificador</option>
+                      <option value="extractor">Extrator</option>
+                      <option value="quality">Qualidade</option>
+                      <option value="lead">Avaliador de Leads</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="category">Categoria</Label>
+                    <select 
+                      id="category"
+                      className="w-full p-2 border rounded-lg bg-background text-foreground"
+                      value={editAgent.category}
+                      onChange={(e) => setEditAgent({...editAgent, category: e.target.value})}
+                    >
+                      <option value="energia_solar">Energia Solar</option>
+                      <option value="telhas_shingle">Telhas Shingle</option>
+                      <option value="steel_frame">Steel Frame</option>
+                      <option value="geral">Geral</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="model">Modelo LLM</Label>
+                    <select 
+                      id="model"
+                      className="w-full p-2 border rounded-lg bg-background text-foreground"
+                      value={editAgent.model}
+                      onChange={(e) => setEditAgent({...editAgent, model: e.target.value})}
+                    >
+                      <option value="gpt-4">GPT-4 (OpenAI)</option>
+                      <option value="claude-3">Claude 3 (Anthropic)</option>
+                      <option value="grok">Grok (XAI)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="active">Agente Ativo</Label>
+                    <Switch
+                      id="active"
+                      checked={editAgent.isActive}
+                      onCheckedChange={(checked) => setEditAgent({...editAgent, isActive: checked})}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Badge variant={editAgent.isActive ? "default" : "secondary"}>
+                      {editAgent.isActive ? "Ativo" : "Inativo"}
+                    </Badge>
+                    <Badge variant="outline">{editAgent.type}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="description">Descrição</Label>
+                <Textarea
+                  id="description"
+                  value={editAgent.description}
+                  onChange={(e) => setEditAgent({...editAgent, description: e.target.value})}
+                  placeholder="Descreva a função e especialidade deste agente..."
+                  rows={3}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="prompt" className="p-6 space-y-4">
+              <div>
+                <Label htmlFor="prompt">Prompt Principal</Label>
+                <Textarea
+                  id="prompt"
+                  value={editAgent.prompt}
+                  onChange={(e) => setEditAgent({...editAgent, prompt: e.target.value})}
+                  placeholder="Digite o prompt que define o comportamento do agente..."
+                  rows={12}
+                  className="font-mono text-sm"
+                />
+              </div>
+              
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <h4 className="font-medium mb-2">Dicas para um bom prompt:</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Defina claramente o papel do agente</li>
+                  <li>• Especifique o tom e estilo de comunicação</li>
+                  <li>• Inclua exemplos de respostas esperadas</li>
+                  <li>• Defina limites e restrições</li>
+                </ul>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="behavior" className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <Label>Temperatura: {editAgent.temperature}</Label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={editAgent.temperature}
+                    onChange={(e) => setEditAgent({...editAgent, temperature: parseFloat(e.target.value)})}
+                    className="w-full mt-2 accent-primary"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>Preciso (0.0)</span>
+                    <span>Criativo (1.0)</span>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="maxTokens">Máximo de Tokens</Label>
+                  <Input
+                    id="maxTokens"
+                    type="number"
+                    value={editAgent.maxTokens}
+                    onChange={(e) => setEditAgent({...editAgent, maxTokens: parseInt(e.target.value)})}
+                    min="100"
+                    max="4096"
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                <h4 className="font-medium mb-3">Configurações de Comportamento</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Respostas rápidas</span>
+                    <Switch defaultChecked />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Usar emojis</span>
+                    <Switch />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Manter contexto</span>
+                    <Switch defaultChecked />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="test" className="p-6 space-y-4">
+              <div>
+                <Label htmlFor="testMessage">Mensagem de Teste</Label>
+                <Textarea
+                  id="testMessage"
+                  value={testMessage}
+                  onChange={(e) => setTestMessage(e.target.value)}
+                  placeholder="Digite uma mensagem para testar o agente..."
+                  rows={3}
+                />
+              </div>
+
+              <Button 
+                onClick={handleTest} 
+                disabled={!testMessage || isTestLoading}
+                className="w-full"
+              >
+                {isTestLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-2" />
+                    Testando...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 mr-2" />
+                    Testar Agente
+                  </>
+                )}
+              </Button>
+
+              {testResult && (
+                <div className="p-4 bg-muted rounded-lg">
+                  <h4 className="font-medium mb-2">Resultado do Teste:</h4>
+                  <pre className="text-sm whitespace-pre-wrap">{testResult}</pre>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+
+        <div className="border-t p-4 flex items-center justify-between bg-card">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Eye className="w-4 h-4" />
+            Última edição há 2 minutos
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave}>
+              <Save className="w-4 h-4 mr-2" />
+              Salvar Agente
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
