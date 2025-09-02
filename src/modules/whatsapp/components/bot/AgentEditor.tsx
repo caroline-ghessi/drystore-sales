@@ -11,47 +11,37 @@ import {
   Bot, Settings, TestTube, Save, X, Play, Pause, 
   Zap, MessageSquare, Brain, Eye, Edit3 
 } from 'lucide-react';
-
-interface Agent {
-  id: string;
-  name: string;
-  description: string;
-  type: string;
-  model: string;
-  prompt?: string;
-  temperature?: number;
-  maxTokens?: number;
-  isActive: boolean;
-  category: string;
-}
+import { AgentConfig } from '@/hooks/useAgentConfigs';
 
 interface AgentEditorProps {
-  agent: Agent | null;
+  agent: AgentConfig | null;
   onClose: () => void;
-  onSave: (agent: Agent) => void;
+  onSave: (agent: AgentConfig) => void;
 }
 
 export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
-  const [editAgent, setEditAgent] = useState<Agent>(() => {
+  const [editAgent, setEditAgent] = useState<AgentConfig>(() => {
     if (agent) {
       return {
         ...agent,
-        prompt: agent.prompt || '',
+        system_prompt: agent.system_prompt || '',
         temperature: agent.temperature || 0.7,
-        maxTokens: agent.maxTokens || 2048
+        max_tokens: agent.max_tokens || 2048
       };
     }
     return {
       id: '',
-      name: '',
+      agent_name: '',
       description: '',
-      type: 'specialist',
-      model: 'gpt-4',
-      prompt: '',
+      agent_type: 'specialist',
+      llm_model: 'gpt-4',
+      system_prompt: '',
       temperature: 0.7,
-      maxTokens: 2048,
-      isActive: true,
-      category: 'energia_solar'
+      max_tokens: 2048,
+      is_active: true,
+      is_spy: false,
+      created_at: '',
+      updated_at: ''
     };
   });
 
@@ -68,7 +58,7 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
     setIsTestLoading(true);
     // Simular teste do agente
     setTimeout(() => {
-      setTestResult(`Agente ${editAgent.name} processou: "${testMessage}"\n\nResposta: Esta é uma resposta simulada do agente configurado.`);
+      setTestResult(`Agente ${editAgent.agent_name} processou: "${testMessage}"\n\nResposta: Esta é uma resposta simulada do agente configurado.`);
       setIsTestLoading(false);
     }, 2000);
   };
@@ -125,8 +115,8 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
                     <Label htmlFor="name">Nome do Agente</Label>
                     <Input
                       id="name"
-                      value={editAgent.name}
-                      onChange={(e) => setEditAgent({...editAgent, name: e.target.value})}
+                      value={editAgent.agent_name}
+                      onChange={(e) => setEditAgent({...editAgent, agent_name: e.target.value})}
                       placeholder="Ex: Agente Energia Solar"
                     />
                   </div>
@@ -136,14 +126,14 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
                     <select 
                       id="type"
                       className="w-full p-2 border rounded-lg bg-background text-foreground"
-                      value={editAgent.type}
-                      onChange={(e) => setEditAgent({...editAgent, type: e.target.value})}
+                      value={editAgent.agent_type}
+                      onChange={(e) => setEditAgent({...editAgent, agent_type: e.target.value as AgentConfig['agent_type']})}
                     >
                       <option value="specialist">Especialista</option>
                       <option value="classifier">Classificador</option>
                       <option value="extractor">Extrator</option>
-                      <option value="quality">Qualidade</option>
-                      <option value="lead">Avaliador de Leads</option>
+                      <option value="general">Geral</option>
+                      <option value="lead_scorer">Avaliador de Leads</option>
                     </select>
                   </div>
 
@@ -152,12 +142,18 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
                     <select 
                       id="category"
                       className="w-full p-2 border rounded-lg bg-background text-foreground"
-                      value={editAgent.category}
-                      onChange={(e) => setEditAgent({...editAgent, category: e.target.value})}
+                      value={editAgent.product_category || ''}
+                      onChange={(e) => setEditAgent({...editAgent, product_category: e.target.value as any})}
                     >
+                      <option value="">Selecionar categoria</option>
                       <option value="energia_solar">Energia Solar</option>
-                      <option value="telhas_shingle">Telhas Shingle</option>
+                      <option value="telha_shingle">Telhas Shingle</option>
                       <option value="steel_frame">Steel Frame</option>
+                      <option value="drywall_divisorias">Drywall</option>
+                      <option value="ferramentas">Ferramentas</option>
+                      <option value="pisos">Pisos</option>
+                      <option value="acabamentos">Acabamentos</option>
+                      <option value="forros">Forros</option>
                       <option value="geral">Geral</option>
                     </select>
                   </div>
@@ -169,8 +165,8 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
                     <select 
                       id="model"
                       className="w-full p-2 border rounded-lg bg-background text-foreground"
-                      value={editAgent.model}
-                      onChange={(e) => setEditAgent({...editAgent, model: e.target.value})}
+                      value={editAgent.llm_model || 'gpt-4'}
+                      onChange={(e) => setEditAgent({...editAgent, llm_model: e.target.value})}
                     >
                       <option value="gpt-4">GPT-4 (OpenAI)</option>
                       <option value="claude-3">Claude 3 (Anthropic)</option>
@@ -182,16 +178,16 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
                     <Label htmlFor="active">Agente Ativo</Label>
                     <Switch
                       id="active"
-                      checked={editAgent.isActive}
-                      onCheckedChange={(checked) => setEditAgent({...editAgent, isActive: checked})}
+                      checked={editAgent.is_active}
+                      onCheckedChange={(checked) => setEditAgent({...editAgent, is_active: checked})}
                     />
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Badge variant={editAgent.isActive ? "default" : "secondary"}>
-                      {editAgent.isActive ? "Ativo" : "Inativo"}
+                    <Badge variant={editAgent.is_active ? "default" : "secondary"}>
+                      {editAgent.is_active ? "Ativo" : "Inativo"}
                     </Badge>
-                    <Badge variant="outline">{editAgent.type}</Badge>
+                    <Badge variant="outline">{editAgent.agent_type}</Badge>
                   </div>
                 </div>
               </div>
@@ -200,7 +196,7 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
                 <Label htmlFor="description">Descrição</Label>
                 <Textarea
                   id="description"
-                  value={editAgent.description}
+                  value={editAgent.description || ''}
                   onChange={(e) => setEditAgent({...editAgent, description: e.target.value})}
                   placeholder="Descreva a função e especialidade deste agente..."
                   rows={3}
@@ -213,8 +209,8 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
                 <Label htmlFor="prompt">Prompt Principal</Label>
                 <Textarea
                   id="prompt"
-                  value={editAgent.prompt}
-                  onChange={(e) => setEditAgent({...editAgent, prompt: e.target.value})}
+                  value={editAgent.system_prompt}
+                  onChange={(e) => setEditAgent({...editAgent, system_prompt: e.target.value})}
                   placeholder="Digite o prompt que define o comportamento do agente..."
                   rows={12}
                   className="font-mono text-sm"
@@ -256,8 +252,8 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
                   <Input
                     id="maxTokens"
                     type="number"
-                    value={editAgent.maxTokens}
-                    onChange={(e) => setEditAgent({...editAgent, maxTokens: parseInt(e.target.value)})}
+                    value={editAgent.max_tokens}
+                    onChange={(e) => setEditAgent({...editAgent, max_tokens: parseInt(e.target.value)})}
                     min="100"
                     max="4096"
                   />
@@ -268,12 +264,15 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
                 <h4 className="font-medium mb-3">Configurações de Comportamento</h4>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Respostas rápidas</span>
-                    <Switch defaultChecked />
+                    <span className="text-sm">Agente espião</span>
+                    <Switch 
+                      checked={editAgent.is_spy}
+                      onCheckedChange={(checked) => setEditAgent({...editAgent, is_spy: checked})}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Usar emojis</span>
-                    <Switch />
+                    <span className="text-sm">Respostas rápidas</span>
+                    <Switch defaultChecked />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Manter contexto</span>

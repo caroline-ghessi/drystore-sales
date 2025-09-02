@@ -1,29 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Brain, Settings, Plus, Search, Filter, Users, 
   Bot, MessageSquare, Target, Shield, TrendingUp, 
   FileText, Zap, Eye, Edit3, Trash2
 } from 'lucide-react';
 import { AgentEditor } from './AgentEditor';
+import { 
+  useAgentConfigs, 
+  useUpdateAgentConfig, 
+  useCreateAgentConfig, 
+  type AgentConfig 
+} from '@/hooks/useAgentConfigs';
+import { ProductCategory } from '@/types/conversation.types';
 
-interface Agent {
-  id: string;
-  name: string;
-  description: string;
-  type: string;
-  model: string;
-  isActive: boolean;
-  category: string;
-  lastUsed?: string;
-  accuracy?: number;
-  prompt?: string;
-  temperature?: number;
-  maxTokens?: number;
-}
+// Interface para categorias de especialistas
+const SPECIALIST_CATEGORIES: Partial<Record<ProductCategory, string>> = {
+  'geral': 'Atendimento Geral',
+  'acabamentos': 'Agente Acabamentos',
+  'drywall_divisorias': 'Agente Drywall', 
+  'forros': 'Agente Forros',
+  'pisos': 'Agente Pisos',
+  'energia_solar': 'Especialista Energia Solar',
+  'ferramentas': 'Especialista Ferramentas',
+  'steel_frame': 'Especialista Steel Frame',
+  'telha_shingle': 'Especialista Telhas Shingle'
+};
 
 interface AgentsSectionProps {
   selectedAgent: string | null;
@@ -32,112 +38,112 @@ interface AgentsSectionProps {
 
 export function AgentsSection({ selectedAgent, setSelectedAgent }: AgentsSectionProps) {
   const [activeSubTab, setActiveSubTab] = useState('general');
-  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
-  const [agents] = useState<Agent[]>([
-    {
-      id: '1',
-      name: 'Atendimento Geral',
-      description: 'Agente principal para atendimento inicial',
-      type: 'general',
-      model: 'gpt-4',
-      isActive: true,
-      category: 'geral',
-      accuracy: 94
-    },
-    {
-      id: '2', 
-      name: 'Especialista Energia Solar',
-      description: 'Especializado em sistemas fotovoltaicos',
-      type: 'specialist',
-      model: 'claude-3',
-      isActive: true,
-      category: 'energia_solar',
-      accuracy: 97
-    },
-    {
-      id: '3',
-      name: 'Especialista Telhas Shingle',
-      description: 'Especializado em cobertura residencial',
-      type: 'specialist',
-      model: 'gpt-4',
-      isActive: false,
-      category: 'telhas_shingle',
-      accuracy: 91
-    },
-    {
-      id: '4',
-      name: 'Classificador Principal',
-      description: 'Classifica intenções dos clientes',
-      type: 'classifier',
-      model: 'grok',
-      isActive: true,
-      category: 'geral',
-      accuracy: 89
-    },
-    {
-      id: '5',
-      name: 'Extrator de Dados',
-      description: 'Extrai informações do cliente',
-      type: 'extractor',
-      model: 'gpt-4',
-      isActive: true,
-      category: 'geral',
-      accuracy: 92
-    },
-    {
-      id: '6',
-      name: 'Monitor de Qualidade',
-      description: 'Monitora qualidade do atendimento',
-      type: 'quality',
-      model: 'claude-3',
-      isActive: true,
-      category: 'geral',
-      accuracy: 88
-    }
-  ]);
+  const [editingAgent, setEditingAgent] = useState<AgentConfig | null>(null);
+  
+  // Hooks para carregar dados reais do Supabase
+  const { data: allAgents, isLoading } = useAgentConfigs();
+  const updateAgentMutation = useUpdateAgentConfig();
+  const createAgentMutation = useCreateAgentConfig();
+  
+  // Processar agentes por tipo
+  const agentsByType = useMemo(() => {
+    if (!allAgents) return {};
+    
+    return {
+      general: allAgents.filter(agent => agent.agent_type === 'general'),
+      specialists: allAgents.filter(agent => agent.agent_type === 'specialist'),
+      spies: allAgents.filter(agent => agent.is_spy === true),
+      leads: allAgents.filter(agent => agent.agent_type === 'lead_scorer'),
+      quality: allAgents.filter(agent => 
+        agent.agent_type === 'classifier' || 
+        agent.agent_type === 'extractor' ||
+        agent.agent_name.toLowerCase().includes('qualidade')
+      ),
+      summary: allAgents.filter(agent => 
+        agent.agent_name.toLowerCase().includes('resumo') ||
+        agent.agent_name.toLowerCase().includes('summary')
+      )
+    };
+  }, [allAgents]);
 
-  const subTabs = [
-    { id: 'general', label: 'Atendimento Geral', icon: <MessageSquare className="w-4 h-4" />, count: 1 },
-    { id: 'specialists', label: 'Especialistas', icon: <Brain className="w-4 h-4" />, count: 2 },
-    { id: 'spies', label: 'Agentes Espiões', icon: <Eye className="w-4 h-4" />, count: 0 },
-    { id: 'leads', label: 'Avaliadores de Leads', icon: <Target className="w-4 h-4" />, count: 0 },
-    { id: 'quality', label: 'Monitor de Qualidade', icon: <Shield className="w-4 h-4" />, count: 1 },
-    { id: 'summary', label: 'Gerador de Resumos', icon: <FileText className="w-4 h-4" />, count: 0 }
-  ];
+  // Contar agentes por tipo dinamicamente
+  const subTabs = useMemo(() => [
+    { 
+      id: 'general', 
+      label: 'Atendimento Geral', 
+      icon: <MessageSquare className="w-4 h-4" />, 
+      count: agentsByType.general?.length || 0 
+    },
+    { 
+      id: 'specialists', 
+      label: 'Especialistas', 
+      icon: <Brain className="w-4 h-4" />, 
+      count: agentsByType.specialists?.length || 0 
+    },
+    { 
+      id: 'spies', 
+      label: 'Agentes Espiões', 
+      icon: <Eye className="w-4 h-4" />, 
+      count: agentsByType.spies?.length || 0 
+    },
+    { 
+      id: 'leads', 
+      label: 'Avaliadores de Leads', 
+      icon: <Target className="w-4 h-4" />, 
+      count: agentsByType.leads?.length || 0 
+    },
+    { 
+      id: 'quality', 
+      label: 'Monitor de Qualidade', 
+      icon: <Shield className="w-4 h-4" />, 
+      count: agentsByType.quality?.length || 0 
+    },
+    { 
+      id: 'summary', 
+      label: 'Gerador de Resumos', 
+      icon: <FileText className="w-4 h-4" />, 
+      count: agentsByType.summary?.length || 0 
+    }
+  ], [agentsByType]);
 
   const getAgentsByType = (type: string) => {
-    const typeMap: { [key: string]: string[] } = {
-      general: ['general'],
-      specialists: ['specialist'],
-      spies: ['spy'],
-      leads: ['lead'],
-      quality: ['quality', 'classifier', 'extractor'],
-      summary: ['summary']
-    };
-    return agents.filter(agent => typeMap[type]?.includes(agent.type));
+    return agentsByType[type as keyof typeof agentsByType] || [];
   };
 
-  const getAgentIcon = (type: string) => {
+  const getAgentIcon = (agentType: string) => {
     const iconMap: { [key: string]: React.ReactNode } = {
       general: <MessageSquare className="w-4 h-4 text-blue-600" />,
       specialist: <Brain className="w-4 h-4 text-purple-600" />,
       classifier: <Bot className="w-4 h-4 text-green-600" />,
       extractor: <Zap className="w-4 h-4 text-orange-600" />,
-      quality: <Shield className="w-4 h-4 text-red-600" />,
-      spy: <Eye className="w-4 h-4 text-indigo-600" />,
-      lead: <Target className="w-4 h-4 text-pink-600" />,
-      summary: <FileText className="w-4 h-4 text-teal-600" />
+      lead_scorer: <Target className="w-4 h-4 text-pink-600" />
     };
-    return iconMap[type] || <Bot className="w-4 h-4 text-muted-foreground" />;
+    return iconMap[agentType] || <Bot className="w-4 h-4 text-muted-foreground" />;
+  };
+  
+  const getAgentDisplayName = (agent: AgentConfig) => {
+    if (agent.agent_type === 'specialist' && agent.product_category) {
+      return SPECIALIST_CATEGORIES[agent.product_category] || agent.agent_name;
+    }
+    return agent.agent_name;
   };
 
-  const handleEditAgent = (agent: Agent) => {
+  const handleEditAgent = (agent: AgentConfig) => {
     setEditingAgent(agent);
   };
 
-  const handleSaveAgent = (agent: Agent) => {
-    // Aqui implementaria a lógica de salvamento
-    console.log('Salvando agente:', agent);
+  const handleSaveAgent = async (updatedAgent: AgentConfig) => {
+    try {
+      await updateAgentMutation.mutateAsync(updatedAgent);
+      setEditingAgent(null);
+    } catch (error) {
+      console.error('Erro ao salvar agente:', error);
+    }
+  };
+
+  const handleCreateAgent = async () => {
+    // Implementar criação de novo agente quando necessário
+    console.log('Criar novo agente');
   };
 
   const filteredAgents = getAgentsByType(activeSubTab);
@@ -185,7 +191,23 @@ export function AgentsSection({ selectedAgent, setSelectedAgent }: AgentsSection
             </TabsList>
 
             <div className="p-6">
-              {filteredAgents.length > 0 ? (
+              {isLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="w-10 h-10 rounded-lg" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-1/3" />
+                          <Skeleton className="h-3 w-2/3" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </div>
+                        <Skeleton className="w-20 h-8" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredAgents.length > 0 ? (
                 <div className="space-y-4">
                   {filteredAgents.map(agent => (
                     <div 
@@ -196,29 +218,30 @@ export function AgentsSection({ selectedAgent, setSelectedAgent }: AgentsSection
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-primary/10 rounded-lg">
-                            {getAgentIcon(agent.type)}
+                            {getAgentIcon(agent.agent_type)}
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-medium">{agent.name}</h4>
+                              <h4 className="font-medium">{getAgentDisplayName(agent)}</h4>
                               <Badge 
-                                variant={agent.isActive ? "default" : "secondary"}
+                                variant={agent.is_active ? "default" : "secondary"}
                                 className="text-xs"
                               >
-                                {agent.isActive ? "Ativo" : "Inativo"}
+                                {agent.is_active ? "Ativo" : "Inativo"}
                               </Badge>
-                              {agent.accuracy && (
-                                <Badge variant="outline" className="text-xs">
-                                  {agent.accuracy}% precisão
-                                </Badge>
-                              )}
+                              <Badge variant="outline" className="text-xs">
+                                {agent.agent_type}
+                              </Badge>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                              {agent.description}
+                              {agent.description || 'Sem descrição disponível'}
                             </p>
                             <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                              <span>Modelo: {agent.model.toUpperCase()}</span>
-                              <span>Categoria: {agent.category}</span>
+                              <span>Modelo: {(agent.llm_model || 'GPT-4').toUpperCase()}</span>
+                              {agent.product_category && (
+                                <span>Categoria: {agent.product_category}</span>
+                              )}
+                              <span>Temp: {agent.temperature}</span>
                             </div>
                           </div>
                         </div>
@@ -231,6 +254,7 @@ export function AgentsSection({ selectedAgent, setSelectedAgent }: AgentsSection
                               e.stopPropagation();
                               handleEditAgent(agent);
                             }}
+                            disabled={updateAgentMutation.isPending}
                           >
                             <Edit3 className="w-3 h-3 mr-1" />
                             Editar
@@ -252,7 +276,7 @@ export function AgentsSection({ selectedAgent, setSelectedAgent }: AgentsSection
                   <p className="text-sm text-muted-foreground mb-4">
                     Não há agentes configurados para esta categoria.
                   </p>
-                  <Button size="sm">
+                  <Button size="sm" onClick={handleCreateAgent}>
                     <Plus className="w-4 h-4 mr-2" />
                     Criar Primeiro Agente
                   </Button>
