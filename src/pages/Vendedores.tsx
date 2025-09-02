@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Plus, Users, TrendingUp, Clock, AlertCircle } from 'lucide-react';
-import { VendorList } from '@/components/vendor/VendorList';
-import { VendorConversations } from '@/components/vendor/VendorConversations';
-import { VendorQuality } from '@/components/vendor/VendorQuality';
-import { AddVendorDialog } from '@/components/vendor/AddVendorDialog';
+import { VendorList } from '@/modules/whatsapp/components/vendor/VendorList';
+import { VendorConversations } from '@/modules/whatsapp/components/vendor/VendorConversations';
+import { VendorQuality } from '@/modules/whatsapp/components/vendor/VendorQuality';
+import { AddVendorDialog } from '@/modules/whatsapp/components/vendor/AddVendorDialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
