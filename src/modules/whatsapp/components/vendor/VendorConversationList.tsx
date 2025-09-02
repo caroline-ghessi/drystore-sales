@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MessageSquare, User, Clock } from 'lucide-react';
-import { useVendorConversations } from '@/hooks/useVendorConversations';
+import { useVendorConversations } from '@/modules/whatsapp/hooks/useVendorConversations';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

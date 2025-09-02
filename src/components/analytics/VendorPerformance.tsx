@@ -16,7 +16,7 @@ import {
   Scatter
 } from 'recharts';
 import { Users, Clock, Star, TrendingUp, Trophy, AlertCircle } from 'lucide-react';
-import { useVendorPerformance } from '@/hooks/useVendorPerformance';
+import { useVendorPerformance } from '@/modules/whatsapp/hooks/useVendorPerformance';
 
 interface VendorPerformanceProps {
   period: string;
