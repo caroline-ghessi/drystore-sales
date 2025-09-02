@@ -1,2 +1,23 @@
 // CRM Module Main Export
-// Note: Routes are handled directly in App.tsx for cleaner architecture
+
+// Pages
+export { default as Dashboard } from './pages/Dashboard';
+export { default as LeadsQuentes } from './pages/LeadsQuentes';
+export { default as Pipeline } from './pages/Pipeline';
+export { default as Reports } from './pages/Reports';
+export { default as Customers } from './pages/Customers';
+export { default as Opportunities } from './pages/Opportunities';
+export { default as Tasks } from './pages/Tasks';
+export { default as Settings } from './pages/Settings';
+
+// Hooks
+export * from './hooks';
+
+// Services
+export * from './services';
+
+// Types
+export * from './types';
+
+// Utils
+export * from './utils';

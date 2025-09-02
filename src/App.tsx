@@ -5,18 +5,25 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
-import Dashboard from "@/pages/Dashboard";
 import NotFound from "./pages/NotFound";
-import { ConversationsPage } from "@/pages/Conversations";
-import { VendedoresPage } from "@/pages/Vendedores";
-import AtendentesPage from "@/pages/Atendentes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import BotPage from "@/pages/Bot";
 import AuthPage from "@/pages/Auth";
 import SetPasswordPage from "@/pages/SetPassword";
 import ResetPasswordPage from "@/pages/ResetPassword";
-import LeadsQuentes from "@/pages/LeadsQuentes";
-import Analytics from "@/pages/Analytics";
+
+// WhatsApp Module Pages
+import Analytics from "@/modules/whatsapp/pages/Analytics";
+import BotPage from "@/modules/whatsapp/pages/Bot";
+import AtendentesPage from "@/modules/whatsapp/pages/Atendentes";
+import { VendedoresPage } from "@/modules/whatsapp/pages/Vendedores";
+import { ConversationsPage } from "@/modules/whatsapp/pages/Conversations";
+
+// CRM Module Pages
+import Dashboard from "@/modules/crm/pages/Dashboard";
+import LeadsQuentes from "@/modules/crm/pages/LeadsQuentes";
+
+// Propostas Module Pages
+import Propostas from "@/modules/propostas/pages/Propostas";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
@@ -77,16 +84,7 @@ function AppContent() {
           <Route path="/logs" element={<div className="p-6">Logs - Em desenvolvimento</div>} />
           
           {/* Propostas Module Routes */}
-          <Route path="/propostas" element={
-            <div className="p-6">
-              <h1 className="text-2xl font-semibold text-foreground mb-4">
-                Portal de Propostas
-              </h1>
-              <p className="text-muted-foreground">
-                Em desenvolvimento - Aguardando integração do módulo externo
-              </p>
-            </div>
-          } />
+          <Route path="/propostas" element={<Propostas />} />
         </Route>
         
         <Route path="*" element={<NotFound />} />
