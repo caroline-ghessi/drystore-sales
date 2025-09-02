@@ -17,6 +17,9 @@ import SetPasswordPage from "@/pages/SetPassword";
 import ResetPasswordPage from "@/pages/ResetPassword";
 import LeadsQuentes from "@/pages/LeadsQuentes";
 import Analytics from "@/pages/Analytics";
+import { WhatsAppRoutes } from "@/modules/whatsapp/routes";
+import { CRMRoutes } from "@/modules/crm/routes";
+import { PropostasRoutes } from "@/modules/propostas/routes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
@@ -43,7 +46,7 @@ function AppContent() {
             <Route path="/set-password" element={<SetPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
         
-        {/* Protected full-screen routes */}
+        {/* Protected full-screen routes - WhatsApp Module */}
         <Route 
           path="/conversas" 
           element={
@@ -61,15 +64,23 @@ function AppContent() {
             <Layout />
           </ProtectedRoute>
         }>
+          {/* CRM Module Routes */}
           <Route index element={<Dashboard />} />
           <Route path="/leads-quentes" element={<LeadsQuentes />} />
+          <Route path="/analytics" element={<Analytics />} />
+          
+          {/* WhatsApp Module Routes */}
           <Route path="/bot" element={<BotPage />} />
           <Route path="/vendedores" element={<VendedoresPage />} />
-          <Route path="/analytics" element={<Analytics />} />
           <Route path="/atendentes" element={<AtendentesPage />} />
+          
+          {/* System Routes */}
           <Route path="/templates" element={<div className="p-6">Templates - Em desenvolvimento</div>} />
           <Route path="/configuracoes" element={<div className="p-6">Configurações - Em desenvolvimento</div>} />
           <Route path="/logs" element={<div className="p-6">Logs - Em desenvolvimento</div>} />
+          
+          {/* Propostas Module Routes (Future) */}
+          <Route path="/propostas" element={<div className="p-6">Portal de Propostas - Em desenvolvimento</div>} />
         </Route>
         
         <Route path="*" element={<NotFound />} />
