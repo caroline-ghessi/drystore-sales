@@ -35,12 +35,15 @@ export class LeadService {
       `)
       .order('updated_at', { ascending: false });
 
-    if (filters?.temperature) {
-      query = query.eq('lead_temperature', filters.temperature);
+    if (filters?.temperature && ['hot', 'warm', 'cold'].includes(filters.temperature)) {
+      query = query.eq('lead_temperature', filters.temperature as 'hot' | 'warm' | 'cold');
     }
 
     if (filters?.status) {
-      query = query.eq('status', filters.status);
+      const validStatuses = ['waiting', 'active', 'in_bot', 'with_agent', 'qualified', 'transferred', 'closed'];
+      if (validStatuses.includes(filters.status)) {
+        query = query.eq('status', filters.status as any);
+      }
     }
 
     if (filters?.limit) {

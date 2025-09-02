@@ -37,8 +37,8 @@ export class CustomerService {
       query = query.or(`customer_name.ilike.%${filters.search}%,whatsapp_number.ilike.%${filters.search}%`);
     }
 
-    if (filters?.temperature) {
-      query = query.eq('lead_temperature', filters.temperature);
+    if (filters?.temperature && ['hot', 'warm', 'cold'].includes(filters.temperature)) {
+      query = query.eq('lead_temperature', filters.temperature as 'hot' | 'warm' | 'cold');
     }
 
     if (filters?.source) {

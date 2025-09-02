@@ -71,8 +71,8 @@ export class LeadCalculations {
     
     return Object.entries(distribution).map(([category, count]) => ({
       category,
-      count,
-      percentage: total > 0 ? Math.round((count / total) * 100 * 10) / 10 : 0
+      count: count as number,
+      percentage: total > 0 ? Math.round((count as number / total) * 100 * 10) / 10 : 0
     }));
   }
 
