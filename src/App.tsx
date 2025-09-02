@@ -14,11 +14,16 @@ import HomePage from "@/pages/Home";
 // Module Layouts
 import CRMLayout from "@/modules/crm/components/layout/CRMLayout";
 import PropostasLayout from "@/modules/propostas/components/layout/PropostasLayout";
-import WhatsAppLayout from "@/modules/whatsapp/components/layout/WhatsAppLayout";
 import { Layout } from "@/components/layout/Layout";
 
-// Special WhatsApp Page (Full Screen)
+// WhatsApp Module Pages
+import WhatsAppDashboard from "@/modules/whatsapp/pages/Dashboard";
 import { ConversationsPage } from "@/modules/whatsapp/pages/Conversations";
+import BotPage from "@/modules/whatsapp/pages/Bot";
+import AtendentesPage from "@/modules/whatsapp/pages/Atendentes";
+import { VendedoresPage } from "@/modules/whatsapp/pages/Vendedores";
+import Analytics from "@/modules/whatsapp/pages/Analytics";
+import LeadsQuentes from "@/modules/whatsapp/pages/LeadsQuentes";
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -60,12 +65,54 @@ function AppContent() {
           </ProtectedRoute>
         } />
         
-        {/* WhatsApp Module Routes */}
-        <Route path="/whatsapp/*" element={
+        {/* WhatsApp Module Routes - General Layout */}
+        <Route path="/whatsapp" element={
           <ProtectedRoute>
-            <WhatsAppLayout />
+            <Layout />
           </ProtectedRoute>
-        } />
+        }>
+          <Route index element={<WhatsAppDashboard />} />
+        </Route>
+        
+        <Route path="/whatsapp/bot" element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<BotPage />} />
+        </Route>
+        
+        <Route path="/whatsapp/vendedores" element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<VendedoresPage />} />
+        </Route>
+        
+        <Route path="/whatsapp/atendentes" element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<AtendentesPage />} />
+        </Route>
+        
+        <Route path="/whatsapp/analytics" element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<Analytics />} />
+        </Route>
+        
+        <Route path="/whatsapp/leads-quentes" element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<LeadsQuentes />} />
+        </Route>
         
         {/* CRM Module Routes */}
         <Route path="/crm/*" element={

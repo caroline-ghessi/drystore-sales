@@ -10,7 +10,6 @@ import BotPage from "@/modules/whatsapp/pages/Bot";
 import AtendentesPage from "@/modules/whatsapp/pages/Atendentes";
 import { VendedoresPage } from "@/modules/whatsapp/pages/Vendedores";
 import { ConversationsPage } from "@/modules/whatsapp/pages/Conversations";
-import LeadsQuentes from "@/modules/whatsapp/pages/LeadsQuentes";
 
 export default function WhatsAppLayout() {
   return (
@@ -24,7 +23,6 @@ export default function WhatsAppLayout() {
               <Route index element={<ConversationsPage />} />
               <Route path="/conversas" element={<ConversationsPage />} />
               <Route path="/bot" element={<BotPage />} />
-              <Route path="/leads-quentes" element={<LeadsQuentes />} />
               <Route path="/vendedores" element={<VendedoresPage />} />
               <Route path="/atendentes" element={<AtendentesPage />} />
               <Route path="/analytics" element={<Analytics />} />
