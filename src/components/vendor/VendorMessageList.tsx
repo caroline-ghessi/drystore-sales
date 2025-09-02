@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useVendorMessages } from '@/hooks/useVendorMessages';
+import { useVendorMessages } from '@/modules/whatsapp/hooks/useVendorMessages';
 import { VendorMessageBubble } from './VendorMessageBubble';
 import { Skeleton } from '@/components/ui/skeleton';
 

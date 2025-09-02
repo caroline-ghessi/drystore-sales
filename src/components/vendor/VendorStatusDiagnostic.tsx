@@ -12,7 +12,7 @@ import {
   ExternalLink,
   RefreshCw
 } from 'lucide-react';
-import { useVendorTokenTest, VendorTestResult } from '@/hooks/useVendorTokenTest';
+import { useVendorTokenTest, VendorTestResult } from '@/modules/whatsapp/hooks/useVendorTokenTest';
 import { useToast } from '@/hooks/use-toast';
 
 interface VendorStatusDiagnosticProps {
