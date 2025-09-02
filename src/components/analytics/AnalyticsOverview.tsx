@@ -23,7 +23,7 @@ import {
   Target 
 } from 'lucide-react';
 import { useConversationAnalytics } from '@/hooks/useConversationAnalytics';
-import { useVendorPerformance } from '@/modules/whatsapp';
+import { useVendorPerformance } from '@/hooks/useVendorPerformance';
 import { useLeadAnalytics } from '@/hooks/useLeadAnalytics';
 
 interface AnalyticsOverviewProps {

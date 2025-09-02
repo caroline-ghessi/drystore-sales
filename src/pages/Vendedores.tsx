@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { Plus, Users, TrendingUp, Clock, AlertCircle } from 'lucide-react';
-import { 
-  VendorList, 
-  VendorConversations, 
-  VendorQuality, 
-  AddVendorDialog 
-} from '@/modules/whatsapp';
+import { VendorList } from '@/components/vendor/VendorList';
+import { VendorConversations } from '@/components/vendor/VendorConversations';
+import { VendorQuality } from '@/components/vendor/VendorQuality';
+import { AddVendorDialog } from '@/components/vendor/AddVendorDialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
