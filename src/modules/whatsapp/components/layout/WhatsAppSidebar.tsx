@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { MessageCircle, Bot, Users, UserCheck, BarChart3, Home } from 'lucide-react';
+import { MessageCircle, Bot, Users, UserCheck, BarChart3, Home, Flame } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -17,6 +17,7 @@ import {
 const whatsappItems = [
   { title: 'Conversas', url: '/whatsapp', icon: MessageCircle },
   { title: 'Bot', url: '/whatsapp/bot', icon: Bot },
+  { title: 'Leads Quentes', url: '/whatsapp/leads-quentes', icon: Flame },
   { title: 'Vendedores', url: '/whatsapp/vendedores', icon: Users },
   { title: 'Atendentes', url: '/whatsapp/atendentes', icon: UserCheck },
   { title: 'Analytics', url: '/whatsapp/analytics', icon: BarChart3 },

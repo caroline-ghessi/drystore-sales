@@ -48,15 +48,16 @@ All colors MUST be HSL.
     --chat-background: 41 15% 89%; /* #e5ddd5 */
     --chat-bubble-sent: 80 60% 85%; /* #dcf8c6 */
     --chat-bubble-received: 0 0% 100%;
+
+    /* Lead temperature colors */
+    --lead-hot: 0 84% 60%; /* Red-500 for critical leads */
+    --lead-warm: 25 95% 53%; /* Orange-500 for warm leads */
+    --lead-cold: 221 83% 53%; /* Blue-500 for cold leads */
+
     --chat-header: 210 11% 96%;
     --chat-list-background: 0 0% 100%;
     --chat-list-hover: 210 40% 96.1%;
     --chat-list-active: 210 40% 92%;
-
-    /* Lead temperature colors */
-    --lead-hot: 0 84% 60%;
-    --lead-warm: 24 95% 53%;
-    --lead-cold: 217 91% 60%;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;

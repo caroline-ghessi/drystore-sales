@@ -23,6 +23,7 @@ import BotPage from "@/modules/whatsapp/pages/Bot";
 import AtendentesPage from "@/modules/whatsapp/pages/Atendentes";
 import { VendedoresPage } from "@/modules/whatsapp/pages/Vendedores";
 import Analytics from "@/modules/whatsapp/pages/Analytics";
+import LeadsQuentes from "@/modules/whatsapp/pages/LeadsQuentes";
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -103,6 +104,14 @@ function AppContent() {
           </ProtectedRoute>
         }>
           <Route index element={<Analytics />} />
+        </Route>
+        
+        <Route path="/whatsapp/leads-quentes" element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<LeadsQuentes />} />
         </Route>
         
         {/* CRM Module Routes */}
