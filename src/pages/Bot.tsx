@@ -5,15 +5,15 @@ import {
   FileText, Copy, History, AlertCircle, CheckCircle,
   Sparkles, Rocket, Database, ArrowRight
 } from 'lucide-react';
-import { OverviewSection } from '@/components/bot/OverviewSection';
-import { AgentsSection } from '@/components/bot/AgentsSection';
-import { LLMSection } from '@/components/bot/LLMSection';
-import { TestSection } from '@/components/bot/TestSection';
-import { MasterAgentSection } from '@/components/bot/MasterAgentSection';
-import { ClassificationLogsSection } from '@/components/bot/ClassificationLogsSection';
-import { ClassificationStats } from '@/components/bot/ClassificationStats';
-import { RAGSection } from '@/components/bot/RAGSection';
-import { AgentConfigurationSection } from '@/components/bot/AgentConfigurationSection';
+import { OverviewSection } from '@/modules/whatsapp/components/bot/OverviewSection';
+import { AgentsSection } from '@/modules/whatsapp/components/bot/AgentsSection';
+import { LLMSection } from '@/modules/whatsapp/components/bot/LLMSection';
+import { TestSection } from '@/modules/whatsapp/components/bot/TestSection';
+import { MasterAgentSection } from '@/modules/whatsapp/components/bot/MasterAgentSection';
+import { ClassificationLogsSection } from '@/modules/whatsapp/components/bot/ClassificationLogsSection';
+import { ClassificationStats } from '@/modules/whatsapp/components/bot/ClassificationStats';
+import { RAGSection } from '@/modules/whatsapp/components/bot/RAGSection';
+import { AgentConfigurationSection } from '@/modules/whatsapp/components/bot/AgentConfigurationSection';
 
 type ActiveTab = 'overview' | 'agents' | 'llm' | 'rag' | 'test';
 
