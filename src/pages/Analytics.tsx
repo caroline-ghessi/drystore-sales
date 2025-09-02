@@ -15,11 +15,11 @@ import {
   Flame,
   Bot
 } from 'lucide-react';
-import { AnalyticsOverview } from '@/components/analytics/AnalyticsOverview';
-import { ConversationMetrics } from '@/components/analytics/ConversationMetrics';
-import { VendorPerformance } from '@/components/analytics/VendorPerformance';
-import { LeadAnalytics } from '@/components/analytics/LeadAnalytics';
-import { QualityMetrics } from '@/components/analytics/QualityMetrics';
+import { AnalyticsOverview } from '@/modules/whatsapp/components/analytics/AnalyticsOverview';
+import { ConversationMetrics } from '@/modules/whatsapp/components/analytics/ConversationMetrics';
+import { VendorPerformance } from '@/modules/whatsapp/components/analytics/VendorPerformance';
+import { LeadAnalytics } from '@/modules/whatsapp/components/analytics/LeadAnalytics';
+import { QualityMetrics } from '@/modules/whatsapp/components/analytics/QualityMetrics';
 
 const PERIOD_OPTIONS = [
   { value: 'today', label: 'Hoje' },
