@@ -5,18 +5,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
-import Dashboard from "@/pages/Dashboard";
 import NotFound from "./pages/NotFound";
-import { ConversationsPage } from "@/pages/Conversations";
-import { VendedoresPage } from "@/pages/Vendedores";
-import AtendentesPage from "@/pages/Atendentes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import BotPage from "@/pages/Bot";
 import AuthPage from "@/pages/Auth";
 import SetPasswordPage from "@/pages/SetPassword";
 import ResetPasswordPage from "@/pages/ResetPassword";
-import LeadsQuentes from "@/pages/LeadsQuentes";
-import Analytics from "@/pages/Analytics";
 import { WhatsAppRoutes } from "@/modules/whatsapp/routes";
 import { CRMRoutes } from "@/modules/crm/routes";
 import { PropostasRoutes } from "@/modules/propostas/routes";
@@ -42,21 +35,12 @@ function AppContent() {
     <BrowserRouter>
       <Routes>
         {/* Public auth routes */}
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/set-password" element={<SetPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/set-password" element={<SetPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         
-        {/* Protected full-screen routes - WhatsApp Module */}
-        <Route 
-          path="/conversas" 
-          element={
-            <ProtectedRoute>
-              <div className="h-screen">
-                <ConversationsPage />
-              </div>
-            </ProtectedRoute>
-          } 
-        />
+        {/* WhatsApp Module Routes (includes full-screen conversations) */}
+        <WhatsAppRoutes />
         
         {/* Protected layout-wrapped routes */}
         <Route path="/" element={
@@ -65,22 +49,15 @@ function AppContent() {
           </ProtectedRoute>
         }>
           {/* CRM Module Routes */}
-          <Route index element={<Dashboard />} />
-          <Route path="/leads-quentes" element={<LeadsQuentes />} />
-          <Route path="/analytics" element={<Analytics />} />
-          
-          {/* WhatsApp Module Routes */}
-          <Route path="/bot" element={<BotPage />} />
-          <Route path="/vendedores" element={<VendedoresPage />} />
-          <Route path="/atendentes" element={<AtendentesPage />} />
+          <CRMRoutes />
           
           {/* System Routes */}
           <Route path="/templates" element={<div className="p-6">Templates - Em desenvolvimento</div>} />
           <Route path="/configuracoes" element={<div className="p-6">Configurações - Em desenvolvimento</div>} />
           <Route path="/logs" element={<div className="p-6">Logs - Em desenvolvimento</div>} />
           
-          {/* Propostas Module Routes (Future) */}
-          <Route path="/propostas" element={<div className="p-6">Portal de Propostas - Em desenvolvimento</div>} />
+          {/* Propostas Module Routes */}
+          <PropostasRoutes />
         </Route>
         
         <Route path="*" element={<NotFound />} />
