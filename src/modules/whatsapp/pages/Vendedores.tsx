@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Users, TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Users, TrendingUp, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
 import { VendorList } from '@/modules/whatsapp/components/vendor/VendorList';
 import { VendorConversations } from '@/modules/whatsapp/components/vendor/VendorConversations';
 import { VendorQuality } from '@/modules/whatsapp/components/vendor/VendorQuality';
@@ -16,6 +17,11 @@ export function VendedoresPage() {
     <div className="flex flex-col h-full bg-background">
       <div className="flex items-center justify-between p-6 border-b">
         <div className="flex items-center space-x-4">
+          <Link to="/home">
+            <Button variant="ghost" size="sm" className="p-2">
+              <ArrowLeft size={18} />
+            </Button>
+          </Link>
           <Users className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-semibold text-foreground">
             Monitoramento de Vendedores

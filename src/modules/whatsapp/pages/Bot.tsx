@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Bot, Settings, TestTube, Save, Plus, Edit3, Trash2, 
   ChevronRight, Code, MessageSquare, Zap, Brain, 
   FileText, Copy, History, AlertCircle, CheckCircle,
-  Sparkles, Rocket, Database, ArrowRight
+  Sparkles, Rocket, Database, ArrowRight, ArrowLeft
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { OverviewSection } from '@/modules/whatsapp/components/bot/OverviewSection';
 import { AgentsSection } from '@/modules/whatsapp/components/bot/AgentsSection';
 import { LLMSection } from '@/modules/whatsapp/components/bot/LLMSection';
@@ -59,19 +61,24 @@ export default function BotPage() {
     <div className="min-h-screen bg-gradient-to-br from-muted/30 to-muted/50">
       {/* Header Principal com Navegação */}
       <div className="bg-card border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Bot className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-foreground">Bot Inteligente</h1>
-                  <p className="text-xs text-muted-foreground">Sistema de IA para atendimento</p>
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-4">
+                <Link to="/home">
+                  <Button variant="ghost" size="sm" className="p-2">
+                    <ArrowLeft size={18} />
+                  </Button>
+                </Link>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Bot className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-foreground">Bot Inteligente</h1>
+                    <p className="text-xs text-muted-foreground">Sistema de IA para atendimento</p>
+                  </div>
                 </div>
               </div>
-            </div>
 
             {/* Tabs de Navegação */}
             <div className="flex items-center gap-1 bg-muted rounded-lg p-1">

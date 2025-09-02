@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,7 +14,8 @@ import {
   Target,
   Download,
   Flame,
-  Bot
+  Bot,
+  ArrowLeft
 } from 'lucide-react';
 import { AnalyticsOverview } from '@/modules/whatsapp/components/analytics/AnalyticsOverview';
 import { ConversationMetrics } from '@/modules/whatsapp/components/analytics/ConversationMetrics';
@@ -37,11 +39,18 @@ export default function Analytics() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
-          <p className="text-muted-foreground">
-            Monitoramento de KPIs e métricas de performance
-          </p>
+        <div className="flex items-center gap-4">
+          <Link to="/home">
+            <Button variant="ghost" size="sm" className="p-2">
+              <ArrowLeft size={18} />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
+            <p className="text-muted-foreground">
+              Monitoramento de KPIs e métricas de performance
+            </p>
+          </div>
         </div>
         
         <div className="flex items-center gap-3">

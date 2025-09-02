@@ -12,9 +12,15 @@ import ResetPasswordPage from "@/pages/ResetPassword";
 import HomePage from "@/pages/Home";
 
 // Module Layouts
-import WhatsAppLayout from "@/modules/whatsapp/components/layout/WhatsAppLayout";
 import CRMLayout from "@/modules/crm/components/layout/CRMLayout";
 import PropostasLayout from "@/modules/propostas/components/layout/PropostasLayout";
+
+// WhatsApp Module Pages
+import { ConversationsPage } from "@/modules/whatsapp/pages/Conversations";
+import BotPage from "@/modules/whatsapp/pages/Bot";
+import AtendentesPage from "@/modules/whatsapp/pages/Atendentes";
+import { VendedoresPage } from "@/modules/whatsapp/pages/Vendedores";
+import Analytics from "@/modules/whatsapp/pages/Analytics";
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -50,9 +56,34 @@ function AppContent() {
         } />
         
         {/* WhatsApp Module Routes */}
-        <Route path="/whatsapp/*" element={
+        <Route path="/whatsapp" element={
           <ProtectedRoute>
-            <WhatsAppLayout />
+            <ConversationsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/whatsapp/conversas" element={
+          <ProtectedRoute>
+            <ConversationsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/whatsapp/bot" element={
+          <ProtectedRoute>
+            <BotPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/whatsapp/vendedores" element={
+          <ProtectedRoute>
+            <VendedoresPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/whatsapp/atendentes" element={
+          <ProtectedRoute>
+            <AtendentesPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/whatsapp/analytics" element={
+          <ProtectedRoute>
+            <Analytics />
           </ProtectedRoute>
         } />
         

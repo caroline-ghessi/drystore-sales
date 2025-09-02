@@ -6,7 +6,7 @@ export function ConversationsHeader() {
   return (
     <div className="bg-chat-header border-b border-border px-4 py-3 flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <Link to="/">
+        <Link to="/home">
           <Button variant="ghost" size="sm" className="p-2">
             <ArrowLeft size={18} />
           </Button>

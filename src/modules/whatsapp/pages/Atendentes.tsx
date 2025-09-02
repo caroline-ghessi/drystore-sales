@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AtendenteList } from '@/modules/whatsapp/components/atendentes/AtendenteList';
 import { AddAtendenteDialog } from '@/modules/whatsapp/components/atendentes/AddAtendenteDialog';
 import { useAtendentes, type Atendente } from '@/hooks/useAtendentes';
-import { Users, UserPlus, TrendingUp, Clock, Star } from 'lucide-react';
+import { Users, UserPlus, TrendingUp, Clock, Star, ArrowLeft } from 'lucide-react';
 
 export default function AtendentesPage() {
   const [selectedAtendente, setSelectedAtendente] = useState<Atendente | null>(null);
@@ -29,11 +30,18 @@ export default function AtendentesPage() {
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Atendentes</h1>
-          <p className="text-muted-foreground">
-            Gerencie sua equipe de atendimento e acompanhe a performance
-          </p>
+        <div className="flex items-center gap-4">
+          <Link to="/home">
+            <Button variant="ghost" size="sm" className="p-2">
+              <ArrowLeft size={18} />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Atendentes</h1>
+            <p className="text-muted-foreground">
+              Gerencie sua equipe de atendimento e acompanhe a performance
+            </p>
+          </div>
         </div>
         <Button 
           onClick={() => setShowAddDialog(true)}
