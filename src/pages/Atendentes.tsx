@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AtendenteList } from '@/components/atendentes/AtendenteList';
-import { AddAtendenteDialog } from '@/components/atendentes/AddAtendenteDialog';
+import { AtendenteList } from '@/modules/whatsapp/components/atendentes/AtendenteList';
+import { AddAtendenteDialog } from '@/modules/whatsapp/components/atendentes/AddAtendenteDialog';
 import { useAtendentes, type Atendente } from '@/hooks/useAtendentes';
 import { Users, UserPlus, TrendingUp, Clock, Star } from 'lucide-react';
 

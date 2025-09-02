@@ -59,6 +59,10 @@ export { VendorStatusDiagnostic } from './components/vendor/VendorStatusDiagnost
 export { VendorMessageList } from './components/vendor/VendorMessageList';
 export { VendorConversations } from './components/vendor/VendorConversations';
 
+// Atendentes Components
+export { AtendenteList } from './components/atendentes/AtendenteList';
+export { AddAtendenteDialog } from './components/atendentes/AddAtendenteDialog';
+
 // Hooks
 export { useVendorPerformance } from './hooks/useVendorPerformance';
 export { useVendorQuality } from './hooks/useVendorQuality';
