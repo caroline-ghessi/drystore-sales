@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { WhatsAppConversationList } from '@/components/chat/WhatsAppConversationList';
-import { WhatsAppChatArea } from '@/components/chat/WhatsAppChatArea';
-import { WhatsAppEmptyState } from '@/components/chat/WhatsAppEmptyState';
-import { ConversationsHeader } from '@/components/chat/ConversationsHeader';
+import { WhatsAppConversationList } from '@/modules/whatsapp/components/chat/WhatsAppConversationList';
+import { WhatsAppChatArea } from '@/modules/whatsapp/components/chat/WhatsAppChatArea';
+import { WhatsAppEmptyState } from '@/modules/whatsapp/components/chat/WhatsAppEmptyState';
+import { ConversationsHeader } from '@/modules/whatsapp/components/chat/ConversationsHeader';
 import { useRealtimeConversations } from '@/hooks/useRealtimeSubscription';
 
 export function ConversationsPage() {
