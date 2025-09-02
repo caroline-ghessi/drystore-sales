@@ -1,2 +1,2 @@
 // CRM Module Main Export
-export * from './routes';
+// Note: Routes are handled directly in App.tsx for cleaner architecture

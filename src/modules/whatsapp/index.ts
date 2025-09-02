@@ -1,7 +1,5 @@
 // WhatsApp Module Main Export
-
-// Routes
-export * from './routes';
+// Note: Routes are handled directly in App.tsx for cleaner architecture
 
 // Bot Components
 export { AgentList } from './components/bot/AgentList';

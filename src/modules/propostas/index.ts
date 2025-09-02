@@ -1,2 +1,2 @@
-// Propostas Module Main Export
-export * from './routes';
+// Propostas Module Main Export  
+// Note: Routes are handled directly in App.tsx for cleaner architecture

@@ -5,14 +5,18 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
+import Dashboard from "@/pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import { ConversationsPage } from "@/pages/Conversations";
+import { VendedoresPage } from "@/pages/Vendedores";
+import AtendentesPage from "@/pages/Atendentes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import BotPage from "@/pages/Bot";
 import AuthPage from "@/pages/Auth";
 import SetPasswordPage from "@/pages/SetPassword";
 import ResetPasswordPage from "@/pages/ResetPassword";
-import { WhatsAppRoutes } from "@/modules/whatsapp/routes";
-import { CRMRoutes } from "@/modules/crm/routes";
-import { PropostasRoutes } from "@/modules/propostas/routes";
+import LeadsQuentes from "@/pages/LeadsQuentes";
+import Analytics from "@/pages/Analytics";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
@@ -39,8 +43,17 @@ function AppContent() {
         <Route path="/set-password" element={<SetPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         
-        {/* WhatsApp Module Routes (includes full-screen conversations) */}
-        <WhatsAppRoutes />
+        {/* Protected full-screen routes - WhatsApp Module */}
+        <Route 
+          path="/conversas" 
+          element={
+            <ProtectedRoute>
+              <div className="h-screen">
+                <ConversationsPage />
+              </div>
+            </ProtectedRoute>
+          } 
+        />
         
         {/* Protected layout-wrapped routes */}
         <Route path="/" element={
@@ -49,7 +62,14 @@ function AppContent() {
           </ProtectedRoute>
         }>
           {/* CRM Module Routes */}
-          <CRMRoutes />
+          <Route index element={<Dashboard />} />
+          <Route path="/leads-quentes" element={<LeadsQuentes />} />
+          
+          {/* WhatsApp Module Routes */}
+          <Route path="/bot" element={<BotPage />} />
+          <Route path="/vendedores" element={<VendedoresPage />} />
+          <Route path="/atendentes" element={<AtendentesPage />} />
+          <Route path="/analytics" element={<Analytics />} />
           
           {/* System Routes */}
           <Route path="/templates" element={<div className="p-6">Templates - Em desenvolvimento</div>} />
@@ -57,7 +77,16 @@ function AppContent() {
           <Route path="/logs" element={<div className="p-6">Logs - Em desenvolvimento</div>} />
           
           {/* Propostas Module Routes */}
-          <PropostasRoutes />
+          <Route path="/propostas" element={
+            <div className="p-6">
+              <h1 className="text-2xl font-semibold text-foreground mb-4">
+                Portal de Propostas
+              </h1>
+              <p className="text-muted-foreground">
+                Em desenvolvimento - Aguardando integração do módulo externo
+              </p>
+            </div>
+          } />
         </Route>
         
         <Route path="*" element={<NotFound />} />
