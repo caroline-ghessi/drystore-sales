@@ -75,6 +75,12 @@ export default {
 					hot: 'hsl(var(--lead-hot))',
 					warm: 'hsl(var(--lead-warm))',
 					cold: 'hsl(var(--lead-cold))'
+				},
+				drystore: {
+					orange: 'hsl(var(--drystore-orange))',
+					'dark-gray': 'hsl(var(--drystore-dark-gray))',
+					'medium-gray': 'hsl(var(--drystore-medium-gray))',
+					white: 'hsl(var(--drystore-white))'
 				}
 			},
 			borderRadius: {
