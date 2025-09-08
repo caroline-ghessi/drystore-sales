@@ -4,7 +4,7 @@ import { CalculationInput, CalculationResult } from '../types/calculation.types'
 import { calculateSolarSystem } from '../utils/calculations/solarCalculations';
 import { calculateShingleInstallation } from '../utils/calculations/shingleCalculations';
 import { calculateDrywallInstallation } from '../utils/calculations/drywallCalculations';
-import { calculateKnaufCeiling } from '../utils/calculations/knaufCeilingCalculations';
+import { calculateForroDrywall } from '../utils/calculations/forroDrywallCalculations';
 
 export function useProposalCalculator(productType: ProductType) {
   const [calculationInput, setCalculationInput] = useState<CalculationInput | null>(null);
@@ -29,8 +29,8 @@ export function useProposalCalculator(productType: ProductType) {
         case 'drywall':
           result = calculateDrywallInstallation(input as any);
           break;
-        case 'knauf_ceiling':
-          result = calculateKnaufCeiling(input as any);
+        case 'forro_drywall':
+          result = calculateForroDrywall(input as any);
           break;
         default:
           throw new Error(`Cálculo não implementado para o produto: ${productType}`);
@@ -107,27 +107,27 @@ export function useProposalCalculator(productType: ProductType) {
         });
         break;
         
-      case 'knauf_ceiling':
-        const knaufResult = calculationResult as any;
-        items.push({
-          id: '1',
-          product: 'knauf_ceiling',
-          description: `Forro Knauf ${knaufResult.plateArea.toFixed(0)} m²`,
-          specifications: {
-            area: knaufResult.plateArea,
-            plates: knaufResult.plateQuantity,
-            installationTime: knaufResult.installationTime
-          },
-          quantity: knaufResult.plateArea,
-          unitPrice: knaufResult.totalCost / knaufResult.plateArea,
-          totalPrice: knaufResult.totalCost,
-          materialCost: knaufResult.itemizedCosts.plates + knaufResult.itemizedCosts.profiles + 
-                       knaufResult.itemizedCosts.suspension + knaufResult.itemizedCosts.perimetral +
-                       knaufResult.itemizedCosts.screws + knaufResult.itemizedCosts.finishing +
-                       (knaufResult.itemizedCosts.insulation || 0) + (knaufResult.itemizedCosts.accessories || 0),
-          laborCost: knaufResult.itemizedCosts.labor
-        });
-        break;
+        case 'forro_drywall':
+          const forroDrywallResult = calculationResult as any;
+          items.push({
+            id: '1',
+            product: 'forro_drywall',
+            description: `Forro Drywall ${forroDrywallResult.plateArea.toFixed(0)} m²`,
+            specifications: {
+              area: forroDrywallResult.plateArea,
+              plates: forroDrywallResult.plateQuantity,
+              installationTime: forroDrywallResult.installationTime
+            },
+            quantity: forroDrywallResult.plateArea,
+            unitPrice: forroDrywallResult.totalCost / forroDrywallResult.plateArea,
+            totalPrice: forroDrywallResult.totalCost,
+            materialCost: forroDrywallResult.itemizedCosts.plates + forroDrywallResult.itemizedCosts.profiles + 
+                         forroDrywallResult.itemizedCosts.suspension + forroDrywallResult.itemizedCosts.perimetral +
+                         forroDrywallResult.itemizedCosts.screws + forroDrywallResult.itemizedCosts.finishing +
+                         (forroDrywallResult.itemizedCosts.insulation || 0) + (forroDrywallResult.itemizedCosts.accessories || 0),
+            laborCost: forroDrywallResult.itemizedCosts.labor
+          });
+          break;
     }
     
     return items;
@@ -169,17 +169,17 @@ export function useProposalCalculator(productType: ProductType) {
           ]
         };
         
-      case 'knauf_ceiling':
-        const knauf = calculationResult as any;
-        return {
-          totalCost: knauf.totalCost,
-          keyMetrics: [
-            { label: 'Área do Forro', value: `${knauf.plateArea.toFixed(0)} m²` },
-            { label: 'Placas Knauf', value: `${knauf.plateQuantity} unidades` },
-            { label: 'Prazo de Instalação', value: `${knauf.installationTime} dias` },
-            { label: 'Perfis F530', value: `${knauf.profileBars} barras` }
-          ]
-        };
+        case 'forro_drywall':
+          const forroDrywall = calculationResult as any;
+          return {
+            totalCost: forroDrywall.totalCost,
+            keyMetrics: [
+              { label: 'Área do Forro', value: `${forroDrywall.plateArea.toFixed(0)} m²` },
+              { label: 'Placas Drywall', value: `${forroDrywall.plateQuantity} unidades` },
+              { label: 'Prazo de Instalação', value: `${forroDrywall.installationTime} dias` },
+              { label: 'Perfis Metálicos', value: `${forroDrywall.profileBars} barras` }
+            ]
+          };
         
       default:
         return null;

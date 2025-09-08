@@ -13,6 +13,7 @@ import { useProposalCalculator } from '../../hooks/useProposalCalculator';
 import { SolarCalculator } from '../calculator/SolarCalculator';
 import { ShingleCalculator } from '../calculator/ShingleCalculator';
 import { DrywallCalculator } from '../calculator/DrywallCalculator';
+import { ForroDrywallCalculator } from '../calculator/ForroDrywallCalculator';
 
 interface ProposalGeneratorProps {
   projectContextId?: string;
@@ -78,6 +79,8 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
         return <ShingleCalculator onCalculate={calculator.calculate} />;
       case 'drywall':
         return <DrywallCalculator onCalculate={calculator.calculate} />;
+      case 'forro_drywall':
+        return <ForroDrywallCalculator onCalculate={calculator.calculate} />;
       default:
         return (
           <Card>
@@ -167,9 +170,10 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                   {[
                     { value: 'solar', label: 'Energia Solar', description: 'Sistemas fotovoltaicos' },
                     { value: 'shingle', label: 'Telha Shingle', description: 'Telhados e coberturas' },
-                    { value: 'drywall', label: 'Drywall', description: 'Divisórias e forros' },
+                    { value: 'drywall', label: 'Drywall', description: 'Divisórias e paredes' },
                     { value: 'steel_frame', label: 'Steel Frame', description: 'Estruturas metálicas' },
-                    { value: 'ceiling', label: 'Forros', description: 'Forros e acabamentos' }
+                    { value: 'ceiling', label: 'Forros', description: 'Forros tradicionais' },
+                    { value: 'forro_drywall', label: 'Forro Drywall', description: 'Sistema completo de forro drywall' }
                   ].map((product) => (
                     <Card 
                       key={product.value}

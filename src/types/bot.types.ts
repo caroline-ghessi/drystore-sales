@@ -92,10 +92,11 @@ export type ProductCategory =
   | 'pisos'
   | 'acabamentos'
   | 'forros'
-  | 'forro_knauf'
+  | 'forro_drywall'
   | 'saudacao'
   | 'institucional'
-  | 'indefinido';
+  | 'indefinido'
+  | 'geral';
 
 // Constantes para categorização
 export const PRODUCT_KEYWORDS = {
@@ -131,9 +132,9 @@ export const PRODUCT_KEYWORDS = {
     'forro', 'teto', 'pvc', 'gesso', 'madeira', 'teto falso',
     'rebaixamento', 'forro modular'
   ],
-  forro_knauf: [
-    'knauf', 'ananda', 'gesso acartonado', 'drywall teto', 'forro knauf',
-    'perfil f530', 'placa knauf', 'tabica', 'cantoneira', 'suspensão forro'
+  forro_drywall: [
+    'forro', 'drywall', 'gesso acartonado', 'drywall teto', 'forro drywall',
+    'perfil metalico', 'placa drywall', 'tabica', 'cantoneira', 'suspensão forro'
   ]
 } as const;
 

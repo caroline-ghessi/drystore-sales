@@ -1,4 +1,4 @@
-export type ProductType = 'solar' | 'shingle' | 'drywall' | 'steel_frame' | 'ceiling' | 'knauf_ceiling';
+export type ProductType = 'solar' | 'shingle' | 'drywall' | 'steel_frame' | 'ceiling' | 'forro_drywall';
 
 export type ProposalStatus = 'draft' | 'generated' | 'sent' | 'viewed' | 'approved' | 'rejected' | 'expired';
 

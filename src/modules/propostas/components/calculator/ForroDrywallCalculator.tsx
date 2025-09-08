@@ -7,14 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Calculator, Layers, Square, Settings } from 'lucide-react';
-import { KnaufCeilingCalculationInput } from '../../types/calculation.types';
+import { ForroDrywallCalculationInput } from '../../types/calculation.types';
 
-interface KnaufCeilingCalculatorProps {
-  onCalculate: (input: KnaufCeilingCalculationInput) => void;
+interface ForroDrywallCalculatorProps {
+  onCalculate: (input: ForroDrywallCalculationInput) => void;
 }
 
-export function KnaufCeilingCalculator({ onCalculate }: KnaufCeilingCalculatorProps) {
-  const [input, setInput] = useState<KnaufCeilingCalculationInput>({
+export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorProps) {
+  const [input, setInput] = useState<ForroDrywallCalculationInput>({
     ceilingArea: 20,
     perimeter: 18,
     plateType: 'standard',
@@ -49,10 +49,10 @@ export function KnaufCeilingCalculator({ onCalculate }: KnaufCeilingCalculatorPr
       <CardHeader>
         <CardTitle className="flex items-center">
           <Layers className="mr-2 h-5 w-5 text-primary" />
-          Calculadora Forro Knauf/Ananda
+          Calculadora Forro Drywall
         </CardTitle>
         <CardDescription>
-          Sistema completo de forro com placas Knauf e perfis Ananda Metais
+          Sistema completo de forro drywall com placas e perfis
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -110,7 +110,7 @@ export function KnaufCeilingCalculator({ onCalculate }: KnaufCeilingCalculatorPr
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Tipo de Placa */}
             <div>
-              <Label>Tipo de Placa Knauf *</Label>
+              <Label>Tipo de Placa Drywall *</Label>
               <Select
                 value={input.plateType}
                 onValueChange={(value: any) => setInput({ ...input, plateType: value })}
@@ -378,7 +378,7 @@ export function KnaufCeilingCalculator({ onCalculate }: KnaufCeilingCalculatorPr
               <div className="flex items-center">
                 <Layers className="h-8 w-8 text-blue-600 mr-3" />
                 <div>
-                  <p className="font-semibold text-blue-800">Sistema Knauf</p>
+                  <p className="font-semibold text-blue-800">Sistema Drywall</p>
                   <p className="text-sm text-blue-700">Placas certificadas</p>
                 </div>
               </div>
@@ -390,7 +390,7 @@ export function KnaufCeilingCalculator({ onCalculate }: KnaufCeilingCalculatorPr
               <div className="flex items-center">
                 <Square className="h-8 w-8 text-green-600 mr-3" />
                 <div>
-                  <p className="font-semibold text-green-800">Perfis Ananda</p>
+                  <p className="font-semibold text-green-800">Perfis Metálicos</p>
                   <p className="text-sm text-green-700">Aço galvanizado</p>
                 </div>
               </div>
@@ -412,7 +412,7 @@ export function KnaufCeilingCalculator({ onCalculate }: KnaufCeilingCalculatorPr
 
         <Button onClick={handleCalculate} className="w-full" size="lg">
           <Calculator className="mr-2 h-4 w-4" />
-          Calcular Forro Knauf
+          Calcular Forro Drywall
         </Button>
       </CardContent>
     </Card>

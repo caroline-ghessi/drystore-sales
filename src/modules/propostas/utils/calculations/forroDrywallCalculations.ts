@@ -1,7 +1,7 @@
-import { KnaufCeilingCalculationInput, KnaufCeilingCalculationResult } from '../../types/calculation.types';
+import { ForroDrywallCalculationInput, ForroDrywallCalculationResult } from '../../types/calculation.types';
 
-// Fatores de consumo por m² (baseados no documento Knauf/Ananda)
-const KNAUF_CONSUMPTION_FACTORS = {
+// Fatores de consumo por m² (baseados em especificações técnicas de forro drywall)
+const FORRO_DRYWALL_CONSUMPTION_FACTORS = {
   // Placas por m² (considerando área da placa)
   plates: {
     '1_20x2_40': 1 / 2.88, // = 0.347 placas/m²
@@ -9,10 +9,10 @@ const KNAUF_CONSUMPTION_FACTORS = {
     '1_20x2_50': 1 / 3.00, // = 0.333 placas/m²
   },
   
-  // Perfis F530 - 2,20 ml por m²
+  // Perfis para forro drywall - 2,20 ml por m²
   profilePerSqm: 2.20,
   
-  // Tirantes e pendurais - 1,80 conjuntos por m²
+  // Sistema de suspensão - 1,80 conjuntos por m²
   suspensionPerSqm: 1.80,
   
   // Parafusos
@@ -30,7 +30,7 @@ const KNAUF_CONSUMPTION_FACTORS = {
   insulation: 1.05, // m²/m² (5% a mais para sobreposição)
 };
 
-// Perdas recomendadas (baseadas no documento)
+// Perdas recomendadas
 const WASTE_FACTORS = {
   plates: 1.10,      // 10% de perda
   profiles: 1.05,    // 5% de perda
@@ -93,7 +93,7 @@ const BASE_PRICES = {
   labor: 35,          // R$/m²
 };
 
-export function calculateKnaufCeiling(input: KnaufCeilingCalculationInput): KnaufCeilingCalculationResult {
+export function calculateForroDrywall(input: ForroDrywallCalculationInput): ForroDrywallCalculationResult {
   const { 
     ceilingArea, 
     perimeter, 
@@ -114,7 +114,7 @@ export function calculateKnaufCeiling(input: KnaufCeilingCalculationInput): Knau
   // ===== CÁLCULO DE QUANTIDADES =====
   
   // 1. Placas
-  const platesPerSqm = KNAUF_CONSUMPTION_FACTORS.plates[plateDimension];
+  const platesPerSqm = FORRO_DRYWALL_CONSUMPTION_FACTORS.plates[plateDimension];
   const rawPlateQuantity = ceilingArea * platesPerSqm;
   const plateQuantity = Math.ceil(rawPlateQuantity * WASTE_FACTORS.plates);
   
@@ -126,13 +126,13 @@ export function calculateKnaufCeiling(input: KnaufCeilingCalculationInput): Knau
   }[plateDimension];
   const plateArea = plateQuantity * plateAreaMultiplier;
 
-  // 2. Perfis F530
-  const profileQuantityRaw = ceilingArea * KNAUF_CONSUMPTION_FACTORS.profilePerSqm;
+  // 2. Perfis para forro drywall
+  const profileQuantityRaw = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.profilePerSqm;
   const profileQuantity = profileQuantityRaw * WASTE_FACTORS.profiles;
   const profileBars = Math.ceil(profileQuantity / 3); // barras de 3m
 
   // 3. Sistema de Suspensão
-  const suspensionSetsRaw = ceilingArea * KNAUF_CONSUMPTION_FACTORS.suspensionPerSqm;
+  const suspensionSetsRaw = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.suspensionPerSqm;
   const suspensionSets = Math.ceil(suspensionSetsRaw * WASTE_FACTORS.suspension);
 
   // 4. Acabamento Perimetral
@@ -140,25 +140,25 @@ export function calculateKnaufCeiling(input: KnaufCeilingCalculationInput): Knau
   const perimetralBars = Math.ceil(perimetralQuantity / 3); // barras de 3m
 
   // 5. Parafusos
-  const plateScrewsRaw = ceilingArea * KNAUF_CONSUMPTION_FACTORS.plateScrewsPerSqm;
+  const plateScrewsRaw = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.plateScrewsPerSqm;
   const plateScews = Math.ceil(plateScrewsRaw * WASTE_FACTORS.screws);
   
-  const profileScrewsRaw = ceilingArea * KNAUF_CONSUMPTION_FACTORS.profileScrewsPerSqm;
+  const profileScrewsRaw = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.profileScrewsPerSqm;
   const profileScrews = Math.ceil(profileScrewsRaw * WASTE_FACTORS.screws);
   
   const anchors = suspensionSets; // 1 bucha por ponto de suspensão
 
   // 6. Acabamento
-  const massQuantityRaw = ceilingArea * KNAUF_CONSUMPTION_FACTORS.mass[massType];
+  const massQuantityRaw = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.mass[massType];
   const massQuantity = massQuantityRaw * WASTE_FACTORS.mass;
   
-  const fiberQuantityRaw = ceilingArea * KNAUF_CONSUMPTION_FACTORS.fiber;
+  const fiberQuantityRaw = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.fiber;
   const fiberQuantity = fiberQuantityRaw * WASTE_FACTORS.fiber;
 
   // 7. Isolamento (opcional)
   let insulationQuantity: number | undefined;
   if (includeInsulation) {
-    insulationQuantity = ceilingArea * KNAUF_CONSUMPTION_FACTORS.insulation;
+    insulationQuantity = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.insulation;
   }
 
   // 8. Acessórios
@@ -213,7 +213,7 @@ export function calculateKnaufCeiling(input: KnaufCeilingCalculationInput): Knau
   const laborCost = ceilingArea * BASE_PRICES.labor * totalMultiplier;
 
   // ===== TEMPOS DE INSTALAÇÃO =====
-  // Baseado na produtividade do documento: 20-30 m²/dia para estrutura + placas
+  // Baseado na produtividade: 20-30 m²/dia para estrutura + placas
   const baseInstallationDays = Math.ceil(ceilingArea / 25); // 25 m²/dia médio
   const installationTime = Math.max(1, baseInstallationDays * complexityMultiplier);
   

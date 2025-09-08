@@ -15,7 +15,7 @@ export default function ProdutosPage() {
   const [editForm, setEditForm] = useState<Partial<Product>>({});
 
   const { products: allProducts, updateProduct, isLoading } = useProducts();
-  const { products: knaufProducts } = useProducts('forro_knauf');
+  const { products: knaufProducts } = useProducts('forro_drywall');
 
   const filteredProducts = allProducts.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -136,23 +136,29 @@ export default function ProdutosPage() {
             />
           </div>
 
-          <Tabs defaultValue="knauf" className="w-full">
+          <Tabs defaultValue="forro_drywall" className="w-full">
             <TabsList>
-              <TabsTrigger value="knauf">Produtos Knauf ({knaufProducts.length})</TabsTrigger>
-              <TabsTrigger value="all">Todos os Produtos ({allProducts.length})</TabsTrigger>
+              <TabsTrigger value="forro_drywall">Produtos Forro Drywall</TabsTrigger>
+              <TabsTrigger value="all">Todos os Produtos</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="knauf">
-              <div className="mt-4">
-                {knaufProducts.map(product => (
+            <TabsContent value="forro_drywall" className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                {knaufProducts.length} produtos de forro drywall encontrados
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {knaufProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
             </TabsContent>
             
-            <TabsContent value="all">
-              <div className="mt-4">
-                {filteredProducts.map(product => (
+            <TabsContent value="all" className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                {filteredProducts.length} produtos encontrados
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>

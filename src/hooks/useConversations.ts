@@ -35,7 +35,7 @@ export function useConversations(filters?: ConversationFilters & { includeArchiv
 
       // Apply product group filter
       if (filters?.product_group && filters.product_group.length > 0) {
-        query = query.in('product_group', filters.product_group);
+        query = query.in('product_group', filters.product_group as any);
       }
 
       // Apply lead temperature filter

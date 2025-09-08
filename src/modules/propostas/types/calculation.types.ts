@@ -139,8 +139,8 @@ export interface CeilingCalculationResult {
   installationTime: number; // days
 }
 
-// Knauf Ceiling
-export interface KnaufCeilingCalculationInput extends BaseCalculationInput {
+// Forro Drywall
+export interface ForroDrywallCalculationInput extends BaseCalculationInput {
   ceilingArea: number; // m²
   perimeter: number; // m
   plateType: 'standard' | 'ru' | 'rf'; // ST (Standard), RU (Resistente Umidade), RF (Resistente Fogo)
@@ -158,7 +158,7 @@ export interface KnaufCeilingCalculationInput extends BaseCalculationInput {
   };
 }
 
-export interface KnaufCeilingCalculationResult {
+export interface ForroDrywallCalculationResult {
   // Quantidades de materiais
   plateQuantity: number; // peças
   plateArea: number; // m² real das placas
@@ -211,7 +211,7 @@ export type CalculationInput =
   | DrywallCalculationInput 
   | SteelFrameCalculationInput 
   | CeilingCalculationInput
-  | KnaufCeilingCalculationInput;
+  | ForroDrywallCalculationInput;
 
 export type CalculationResult = 
   | SolarCalculationResult 
@@ -219,4 +219,4 @@ export type CalculationResult =
   | DrywallCalculationResult 
   | SteelFrameCalculationResult 
   | CeilingCalculationResult
-  | KnaufCeilingCalculationResult;
+  | ForroDrywallCalculationResult;

@@ -2462,7 +2462,7 @@ export type Database = {
         | "institucional"
         | "indefinido"
         | "geral"
-        | "forro_knauf"
+        | "forro_drywall"
       product_unit:
         | "m2"
         | "ml"
@@ -2661,7 +2661,7 @@ export const Constants = {
         "institucional",
         "indefinido",
         "geral",
-        "forro_knauf",
+        "forro_drywall",
       ],
       product_unit: [
         "m2",
