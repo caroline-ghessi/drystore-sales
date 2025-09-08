@@ -588,7 +588,43 @@ export type Database = {
           },
         ]
       }
-      customers: {
+      crm_customer_segments: {
+        Row: {
+          color_code: string | null
+          created_at: string
+          criteria: Json
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          priority: number | null
+          updated_at: string
+        }
+        Insert: {
+          color_code?: string | null
+          created_at?: string
+          criteria?: Json
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          priority?: number | null
+          updated_at?: string
+        }
+        Update: {
+          color_code?: string | null
+          created_at?: string
+          criteria?: Json
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          priority?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_customers: {
         Row: {
           assigned_to: string | null
           city: string | null
@@ -659,6 +695,218 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_opportunities: {
+        Row: {
+          actual_close_date: string | null
+          assigned_to: string | null
+          conversation_id: string | null
+          created_at: string | null
+          customer_id: string | null
+          description: string | null
+          expected_close_date: string | null
+          id: string
+          probability: number | null
+          product_category:
+            | Database["public"]["Enums"]["product_category"]
+            | null
+          source: string | null
+          stage: Database["public"]["Enums"]["opportunity_stage"] | null
+          title: string
+          updated_at: string | null
+          value: number
+        }
+        Insert: {
+          actual_close_date?: string | null
+          assigned_to?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          description?: string | null
+          expected_close_date?: string | null
+          id?: string
+          probability?: number | null
+          product_category?:
+            | Database["public"]["Enums"]["product_category"]
+            | null
+          source?: string | null
+          stage?: Database["public"]["Enums"]["opportunity_stage"] | null
+          title: string
+          updated_at?: string | null
+          value?: number
+        }
+        Update: {
+          actual_close_date?: string | null
+          assigned_to?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          description?: string | null
+          expected_close_date?: string | null
+          id?: string
+          probability?: number | null
+          product_category?:
+            | Database["public"]["Enums"]["product_category"]
+            | null
+          source?: string | null
+          stage?: Database["public"]["Enums"]["opportunity_stage"] | null
+          title?: string
+          updated_at?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "opportunities_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "crm_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_pipeline_stages: {
+        Row: {
+          color_code: string | null
+          conversion_probability: number | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          stage_order: number
+          updated_at: string
+        }
+        Insert: {
+          color_code?: string | null
+          conversion_probability?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          stage_order?: number
+          updated_at?: string
+        }
+        Update: {
+          color_code?: string | null
+          conversion_probability?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          stage_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_tasks: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          conversation_id: string | null
+          created_at: string | null
+          customer_id: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          opportunity_id: string | null
+          priority: Database["public"]["Enums"]["task_priority"] | null
+          status: Database["public"]["Enums"]["task_status"] | null
+          title: string
+          type: Database["public"]["Enums"]["task_type"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          opportunity_id?: string | null
+          priority?: Database["public"]["Enums"]["task_priority"] | null
+          status?: Database["public"]["Enums"]["task_status"] | null
+          title: string
+          type?: Database["public"]["Enums"]["task_type"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          opportunity_id?: string | null
+          priority?: Database["public"]["Enums"]["task_priority"] | null
+          status?: Database["public"]["Enums"]["task_status"] | null
+          title?: string
+          type?: Database["public"]["Enums"]["task_type"] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "tasks_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "crm_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "crm_opportunities"
             referencedColumns: ["id"]
           },
         ]
@@ -1157,94 +1405,100 @@ export type Database = {
           },
         ]
       }
-      opportunities: {
+      product_categories: {
         Row: {
-          actual_close_date: string | null
-          assigned_to: string | null
-          conversation_id: string | null
-          created_at: string | null
-          customer_id: string | null
+          category_code: string | null
+          created_at: string
           description: string | null
-          expected_close_date: string | null
           id: string
-          probability: number | null
-          product_category:
-            | Database["public"]["Enums"]["product_category"]
-            | null
-          source: string | null
-          stage: Database["public"]["Enums"]["opportunity_stage"] | null
-          title: string
-          updated_at: string | null
-          value: number
+          is_active: boolean
+          name: string
+          parent_category_id: string | null
+          sort_order: number | null
+          updated_at: string
         }
         Insert: {
-          actual_close_date?: string | null
-          assigned_to?: string | null
-          conversation_id?: string | null
-          created_at?: string | null
-          customer_id?: string | null
+          category_code?: string | null
+          created_at?: string
           description?: string | null
-          expected_close_date?: string | null
           id?: string
-          probability?: number | null
-          product_category?:
-            | Database["public"]["Enums"]["product_category"]
-            | null
-          source?: string | null
-          stage?: Database["public"]["Enums"]["opportunity_stage"] | null
-          title: string
-          updated_at?: string | null
-          value?: number
+          is_active?: boolean
+          name: string
+          parent_category_id?: string | null
+          sort_order?: number | null
+          updated_at?: string
         }
         Update: {
-          actual_close_date?: string | null
-          assigned_to?: string | null
-          conversation_id?: string | null
-          created_at?: string | null
-          customer_id?: string | null
+          category_code?: string | null
+          created_at?: string
           description?: string | null
-          expected_close_date?: string | null
           id?: string
-          probability?: number | null
-          product_category?:
-            | Database["public"]["Enums"]["product_category"]
-            | null
-          source?: string | null
-          stage?: Database["public"]["Enums"]["opportunity_stage"] | null
-          title?: string
-          updated_at?: string | null
-          value?: number
+          is_active?: boolean
+          name?: string
+          parent_category_id?: string | null
+          sort_order?: number | null
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "opportunities_assigned_to_fkey"
-            columns: ["assigned_to"]
+            foreignKeyName: "product_categories_parent_category_id_fkey"
+            columns: ["parent_category_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "opportunities_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "opportunities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customer_overview"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "opportunities_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
+            referencedRelation: "product_categories"
             referencedColumns: ["id"]
           },
         ]
+      }
+      product_suppliers: {
+        Row: {
+          address: string | null
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          lead_time_days: number | null
+          metadata: Json | null
+          name: string
+          payment_terms: string | null
+          phone: string | null
+          rating: number | null
+          tax_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          lead_time_days?: number | null
+          metadata?: Json | null
+          name: string
+          payment_terms?: string | null
+          phone?: string | null
+          rating?: number | null
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          lead_time_days?: number | null
+          metadata?: Json | null
+          name?: string
+          payment_terms?: string | null
+          phone?: string | null
+          rating?: number | null
+          tax_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       products: {
         Row: {
@@ -1504,6 +1758,90 @@ export type Database = {
           },
         ]
       }
+      proposal_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean | null
+          name: string
+          product_category:
+            | Database["public"]["Enums"]["product_category"]
+            | null
+          styling: Json | null
+          template_content: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean | null
+          name: string
+          product_category?:
+            | Database["public"]["Enums"]["product_category"]
+            | null
+          styling?: Json | null
+          template_content?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean | null
+          name?: string
+          product_category?:
+            | Database["public"]["Enums"]["product_category"]
+            | null
+          styling?: Json | null
+          template_content?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      proposal_workflows: {
+        Row: {
+          approval_rules: Json | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          workflow_steps: Json
+        }
+        Insert: {
+          approval_rules?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          workflow_steps?: Json
+        }
+        Update: {
+          approval_rules?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          workflow_steps?: Json
+        }
+        Relationships: []
+      }
       proposals: {
         Row: {
           acceptance_link: string | null
@@ -1587,21 +1925,21 @@ export type Database = {
             foreignKeyName: "proposals_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
-            referencedRelation: "customer_overview"
+            referencedRelation: "crm_customers"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "proposals_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
-            referencedRelation: "customers"
+            referencedRelation: "customer_overview"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "proposals_opportunity_id_fkey"
             columns: ["opportunity_id"]
             isOneToOne: false
-            referencedRelation: "opportunities"
+            referencedRelation: "crm_opportunities"
             referencedColumns: ["id"]
           },
         ]
@@ -1761,93 +2099,6 @@ export type Database = {
           source?: string
         }
         Relationships: []
-      }
-      tasks: {
-        Row: {
-          assigned_to: string | null
-          completed_at: string | null
-          conversation_id: string | null
-          created_at: string | null
-          customer_id: string | null
-          description: string | null
-          due_date: string | null
-          id: string
-          opportunity_id: string | null
-          priority: Database["public"]["Enums"]["task_priority"] | null
-          status: Database["public"]["Enums"]["task_status"] | null
-          title: string
-          type: Database["public"]["Enums"]["task_type"] | null
-          updated_at: string | null
-        }
-        Insert: {
-          assigned_to?: string | null
-          completed_at?: string | null
-          conversation_id?: string | null
-          created_at?: string | null
-          customer_id?: string | null
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          opportunity_id?: string | null
-          priority?: Database["public"]["Enums"]["task_priority"] | null
-          status?: Database["public"]["Enums"]["task_status"] | null
-          title: string
-          type?: Database["public"]["Enums"]["task_type"] | null
-          updated_at?: string | null
-        }
-        Update: {
-          assigned_to?: string | null
-          completed_at?: string | null
-          conversation_id?: string | null
-          created_at?: string | null
-          customer_id?: string | null
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          opportunity_id?: string | null
-          priority?: Database["public"]["Enums"]["task_priority"] | null
-          status?: Database["public"]["Enums"]["task_status"] | null
-          title?: string
-          type?: Database["public"]["Enums"]["task_type"] | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tasks_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "tasks_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customer_overview"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_opportunity_id_fkey"
-            columns: ["opportunity_id"]
-            isOneToOne: false
-            referencedRelation: "opportunities"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       user_roles: {
         Row: {
@@ -2218,21 +2469,21 @@ export type Database = {
             foreignKeyName: "proposals_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
-            referencedRelation: "customer_overview"
+            referencedRelation: "crm_customers"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "proposals_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
-            referencedRelation: "customers"
+            referencedRelation: "customer_overview"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "proposals_opportunity_id_fkey"
             columns: ["opportunity_id"]
             isOneToOne: false
-            referencedRelation: "opportunities"
+            referencedRelation: "crm_opportunities"
             referencedColumns: ["id"]
           },
         ]
