@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { AIGenerationRequest, AIGenerationResult, ContextAnalysis } from '../types/generation.types';
-import { ProjectContext } from '../types/proposal.types';
+import { ProductType } from '../types/proposal.types';
 
 export function useAIGeneration() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -20,9 +20,9 @@ export function useAIGeneration() {
         throw new Error('Contexto do projeto não encontrado');
       }
 
-      // Extract information from the context
+      // Extract information from the context using actual database fields
       const extractedData = data;
-      const summary = data.lead_summary || '';
+      const summary = data.timeline || data.notes || '';
 
       // Analyze client needs from extracted data and summary
       const clientNeeds = extractClientNeeds(summary, extractedData);
@@ -90,23 +90,15 @@ export function useAIGeneration() {
         throw new Error('Falha ao analisar contexto');
       }
 
-      // Build generation request
+      // Build generation request using actual database fields
       const request: AIGenerationRequest = {
         projectContextId,
         clientData: {
-          name: context.client_name || 'Cliente',
-          phone: context.phone || '',
-          email: context.email,
-          address: context.project_address ? {
-            street: context.project_address,
-            city: context.city || '',
-            state: context.state || '',
-            number: '',
-            neighborhood: '',
-            zipCode: ''
-          } : undefined
+          name: 'Cliente', // Will be filled by Edge Function from conversation data
+          phone: '', // Will be filled by Edge Function from conversation data
+          email: '', // Not available in project_contexts
         },
-        productType: context.desired_product as ProductType,
+        productType: mapProductType(context.desired_product),
         calculationInput: buildCalculationInputFromContext(context.desired_product, context),
         customRequirements: analysis.specialRequirements,
         templatePreferences: {
@@ -134,113 +126,47 @@ export function useAIGeneration() {
   };
 }
 
-// Helper functions for context analysis
-function extractClientNeeds(summary: string, extractedData: any): string[] {
-  const needs = [];
+// Helper function to map database product types to our ProductType enum
+function mapProductType(desiredProduct: string | null): ProductType {
+  if (!desiredProduct) return 'solar';
   
-  if (summary.toLowerCase().includes('economia') || extractedData.savings) {
-    needs.push('Redução de custos');
-  }
-  if (summary.toLowerCase().includes('sustent') || extractedData.sustainability) {
-    needs.push('Sustentabilidade');
-  }
-  if (summary.toLowerCase().includes('urgent') || extractedData.urgency) {
-    needs.push('Execução urgente');
-  }
+  const productMapping: Record<string, ProductType> = {
+    'energia_solar': 'solar',
+    'solar': 'solar',
+    'telha_shingle': 'shingle', 
+    'shingle': 'shingle',
+    'drywall': 'drywall',
+    'divisoria': 'drywall',
+    'steel_frame': 'steel_frame',
+    'forro': 'ceiling'
+  };
   
-  return needs;
+  return productMapping[desiredProduct.toLowerCase()] || 'solar';
 }
 
-function extractProductRequirements(productType: string, extractedData: any): Record<string, any> {
-  const requirements: Record<string, any> = {};
-  
-  switch (productType) {
-    case 'solar':
-      requirements.monthlyConsumption = extractedData.monthly_consumption || 300;
-      requirements.roofType = extractedData.roof_type || 'ceramic';
-      requirements.area = extractedData.roof_area || 100;
-      break;
-    case 'shingle':
-      requirements.roofArea = extractedData.roof_area || 100;
-      requirements.roofSlope = extractedData.roof_slope || 30;
-      break;
-    case 'drywall':
-      requirements.wallArea = extractedData.wall_area || 50;
-      requirements.wallHeight = extractedData.wall_height || 2.8;
-      break;
-  }
-  
-  return requirements;
-}
-
-function extractUrgencyLevel(summary: string, extractedData: any): 'low' | 'medium' | 'high' {
-  if (summary.toLowerCase().includes('urgent') || extractedData.urgency === 'high') {
-    return 'high';
-  }
-  if (summary.toLowerCase().includes('rápid') || extractedData.urgency === 'medium') {
-    return 'medium';
-  }
-  return 'low';
-}
-
-function extractBudgetIndications(extractedData: any) {
-  if (extractedData.budget) {
-    return {
-      preferred: extractedData.budget,
-      min: extractedData.budget * 0.8,
-      max: extractedData.budget * 1.2
-    };
-  }
-  return undefined;
-}
-
-function extractTimelineRequirements(extractedData: any) {
-  if (extractedData.timeline || extractedData.deadline) {
-    return {
-      preferred: extractedData.timeline,
-      deadline: extractedData.deadline
-    };
-  }
-  return undefined;
-}
-
-function extractSpecialRequirements(summary: string, extractedData: any): string[] {
-  const requirements = [];
-  
-  if (summary.toLowerCase().includes('financiamento')) {
-    requirements.push('Opções de financiamento');
-  }
-  if (extractedData.warranty_extended) {
-    requirements.push('Garantia estendida');
-  }
-  if (extractedData.maintenance_plan) {
-    requirements.push('Plano de manutenção');
-  }
-  
-  return requirements;
-}
-
-function buildCalculationInputFromContext(productType: string, data: any): any {
+function buildCalculationInputFromContext(productType: string | null, data: any): any {
   const baseInput = {
     complexity: 'medium' as const,
     region: 'southeast' as const,
-    urgency: 'normal' as const
+    urgency: data.urgency === 'high' ? 'express' as const : 'normal' as const
   };
 
-  switch (productType) {
-    case 'energia_solar':
+  const mappedProduct = mapProductType(productType);
+
+  switch (mappedProduct) {
+    case 'solar':
       return {
         ...baseInput,
-        monthlyConsumption: data.energy_consumption || 300,
+        monthlyConsumption: data.energy_consumption ? parseInt(data.energy_consumption) : 300,
         roofType: 'ceramic',
         roofOrientation: 'north',
         shadowing: 'none',
         installationType: 'grid_tie'
       };
-    case 'telha_shingle':
+    case 'shingle':
       return {
         ...baseInput,
-        roofArea: data.construction_size_m2 || 100,
+        roofArea: data.roof_size_m2 || data.construction_size_m2 || 100,
         roofSlope: 30,
         roofComplexity: 'medium',
         underlaymentType: 'standard',
@@ -260,4 +186,93 @@ function buildCalculationInputFromContext(productType: string, data: any): any {
     default:
       return baseInput;
   }
+}
+
+// Helper functions for context analysis
+function extractClientNeeds(summary: string, extractedData: any): string[] {
+  const needs = [];
+  
+  if (summary.toLowerCase().includes('economia') || extractedData.budget_range) {
+    needs.push('Redução de custos');
+  }
+  if (summary.toLowerCase().includes('sustent')) {
+    needs.push('Sustentabilidade');
+  }
+  if (summary.toLowerCase().includes('urgent') || extractedData.urgency === 'high') {
+    needs.push('Execução urgente');
+  }
+  
+  return needs;
+}
+
+function extractProductRequirements(productType: string | null, extractedData: any): Record<string, any> {
+  const requirements: Record<string, any> = {};
+  
+  const mappedProduct = mapProductType(productType);
+  
+  switch (mappedProduct) {
+    case 'solar':
+      requirements.monthlyConsumption = extractedData.energy_consumption || 300;
+      requirements.roofType = 'ceramic';
+      requirements.area = extractedData.roof_size_m2 || 100;
+      break;
+    case 'shingle':
+      requirements.roofArea = extractedData.roof_size_m2 || extractedData.construction_size_m2 || 100;
+      requirements.roofSlope = 30;
+      break;
+    case 'drywall':
+      requirements.wallArea = extractedData.floor_quantity_m2 || 50;
+      requirements.wallHeight = 2.8;
+      break;
+  }
+  
+  return requirements;
+}
+
+function extractUrgencyLevel(summary: string, extractedData: any): 'low' | 'medium' | 'high' {
+  if (summary.toLowerCase().includes('urgent') || extractedData.urgency === 'high') {
+    return 'high';
+  }
+  if (summary.toLowerCase().includes('rápid') || extractedData.urgency === 'medium') {
+    return 'medium';
+  }
+  return 'low';
+}
+
+function extractBudgetIndications(extractedData: any) {
+  if (extractedData.budget_range) {
+    // Try to parse budget range like "R$ 10.000 - R$ 20.000"
+    const matches = extractedData.budget_range.match(/(\d+\.?\d*)/g);
+    if (matches && matches.length >= 2) {
+      const min = parseFloat(matches[0].replace('.', '')) * 1000;
+      const max = parseFloat(matches[1].replace('.', '')) * 1000;
+      return { min, max, preferred: (min + max) / 2 };
+    }
+  }
+  return undefined;
+}
+
+function extractTimelineRequirements(extractedData: any) {
+  if (extractedData.timeline) {
+    return {
+      preferred: extractedData.timeline,
+    };
+  }
+  return undefined;
+}
+
+function extractSpecialRequirements(summary: string, extractedData: any): string[] {
+  const requirements = [];
+  
+  if (summary.toLowerCase().includes('financiamento')) {
+    requirements.push('Opções de financiamento');
+  }
+  if (extractedData.has_energy_backups) {
+    requirements.push('Sistema de backup');
+  }
+  if (extractedData.has_architectural_project) {
+    requirements.push('Projeto arquitetônico incluído');
+  }
+  
+  return requirements;
 }
