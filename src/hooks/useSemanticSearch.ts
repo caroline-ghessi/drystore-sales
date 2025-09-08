@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { ProductCategory } from '@/types/conversation.types';
+import type { ProductCategory } from '@/types/bot.types';
 
 interface SemanticSearchResult {
   id: string;

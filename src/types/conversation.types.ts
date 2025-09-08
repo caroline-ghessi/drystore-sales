@@ -1,4 +1,6 @@
 // Tipos principais do sistema Drystore
+import { ProductCategory } from '@/types/bot.types';
+
 export interface Conversation {
   id: string;
   whatsapp_number: string;
@@ -114,20 +116,8 @@ export type SenderType = 'customer' | 'bot' | 'agent' | 'system';
 
 export type LeadTemperature = 'cold' | 'warm' | 'hot';
 
-export type ProductCategory =
-  | 'geral'
-  | 'telha_shingle'
-  | 'energia_solar'
-  | 'steel_frame'
-  | 'drywall_divisorias'
-  | 'ferramentas'
-  | 'pisos'
-  | 'acabamentos'
-  | 'forros'
-  | 'forro_drywall'
-  | 'saudacao'
-  | 'institucional'
-  | 'indefinido';
+// ProductCategory re-exportado para compatibilidade
+export type { ProductCategory } from '@/types/bot.types';
 
 // Tipos para UI
 export interface ConversationWithLastMessage extends Conversation {

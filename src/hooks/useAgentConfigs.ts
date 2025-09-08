@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { ProductCategory } from '@/types/conversation.types';
+import { ProductCategory } from '@/types/bot.types';
 
 export interface AgentConfig {
   id: string;

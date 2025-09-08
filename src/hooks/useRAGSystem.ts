@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ProductCategory } from '@/types/conversation.types';
+import { ProductCategory } from '@/types/bot.types';
 
 export interface RAGSearchResult {
   id: string;

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ProductCategory } from '@/types/conversation.types';
+import { ProductCategory } from '@/types/bot.types';
 import { toast } from '@/hooks/use-toast';
 
 // Function to sanitize filename for storage
