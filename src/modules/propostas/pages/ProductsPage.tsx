@@ -2,8 +2,12 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DryStoreButton } from '../components/ui/DryStoreButton';
 import { DryStoreBadge } from '../components/ui/DryStoreBadge';
+import { NewProductModal, NewProductData } from '../components/products/NewProductModal';
+import { useProducts, Product } from '../hooks/useProducts';
 import { 
   Search,
   Plus,
@@ -11,187 +15,268 @@ import {
   Home,
   Layers,
   Settings,
-  Zap,
-  Shield,
-  Truck,
-  Award
+  Edit2,
+  Check,
+  X,
+  Building2,
+  Brush,
+  Wrench,
+  Package
 } from 'lucide-react';
+import { Database } from '@/integrations/supabase/types';
 
-interface Product {
+const categories: { key: Database['public']['Enums']['product_category'] | 'all'; label: string; icon: any }[] = [
+  { key: 'all', label: 'Todos', icon: Package },
+  { key: 'energia_solar', label: 'Solar', icon: Sun },
+  { key: 'telha_shingle', label: 'Shingle', icon: Home },
+  { key: 'drywall_divisorias', label: 'Drywall', icon: Layers },
+  { key: 'steel_frame', label: 'Steel Frame', icon: Building2 },
+  { key: 'forro_drywall', label: 'Forro Drywall', icon: Layers },
+  { key: 'forros', label: 'Forros', icon: Layers },
+  { key: 'ferramentas', label: 'Ferramentas', icon: Wrench },
+  { key: 'pisos', label: 'Pisos', icon: Settings },
+  { key: 'acabamentos', label: 'Acabamentos', icon: Settings },
+  { key: 'geral', label: 'Geral', icon: Settings }
+];
+
+const units: { value: Database['public']['Enums']['product_unit']; label: string }[] = [
+  { value: 'm2', label: 'm²' },
+  { value: 'ml', label: 'ml' },
+  { value: 'peca', label: 'peça' },
+  { value: 'unidade', label: 'unidade' },
+  { value: 'conjunto', label: 'conjunto' },
+  { value: 'pacote', label: 'pacote' },
+  { value: 'kg', label: 'kg' },
+  { value: 'litro', label: 'litro' }
+];
+
+interface EditingProduct {
   id: string;
-  name: string;
-  category: 'solar' | 'shingle' | 'drywall' | 'steel_frame' | 'ceiling';
-  description: string;
-  priceRange: string;
-  status: 'disponivel' | 'limitado' | 'indisponivel';
-  warranty: string;
-  installation: boolean;
-  rating: number;
+  field: 'name' | 'description' | 'base_price' | 'unit';
+  value: string;
 }
 
 export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<Database['public']['Enums']['product_category'] | 'all'>('all');
+  const [editingProduct, setEditingProduct] = useState<EditingProduct | null>(null);
+  const [showNewProductModal, setShowNewProductModal] = useState(false);
 
-  const products: Product[] = [
-    {
-      id: '1',
-      name: 'Sistema Solar Residencial 5kWp',
-      category: 'solar',
-      description: 'Kit completo para energia solar residencial com painéis monocristalinos de alta eficiência',
-      priceRange: 'R$ 18.000 - R$ 25.000',
-      status: 'disponivel',
-      warranty: '25 anos',
-      installation: true,
-      rating: 4.9
-    },
-    {
-      id: '2',
-      name: 'Telha Shingle Premium',
-      category: 'shingle',
-      description: 'Telhas asfálticas importadas com proteção UV e resistência superior',
-      priceRange: 'R$ 35 - R$ 55 /m²',
-      status: 'disponivel',
-      warranty: '30 anos',
-      installation: true,
-      rating: 4.7
-    },
-    {
-      id: '3',
-      name: 'Sistema Drywall Knauf',
-      category: 'drywall',
-      description: 'Placas de gesso para divisórias e forros com excelente acabamento',
-      priceRange: 'R$ 45 - R$ 65 /m²',
-      status: 'limitado',
-      warranty: '10 anos',
-      installation: true,
-      rating: 4.6
-    },
-    {
-      id: '4',
-      name: 'Estrutura Steel Frame',
-      category: 'steel_frame',
-      description: 'Sistema construtivo em aço galvanizado para construções rápidas',
-      priceRange: 'R$ 180 - R$ 250 /m²',
-      status: 'disponivel',
-      warranty: '50 anos',
-      installation: true,
-      rating: 4.8
-    },
-    {
-      id: '5',
-      name: 'Forro Acústico Mineral',
-      category: 'ceiling',
-      description: 'Forros minerais com propriedades acústicas para ambientes comerciais',
-      priceRange: 'R$ 25 - R$ 40 /m²',
-      status: 'indisponivel',
-      warranty: '5 anos',
-      installation: false,
-      rating: 4.4
-    }
-  ];
-
-  const categories = [
-    { key: 'all', label: 'Todos os Produtos', icon: Settings },
-    { key: 'solar', label: 'Energia Solar', icon: Sun },
-    { key: 'shingle', label: 'Telhas Shingle', icon: Home },
-    { key: 'drywall', label: 'Drywall', icon: Layers },
-    { key: 'steel_frame', label: 'Steel Frame', icon: Settings },
-    { key: 'ceiling', label: 'Forros', icon: Layers }
-  ];
+  const { products, isLoading, updateProduct, isUpdating, createProduct, isCreating } = useProducts();
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchTerm.toLowerCase());
+                         (product.description || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
     
     return matchesSearch && matchesCategory;
   });
 
-  const getStatusBadge = (status: Product['status']) => {
-    switch (status) {
-      case 'disponivel':
-        return <DryStoreBadge variant="success">Disponível</DryStoreBadge>;
-      case 'limitado':
-        return <DryStoreBadge variant="warning">Limitado</DryStoreBadge>;
-      case 'indisponivel':
-        return <DryStoreBadge variant="danger">Indisponível</DryStoreBadge>;
-      default:
-        return <DryStoreBadge variant="info">Desconhecido</DryStoreBadge>;
-    }
+  const getProductsByCategory = (category: Database['public']['Enums']['product_category'] | 'all') => {
+    if (category === 'all') return filteredProducts;
+    return filteredProducts.filter(product => product.category === category);
   };
 
-  const getCategoryIcon = (category: Product['category']) => {
-    switch (category) {
-      case 'solar':
-        return <Sun className="h-5 w-5 text-yellow-600" />;
-      case 'shingle':
-        return <Home className="h-5 w-5 text-red-600" />;
-      case 'drywall':
-        return <Layers className="h-5 w-5 text-gray-600" />;
-      case 'steel_frame':
-        return <Settings className="h-5 w-5 text-blue-600" />;
-      case 'ceiling':
-        return <Layers className="h-5 w-5 text-green-600" />;
-      default:
-        return <Settings className="h-5 w-5" />;
-    }
+  const handleEdit = (productId: string, field: 'name' | 'description' | 'base_price' | 'unit', currentValue: string | number) => {
+    setEditingProduct({
+      id: productId,
+      field,
+      value: String(currentValue || '')
+    });
   };
 
-  const renderStars = (rating: number) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
+  const handleSaveEdit = (productId: string) => {
+    if (!editingProduct) return;
 
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(<span key={i} className="text-yellow-400">★</span>);
+    const updates: any = {};
+    
+    if (editingProduct.field === 'base_price') {
+      updates.base_price = parseFloat(editingProduct.value);
+    } else if (editingProduct.field === 'name') {
+      updates.name = editingProduct.value;
+    } else if (editingProduct.field === 'description') {
+      updates.description = editingProduct.value;
+    } else if (editingProduct.field === 'unit') {
+      updates.unit = editingProduct.value;
     }
 
-    if (hasHalfStar) {
-      stars.push(<span key="half" className="text-yellow-400">☆</span>);
-    }
-
-    const emptyStars = 5 - Math.ceil(rating);
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(<span key={`empty-${i}`} className="text-gray-300">★</span>);
-    }
-
-    return stars;
+    updateProduct({ id: productId, updates });
+    setEditingProduct(null);
   };
+
+  const handleCancelEdit = () => {
+    setEditingProduct(null);
+  };
+
+  const handleCreateProduct = (data: NewProductData) => {
+    createProduct(data);
+    setShowNewProductModal(false);
+  };
+
+  const renderEditableField = (product: Product, field: 'name' | 'description' | 'base_price' | 'unit', currentValue: string | number) => {
+    const isEditing = editingProduct?.id === product.id && editingProduct.field === field;
+
+    if (isEditing) {
+      if (field === 'unit') {
+        return (
+          <div className="flex items-center space-x-2">
+            <Select 
+              value={editingProduct.value} 
+              onValueChange={(value) => setEditingProduct({...editingProduct, value})}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {units.map((unit) => (
+                  <SelectItem key={unit.value} value={unit.value}>
+                    {unit.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button size="sm" variant="ghost" onClick={() => handleSaveEdit(product.id)}>
+              <Check className="h-3 w-3" />
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex items-center space-x-2">
+          <Input
+            value={editingProduct.value}
+            onChange={(e) => setEditingProduct({...editingProduct, value: e.target.value})}
+            className={`h-8 ${field === 'description' ? 'text-xs' : ''}`}
+            type={field === 'base_price' ? 'number' : 'text'}
+            step={field === 'base_price' ? '0.01' : undefined}
+          />
+          <Button size="sm" variant="ghost" onClick={() => handleSaveEdit(product.id)}>
+            <Check className="h-3 w-3" />
+          </Button>
+          <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center space-x-2 group">
+        <span className={field === 'description' ? 'text-sm text-drystore-medium-gray' : 'font-semibold'}>
+          {field === 'base_price' 
+            ? `R$ ${Number(currentValue).toFixed(2)}` 
+            : field === 'unit'
+            ? units.find(u => u.value === currentValue)?.label || currentValue
+            : String(currentValue || '-')
+          }
+        </span>
+        <Button 
+          size="sm" 
+          variant="ghost" 
+          className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+          onClick={() => handleEdit(product.id, field, currentValue)}
+        >
+          <Edit2 className="h-3 w-3" />
+        </Button>
+      </div>
+    );
+  };
+
+  const ProductCard = ({ product }: { product: Product }) => (
+    <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-200">
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-drystore-orange/10 rounded-lg flex items-center justify-center">
+              <Package className="h-6 w-6 text-drystore-orange" />
+            </div>
+            <div className="flex-1">
+              <CardTitle className="text-lg text-drystore-dark-gray">
+                {renderEditableField(product, 'name', product.name)}
+              </CardTitle>
+              <div className="flex items-center space-x-2 mt-1">
+                <DryStoreBadge variant={product.is_active ? "success" : "danger"}>
+                  {product.is_active ? 'Ativo' : 'Inativo'}
+                </DryStoreBadge>
+                <span className="text-xs text-drystore-medium-gray">
+                  {product.code}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        <div>
+          {renderEditableField(product, 'description', product.description || '')}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-drystore-medium-gray">Preço Base:</span>
+            {renderEditableField(product, 'base_price', product.base_price)}
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-drystore-medium-gray">Unidade:</span>
+            {renderEditableField(product, 'unit', product.unit)}
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-drystore-medium-gray">Categoria:</span>
+            <span className="font-semibold text-drystore-dark-gray capitalize">
+              {categories.find(c => c.key === product.category)?.label || product.category}
+            </span>
+          </div>
+
+          {product.supplier && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-drystore-medium-gray">Fornecedor:</span>
+              <span className="font-semibold text-drystore-dark-gray">
+                {product.supplier}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex space-x-2 pt-4">
+          <DryStoreButton size="sm" className="flex-1">
+            Usar em Proposta
+          </DryStoreButton>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6 bg-drystore-light-gray min-h-full">
+        <div className="text-center py-12">
+          <p className="text-drystore-medium-gray">Carregando produtos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 bg-drystore-light-gray min-h-full">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-drystore-dark-gray">Catálogo de Produtos</h1>
+          <h1 className="text-3xl font-bold text-drystore-dark-gray">Gestão de Produtos</h1>
           <p className="text-drystore-medium-gray">
-            Explore nossa linha completa de produtos para construção
+            Gerencie títulos, descrições, unidades e preços dos produtos
           </p>
         </div>
-        <DryStoreButton>
+        <DryStoreButton onClick={() => setShowNewProductModal(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Novo Produto
         </DryStoreButton>
-      </div>
-
-      {/* Categories Filter */}
-      <div className="flex space-x-2 overflow-x-auto pb-2">
-        {categories.map((category) => (
-          <Button
-            key={category.key}
-            variant={selectedCategory === category.key ? "default" : "outline"}
-            onClick={() => setSelectedCategory(category.key)}
-            className={`flex items-center whitespace-nowrap ${
-              selectedCategory === category.key
-                ? 'bg-drystore-orange text-drystore-white hover:bg-drystore-orange-hover'
-                : 'text-drystore-dark-gray hover:bg-drystore-orange/10 hover:text-drystore-orange'
-            }`}
-          >
-            <category.icon className="mr-2 h-4 w-4" />
-            {category.label}
-          </Button>
-        ))}
       </div>
 
       {/* Search */}
@@ -209,110 +294,59 @@ export default function ProductsPage() {
         </CardContent>
       </Card>
 
-      {/* Products Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProducts.map((product) => (
-          <Card key={product.id} className="border-0 shadow-lg hover:shadow-xl transition-all duration-200">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-drystore-orange/10 rounded-lg flex items-center justify-center">
-                    {getCategoryIcon(product.category)}
-                  </div>
-                  <div className="flex-1">
-                    <CardTitle className="text-lg text-drystore-dark-gray">
-                      {product.name}
-                    </CardTitle>
-                    <div className="flex items-center space-x-2 mt-1">
-                      {getStatusBadge(product.status)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="space-y-4">
-              <p className="text-sm text-drystore-medium-gray">
-                {product.description}
-              </p>
+      {/* Products by Category */}
+      <Tabs value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as Database['public']['Enums']['product_category'] | 'all')}>
+        <TabsList className="grid w-full grid-cols-5 lg:grid-cols-12">
+          {categories.map((category: any) => {
+            const CategoryIcon = category.icon;
+            const count = getProductsByCategory(category.key).length;
+            return (
+              <TabsTrigger 
+                key={category.key} 
+                value={category.key}
+                className="flex items-center space-x-1 text-xs"
+              >
+                <CategoryIcon className="h-3 w-3" />
+                <span className="hidden sm:inline">{category.label}</span>
+                <span className="text-xs">({count})</span>
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-drystore-medium-gray">Faixa de Preço:</span>
-                  <span className="font-semibold text-drystore-dark-gray">
-                    {product.priceRange}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-drystore-medium-gray">Garantia:</span>
-                  <span className="font-semibold text-drystore-dark-gray">
-                    {product.warranty}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-drystore-medium-gray">Avaliação:</span>
-                  <div className="flex items-center space-x-2">
-                    <div className="flex">
-                      {renderStars(product.rating)}
-                    </div>
-                    <span className="font-semibold text-drystore-dark-gray">
-                      {product.rating}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-4 text-sm">
-                <div className="flex items-center space-x-1">
-                  <Shield className="h-4 w-4 text-drystore-orange" />
-                  <span className="text-drystore-medium-gray">Garantia</span>
-                </div>
-                
-                {product.installation && (
-                  <div className="flex items-center space-x-1">
-                    <Truck className="h-4 w-4 text-drystore-orange" />
-                    <span className="text-drystore-medium-gray">Instalação</span>
-                  </div>
-                )}
-                
-                <div className="flex items-center space-x-1">
-                  <Award className="h-4 w-4 text-drystore-orange" />
-                  <span className="text-drystore-medium-gray">Qualidade</span>
-                </div>
-              </div>
-
-              <div className="flex space-x-2 pt-4">
-                <DryStoreButton size="sm" className="flex-1">
-                  <Zap className="mr-2 h-4 w-4" />
-                  Criar Proposta
-                </DryStoreButton>
-                <Button variant="outline" size="sm" className="text-drystore-medium-gray hover:text-drystore-orange">
-                  Detalhes
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* No results */}
-      {filteredProducts.length === 0 && (
-        <Card className="border-0 shadow-md">
-          <CardContent className="p-12 text-center">
-            <div className="w-16 h-16 bg-drystore-orange/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search className="h-8 w-8 text-drystore-orange" />
+        {categories.map((category) => (
+          <TabsContent key={category.key} value={category.key} className="mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {getProductsByCategory(category.key).map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
             </div>
-            <h3 className="text-lg font-semibold text-drystore-dark-gray mb-2">
-              Nenhum produto encontrado
-            </h3>
-            <p className="text-drystore-medium-gray">
-              Tente ajustar os filtros ou termo de busca
-            </p>
-          </CardContent>
-        </Card>
-      )}
+            
+            {getProductsByCategory(category.key).length === 0 && (
+              <Card className="border-0 shadow-md">
+                <CardContent className="p-12 text-center">
+                  <div className="w-16 h-16 bg-drystore-orange/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Package className="h-8 w-8 text-drystore-orange" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-drystore-dark-gray mb-2">
+                    Nenhum produto encontrado
+                  </h3>
+                  <p className="text-drystore-medium-gray">
+                    {category.key === 'all' ? 'Adicione produtos para começar' : `Nenhum produto na categoria ${category.label}`}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
+
+      <NewProductModal 
+        isOpen={showNewProductModal}
+        onClose={() => setShowNewProductModal(false)}
+        onSubmit={handleCreateProduct}
+        isCreating={isCreating}
+      />
     </div>
   );
 }

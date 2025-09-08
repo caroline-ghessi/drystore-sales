@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ProductCategory } from '@/types/bot.types';
 import { Database } from '@/integrations/supabase/types';
 
 export interface Product {
@@ -10,7 +9,7 @@ export interface Product {
   code: string;
   name: string;
   description?: string;
-  category: ProductCategory;
+  category: Database['public']['Enums']['product_category'];
   subcategory?: string;
   unit: Database['public']['Enums']['product_unit'];
   base_price: number;
@@ -22,7 +21,7 @@ export interface Product {
   updated_at: string;
 }
 
-export function useProducts(category?: ProductCategory) {
+export function useProducts(category?: Database['public']['Enums']['product_category']) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -67,11 +66,37 @@ export function useProducts(category?: ProductCategory) {
     }
   });
 
+  const createProduct = useMutation({
+    mutationFn: async (productData: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
+      const { error } = await supabase
+        .from('products')
+        .insert(productData);
+        
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast({
+        title: "Produto criado",
+        description: "O produto foi criado com sucesso.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao criar produto",
+        description: "Não foi possível criar o produto.",
+        variant: "destructive",
+      });
+    }
+  });
+
   return {
     products: products || [],
     isLoading,
     error,
     updateProduct: updateProduct.mutate,
-    isUpdating: updateProduct.isPending
+    isUpdating: updateProduct.isPending,
+    createProduct: createProduct.mutate,
+    isCreating: createProduct.isPending
   };
 }
