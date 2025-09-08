@@ -10,16 +10,16 @@ export default function Propostas() {
   const [activeTab, setActiveTab] = useState('generator');
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 bg-drystore-light-gray min-h-full">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Portal de Propostas</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold text-drystore-dark-gray">Criar Nova Proposta</h1>
+          <p className="text-drystore-medium-gray mt-1">
             Sistema inteligente para geração automática de propostas com IA
           </p>
         </div>
-        <Badge variant="default" className="bg-green-100 text-green-800">
+        <Badge variant="default" className="bg-drystore-orange text-drystore-white">
           ✨ Com IA
         </Badge>
       </div>

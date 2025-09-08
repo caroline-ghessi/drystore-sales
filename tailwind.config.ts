@@ -78,8 +78,10 @@ export default {
 				},
 				drystore: {
 					orange: 'hsl(var(--drystore-orange))',
+					'orange-hover': 'hsl(var(--drystore-orange-hover))',
 					'dark-gray': 'hsl(var(--drystore-dark-gray))',
 					'medium-gray': 'hsl(var(--drystore-medium-gray))',
+					'light-gray': 'hsl(var(--drystore-light-gray))',
 					white: 'hsl(var(--drystore-white))'
 				}
 			},
