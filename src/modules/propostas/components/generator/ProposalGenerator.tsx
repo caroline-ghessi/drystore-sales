@@ -1,0 +1,397 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Zap, Calculator, FileText, Download } from 'lucide-react';
+import { ProductType, ClientData } from '../../types/proposal.types';
+import { useAIGeneration } from '../../hooks/useAIGeneration';
+import { useProposalCalculator } from '../../hooks/useProposalCalculator';
+import { SolarCalculator } from '../calculator/SolarCalculator';
+import { ShingleCalculator } from '../calculator/ShingleCalculator';
+import { DrywallCalculator } from '../calculator/DrywallCalculator';
+
+interface ProposalGeneratorProps {
+  projectContextId?: string;
+  onProposalGenerated?: (proposal: any) => void;
+}
+
+export function ProposalGenerator({ projectContextId, onProposalGenerated }: ProposalGeneratorProps) {
+  const [step, setStep] = useState(1);
+  const [productType, setProductType] = useState<ProductType>('solar');
+  const [clientData, setClientData] = useState<ClientData>({
+    name: '',
+    phone: '',
+    email: ''
+  });
+  
+  const { isGenerating, generatedProposal, generateFromContext, generateProposal } = useAIGeneration();
+  const calculator = useProposalCalculator(productType);
+
+  useEffect(() => {
+    if (projectContextId) {
+      handleGenerateFromContext();
+    }
+  }, [projectContextId]);
+
+  const handleGenerateFromContext = async () => {
+    if (!projectContextId) return;
+    
+    const proposal = await generateFromContext(projectContextId);
+    if (proposal && onProposalGenerated) {
+      onProposalGenerated(proposal);
+    }
+  };
+
+  const handleManualGeneration = async () => {
+    if (!calculator.calculationResult) {
+      alert('Por favor, complete os cálculos primeiro');
+      return;
+    }
+
+    const request = {
+      clientData,
+      productType,
+      calculationInput: calculator.calculationInput!,
+      templatePreferences: {
+        tone: 'friendly' as const,
+        includeWarranty: true,
+        includeTestimonials: false,
+        includeTechnicalSpecs: true
+      }
+    };
+
+    const proposal = await generateProposal(request);
+    if (proposal && onProposalGenerated) {
+      onProposalGenerated(proposal);
+    }
+  };
+
+  const renderCalculator = () => {
+    switch (productType) {
+      case 'solar':
+        return <SolarCalculator onCalculate={calculator.calculate} />;
+      case 'shingle':
+        return <ShingleCalculator onCalculate={calculator.calculate} />;
+      case 'drywall':
+        return <DrywallCalculator onCalculate={calculator.calculate} />;
+      default:
+        return (
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-muted-foreground">
+                Calculadora para {productType} em desenvolvimento
+              </p>
+            </CardContent>
+          </Card>
+        );
+    }
+  };
+
+  if (projectContextId && isGenerating) {
+    return (
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardContent className="p-8">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <h3 className="text-lg font-semibold">Gerando Proposta com IA</h3>
+            <p className="text-muted-foreground text-center">
+              Analisando as conversas do WhatsApp e gerando uma proposta personalizada...
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Gerador de Propostas</h2>
+          <p className="text-muted-foreground">
+            {projectContextId 
+              ? 'Proposta gerada automaticamente das conversas' 
+              : 'Crie propostas personalizadas com IA'
+            }
+          </p>
+        </div>
+        <Badge variant={projectContextId ? 'default' : 'secondary'}>
+          {projectContextId ? 'Automático' : 'Manual'}
+        </Badge>
+      </div>
+
+      {!projectContextId && (
+        <>
+          {/* Step Navigator */}
+          <div className="flex items-center space-x-4 mb-6">
+            {[
+              { number: 1, title: 'Produto', icon: Calculator },
+              { number: 2, title: 'Cliente', icon: FileText },
+              { number:3, title: 'Cálculos', icon: Zap },
+              { number: 4, title: 'Geração', icon: Download }
+            ].map((stepItem) => (
+              <div key={stepItem.number} className="flex items-center">
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                  step >= stepItem.number 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  <stepItem.icon className="h-5 w-5" />
+                </div>
+                <span className="ml-2 text-sm font-medium">{stepItem.title}</span>
+                {stepItem.number < 4 && (
+                  <div className={`ml-4 h-px w-8 ${
+                    step > stepItem.number ? 'bg-primary' : 'bg-muted'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Step 1: Product Selection */}
+          {step === 1 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Selecione o Produto</CardTitle>
+                <CardDescription>
+                  Escolha o tipo de produto para a proposta
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {[
+                    { value: 'solar', label: 'Energia Solar', description: 'Sistemas fotovoltaicos' },
+                    { value: 'shingle', label: 'Telha Shingle', description: 'Telhados e coberturas' },
+                    { value: 'drywall', label: 'Drywall', description: 'Divisórias e forros' },
+                    { value: 'steel_frame', label: 'Steel Frame', description: 'Estruturas metálicas' },
+                    { value: 'ceiling', label: 'Forros', description: 'Forros e acabamentos' }
+                  ].map((product) => (
+                    <Card 
+                      key={product.value}
+                      className={`cursor-pointer transition-all ${
+                        productType === product.value 
+                          ? 'ring-2 ring-primary bg-primary/5' 
+                          : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => setProductType(product.value as ProductType)}
+                    >
+                      <CardContent className="p-4">
+                        <h4 className="font-semibold">{product.label}</h4>
+                        <p className="text-sm text-muted-foreground">{product.description}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                
+                <Button onClick={() => setStep(2)} className="w-full">
+                  Próximo: Dados do Cliente
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 2: Client Data */}
+          {step === 2 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Dados do Cliente</CardTitle>
+                <CardDescription>
+                  Informações para personalizar a proposta
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name">Nome Completo *</Label>
+                    <Input
+                      id="name"
+                      value={clientData.name}
+                      onChange={(e) => setClientData({ ...clientData, name: e.target.value })}
+                      placeholder="Nome do cliente"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="phone">Telefone *</Label>
+                    <Input
+                      id="phone"
+                      value={clientData.phone}
+                      onChange={(e) => setClientData({ ...clientData, phone: e.target.value })}
+                      placeholder="(11) 99999-9999"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="email">E-mail</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={clientData.email || ''}
+                      onChange={(e) => setClientData({ ...clientData, email: e.target.value })}
+                      placeholder="cliente@email.com"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex space-x-2">
+                  <Button variant="outline" onClick={() => setStep(1)}>
+                    Voltar
+                  </Button>
+                  <Button 
+                    onClick={() => setStep(3)}
+                    disabled={!clientData.name || !clientData.phone}
+                    className="flex-1"
+                  >
+                    Próximo: Cálculos
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 3: Calculations */}
+          {step === 3 && (
+            <div className="space-y-4">
+              {renderCalculator()}
+              
+              {calculator.calculationResult && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Resumo dos Cálculos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {calculator.calculationSummary?.keyMetrics.map((metric, index) => (
+                        <div key={index} className="text-center">
+                          <p className="text-2xl font-bold text-primary">
+                            {metric.value}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {metric.label}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                      <p className="text-lg font-semibold">
+                        Valor Total: R$ {calculator.calculationSummary?.totalCost.toLocaleString('pt-BR', {
+                          minimumFractionDigits: 2
+                        })}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
+              <div className="flex space-x-2">
+                <Button variant="outline" onClick={() => setStep(2)}>
+                  Voltar
+                </Button>
+                <Button 
+                  onClick={() => setStep(4)}
+                  disabled={!calculator.calculationResult}
+                  className="flex-1"
+                >
+                  Próximo: Gerar Proposta
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Generation */}
+          {step === 4 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Gerar Proposta</CardTitle>
+                <CardDescription>
+                  A IA irá criar uma proposta personalizada baseada nos dados e cálculos
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-semibold mb-2">Resumo da Proposta:</h4>
+                  <ul className="text-sm space-y-1">
+                    <li>• Cliente: {clientData.name}</li>
+                    <li>• Produto: {productType}</li>
+                    <li>• Valor: R$ {calculator.calculationSummary?.totalCost.toLocaleString('pt-BR')}</li>
+                  </ul>
+                </div>
+                
+                <div className="flex space-x-2">
+                  <Button variant="outline" onClick={() => setStep(3)}>
+                    Voltar
+                  </Button>
+                  <Button 
+                    onClick={handleManualGeneration}
+                    disabled={isGenerating}
+                    className="flex-1"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Gerando...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="mr-2 h-4 w-4" />
+                        Gerar com IA
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Generated Proposal Preview */}
+      {generatedProposal && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Proposta Gerada</CardTitle>
+            <CardDescription>
+              Proposta criada automaticamente pela IA
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-semibold">Resumo Executivo</h4>
+                <p className="text-muted-foreground">
+                  {generatedProposal.generatedContent.executiveSummary}
+                </p>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold">Benefícios Principais</h4>
+                <ul className="list-disc list-inside text-muted-foreground">
+                  {generatedProposal.generatedContent.benefitsHighlights.map((benefit, index) => (
+                    <li key={index}>{benefit}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div className="flex space-x-2">
+                <Button>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Visualizar Proposta
+                </Button>
+                <Button variant="outline">
+                  <Download className="mr-2 h-4 w-4" />
+                  Baixar PDF
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
