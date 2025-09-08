@@ -2049,6 +2049,48 @@ export type Database = {
           },
         ]
       }
+      saved_calculations: {
+        Row: {
+          calculation_input: Json
+          calculation_result: Json
+          client_data: Json
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          product_type: Database["public"]["Enums"]["product_category"]
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calculation_input?: Json
+          calculation_result?: Json
+          client_data?: Json
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          product_type: Database["public"]["Enums"]["product_category"]
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calculation_input?: Json
+          calculation_result?: Json
+          client_data?: Json
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          product_type?: Database["public"]["Enums"]["product_category"]
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       system_configs: {
         Row: {
           description: string | null

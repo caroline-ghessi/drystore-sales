@@ -6,14 +6,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Zap, Calculator, FileText, Download } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Loader2, Zap, Calculator, FileText, Download, Save, Trash2 } from 'lucide-react';
 import { ProductType, ClientData } from '../../types/proposal.types';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useProposalCalculator } from '../../hooks/useProposalCalculator';
+import { useSavedCalculations } from '../../hooks/useSavedCalculations';
 import { SolarCalculator } from '../calculator/SolarCalculator';
 import { ShingleCalculator } from '../calculator/ShingleCalculator';
 import { DrywallCalculator } from '../calculator/DrywallCalculator';
 import { ForroDrywallCalculator } from '../calculator/ForroDrywallCalculator';
+import { useNavigate } from 'react-router-dom';
 
 interface ProposalGeneratorProps {
   projectContextId?: string;
@@ -28,9 +31,13 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
     phone: '',
     email: ''
   });
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [calculationName, setCalculationName] = useState('');
   
+  const navigate = useNavigate();
   const { isGenerating, generatedProposal, generateFromContext, generateProposal } = useAIGeneration();
   const calculator = useProposalCalculator(productType);
+  const { saveCalculation, isSaving: isSavingCalculation } = useSavedCalculations();
 
   useEffect(() => {
     if (projectContextId) {
@@ -68,6 +75,39 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
     const proposal = await generateProposal(request);
     if (proposal && onProposalGenerated) {
       onProposalGenerated(proposal);
+    }
+  };
+
+  const handleSaveCalculation = () => {
+    setSaveDialogOpen(true);
+  };
+
+  const confirmSaveCalculation = () => {
+    if (!calculationName.trim() || !calculator.calculationResult || !calculator.calculationInput) {
+      alert('Por favor, preencha o nome do cálculo');
+      return;
+    }
+
+    saveCalculation({
+      name: calculationName,
+      product_type: productType,
+      client_data: clientData,
+      calculation_input: calculator.calculationInput,
+      calculation_result: calculator.calculationResult,
+      status: 'draft'
+    });
+
+    setSaveDialogOpen(false);
+    setCalculationName('');
+    // Navigate to saved calculations page
+    navigate('/propostas/calculos-salvos');
+  };
+
+  const handleDiscardCalculation = () => {
+    if (confirm('Tem certeza que deseja descartar este cálculo?')) {
+      // Reset the form to step 1
+      setStep(1);
+      setClientData({ name: '', phone: '', email: '' });
     }
   };
 
@@ -312,14 +352,14 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
           {step === 4 && (
             <Card>
               <CardHeader>
-                <CardTitle>Gerar Proposta</CardTitle>
+                <CardTitle>Finalizar Cálculo</CardTitle>
                 <CardDescription>
-                  A IA irá criar uma proposta personalizada baseada nos dados e cálculos
+                  Escolha o que fazer com os cálculos realizados
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-4 bg-muted/50 rounded-lg">
-                  <h4 className="font-semibold mb-2">Resumo da Proposta:</h4>
+                  <h4 className="font-semibold mb-2">Resumo do Cálculo:</h4>
                   <ul className="text-sm space-y-1">
                     <li>• Cliente: {clientData.name}</li>
                     <li>• Produto: {productType}</li>
@@ -327,14 +367,31 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                   </ul>
                 </div>
                 
-                <div className="flex space-x-2">
-                  <Button variant="outline" onClick={() => setStep(3)}>
-                    Voltar
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <Button 
+                    variant="outline"
+                    onClick={handleSaveCalculation}
+                    disabled={isSavingCalculation}
+                  >
+                    {isSavingCalculation ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    Salvar Cálculo
                   </Button>
+                  
+                  <Button 
+                    variant="destructive"
+                    onClick={handleDiscardCalculation}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Descartar
+                  </Button>
+                  
                   <Button 
                     onClick={handleManualGeneration}
                     disabled={isGenerating}
-                    className="flex-1"
                   >
                     {isGenerating ? (
                       <>
@@ -344,9 +401,15 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                     ) : (
                       <>
                         <Zap className="mr-2 h-4 w-4" />
-                        Gerar com IA
+                        Gerar Proposta
                       </>
                     )}
+                  </Button>
+                </div>
+                
+                <div className="flex justify-center">
+                  <Button variant="ghost" onClick={() => setStep(3)}>
+                    Voltar aos Cálculos
                   </Button>
                 </div>
               </CardContent>
@@ -354,6 +417,52 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
           )}
         </>
       )}
+
+      {/* Save Calculation Dialog */}
+      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Salvar Cálculo</DialogTitle>
+            <DialogDescription>
+              Digite um nome para identificar este cálculo posteriormente
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="calculation-name">Nome do Cálculo</Label>
+              <Input
+                id="calculation-name"
+                value={calculationName}
+                onChange={(e) => setCalculationName(e.target.value)}
+                placeholder="Ex: Projeto João Silva - Solar Residencial"
+                className="mt-1"
+              />
+            </div>
+            
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-sm">
+                <strong>Cliente:</strong> {clientData.name}<br />
+                <strong>Produto:</strong> {productType}<br />
+                <strong>Valor:</strong> R$ {calculator.calculationSummary?.totalCost.toLocaleString('pt-BR')}
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={confirmSaveCalculation}
+              disabled={!calculationName.trim() || isSavingCalculation}
+            >
+              {isSavingCalculation && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Generated Proposal Preview */}
       {generatedProposal && (
