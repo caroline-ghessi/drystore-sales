@@ -1234,6 +1234,13 @@ export type Database = {
             foreignKeyName: "opportunities_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -1573,6 +1580,13 @@ export type Database = {
             foreignKeyName: "proposals_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
+            referencedRelation: "customer_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
@@ -1803,6 +1817,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_overview"
             referencedColumns: ["id"]
           },
           {
@@ -2089,7 +2110,53 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      customer_overview: {
+        Row: {
+          assigned_to: string | null
+          city: string | null
+          company: string | null
+          conversation_id: string | null
+          created_at: string | null
+          email: string | null
+          id: string | null
+          last_interaction_at: string | null
+          last_message_at: string | null
+          lead_score: number | null
+          lead_temperature:
+            | Database["public"]["Enums"]["lead_temperature"]
+            | null
+          name: string | null
+          phone: string | null
+          priority: Database["public"]["Enums"]["customer_priority"] | null
+          product_group: Database["public"]["Enums"]["product_category"] | null
+          segment: string | null
+          source: string | null
+          state: string | null
+          status: Database["public"]["Enums"]["customer_status"] | null
+          total_opportunities: number | null
+          total_opportunity_value: number | null
+          total_proposal_value: number | null
+          total_proposals: number | null
+          total_value: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "customers_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       binary_quantize: {
@@ -2162,6 +2229,10 @@ export type Database = {
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: string
+      }
+      migrate_conversations_to_crm: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       schedule_buffer_processing: {
         Args: {
