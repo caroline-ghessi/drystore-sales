@@ -1,5 +1,7 @@
 // Tipos específicos para o sistema de bot inteligente Drystore
 
+import { type ProductCategory } from '@/types/conversation.types';
+
 export interface BotClassificationResult {
   category: ProductCategory;
   confidence: number;
@@ -83,20 +85,7 @@ export interface BotMetrics {
   user_satisfaction: number;
 }
 
-export type ProductCategory =
-  | 'telha_shingle'
-  | 'energia_solar'
-  | 'steel_frame'
-  | 'drywall_divisorias'
-  | 'ferramentas'
-  | 'pisos'
-  | 'acabamentos'
-  | 'forros'
-  | 'forro_drywall'
-  | 'saudacao'
-  | 'institucional'
-  | 'indefinido'
-  | 'geral';
+export { type ProductCategory };
 
 // Constantes para categorização
 export const PRODUCT_KEYWORDS = {
