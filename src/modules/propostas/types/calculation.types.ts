@@ -139,16 +139,84 @@ export interface CeilingCalculationResult {
   installationTime: number; // days
 }
 
+// Knauf Ceiling
+export interface KnaufCeilingCalculationInput extends BaseCalculationInput {
+  ceilingArea: number; // m²
+  perimeter: number; // m
+  plateType: 'standard' | 'ru' | 'rf'; // ST (Standard), RU (Resistente Umidade), RF (Resistente Fogo)
+  plateDimension: '1_20x2_40' | '1_20x1_80' | '1_20x2_50'; // Dimensões da placa
+  tabicaType: 'tabica_40x48' | 'tabica_50x50' | 'tabica_76x50' | 'cantoneira_25x30'; // Acabamento perimetral
+  massType: 'powder' | 'ready'; // Massa em pó ou pronta
+  fiberType: 'telada' | 'papel'; // Fita telada ou papel
+  includeInsulation: boolean; // Isolamento opcional
+  insulationType?: 'glass_wool' | 'pet_wool'; // Tipo de isolamento
+  includeAccessories: boolean; // Acessórios especiais (alçapão, spots)
+  accessoryQuantities?: {
+    trapdoor?: number; // Alçapões
+    spotBoxes?: number; // Caixas para spots
+    acDiffusers?: number; // Difusores de ar condicionado
+  };
+}
+
+export interface KnaufCeilingCalculationResult {
+  // Quantidades de materiais
+  plateQuantity: number; // peças
+  plateArea: number; // m² real das placas
+  profileQuantity: number; // ml de perfil F530
+  profileBars: number; // barras de 3m
+  suspensionSets: number; // conjuntos tirante + pendural
+  perimetralQuantity: number; // ml de tabica/cantoneira
+  perimetralBars: number; // barras de 3m
+  
+  // Parafusos
+  plateScews: number; // parafusos 25mm para placas
+  profileScrews: number; // parafusos 13mm para perfis
+  anchors: number; // buchas para laje
+  
+  // Acabamento
+  massQuantity: number; // kg de massa
+  fiberQuantity: number; // ml de fita
+  
+  // Isolamento (opcional)
+  insulationQuantity?: number; // m² de isolamento
+  
+  // Acessórios
+  accessories?: {
+    trapdoors: number;
+    spotBoxes: number;
+    acDiffusers: number;
+  };
+  
+  // Tempos e custos
+  laborHours: number;
+  installationTime: number; // dias
+  
+  itemizedCosts: {
+    plates: number;
+    profiles: number;
+    suspension: number;
+    perimetral: number;
+    screws: number;
+    finishing: number;
+    insulation?: number;
+    accessories?: number;
+    labor: number;
+  };
+  totalCost: number;
+}
+
 export type CalculationInput = 
   | SolarCalculationInput 
   | ShingleCalculationInput 
   | DrywallCalculationInput 
   | SteelFrameCalculationInput 
-  | CeilingCalculationInput;
+  | CeilingCalculationInput
+  | KnaufCeilingCalculationInput;
 
 export type CalculationResult = 
   | SolarCalculationResult 
   | ShingleCalculationResult 
   | DrywallCalculationResult 
   | SteelFrameCalculationResult 
-  | CeilingCalculationResult;
+  | CeilingCalculationResult
+  | KnaufCeilingCalculationResult;

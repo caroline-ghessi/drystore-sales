@@ -124,6 +124,7 @@ export type ProductCategory =
   | 'pisos'
   | 'acabamentos'
   | 'forros'
+  | 'forro_knauf'
   | 'saudacao'
   | 'institucional'
   | 'indefinido';
