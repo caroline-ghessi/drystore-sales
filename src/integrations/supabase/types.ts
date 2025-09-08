@@ -1492,6 +1492,13 @@ export type Database = {
             foreignKeyName: "proposal_items_proposal_id_fkey"
             columns: ["proposal_id"]
             isOneToOne: false
+            referencedRelation: "proposal_with_context"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_items_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
             referencedRelation: "proposals"
             referencedColumns: ["id"]
           },
@@ -2153,6 +2160,79 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_with_context: {
+        Row: {
+          acceptance_link: string | null
+          accepted_at: string | null
+          budget_range: string | null
+          conversation_id: string | null
+          created_at: string | null
+          created_by: string | null
+          created_by_name: string | null
+          customer_city: string | null
+          customer_email: string | null
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          customer_state: string | null
+          description: string | null
+          desired_product: string | null
+          discount_percentage: number | null
+          discount_value: number | null
+          final_value: number | null
+          id: string | null
+          lead_temperature:
+            | Database["public"]["Enums"]["lead_temperature"]
+            | null
+          opportunity_id: string | null
+          project_type: Database["public"]["Enums"]["product_category"] | null
+          proposal_number: string | null
+          status: Database["public"]["Enums"]["proposal_status"] | null
+          title: string | null
+          total_value: number | null
+          updated_at: string | null
+          urgency: string | null
+          valid_until: string | null
+          whatsapp_number: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "proposals_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
             referencedColumns: ["id"]
           },
         ]
