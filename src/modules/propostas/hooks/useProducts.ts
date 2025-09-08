@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ProductCategory } from '@/types/bot.types';
+import { Database } from '@/integrations/supabase/types';
 
 export interface Product {
   id: string;
@@ -11,7 +12,7 @@ export interface Product {
   description?: string;
   category: ProductCategory;
   subcategory?: string;
-  unit: string;
+  unit: Database['public']['Enums']['product_unit'];
   base_price: number;
   cost: number;
   supplier?: string;

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Package, Search, Edit, Save } from 'lucide-react';
 import { useProducts, Product } from '../../hooks/useProducts';
+import { Database } from '@/integrations/supabase/types';
 
 export default function ProdutosPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -79,7 +80,10 @@ export default function ProdutosPage() {
                     <Label>Unidade</Label>
                     <Input
                       value={editForm.unit || ''}
-                      onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
+                      onChange={(e) => setEditForm({ 
+                        ...editForm, 
+                        unit: e.target.value as Database['public']['Enums']['product_unit']
+                      })}
                     />
                   </div>
                 </div>
