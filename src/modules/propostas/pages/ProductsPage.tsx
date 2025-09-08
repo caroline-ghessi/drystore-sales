@@ -25,18 +25,20 @@ import {
 } from 'lucide-react';
 import { Database } from '@/integrations/supabase/types';
 
+// Apenas categorias com produtos reais - expandir conforme novas documentações forem adicionadas
 const categories: { key: Database['public']['Enums']['product_category'] | 'all'; label: string; icon: any }[] = [
   { key: 'all', label: 'Todos', icon: Package },
-  { key: 'energia_solar', label: 'Solar', icon: Sun },
-  { key: 'telha_shingle', label: 'Shingle', icon: Home },
-  { key: 'drywall_divisorias', label: 'Drywall', icon: Layers },
-  { key: 'steel_frame', label: 'Steel Frame', icon: Building2 },
   { key: 'forro_drywall', label: 'Forro Drywall', icon: Layers },
-  { key: 'forros', label: 'Forros', icon: Layers },
-  { key: 'ferramentas', label: 'Ferramentas', icon: Wrench },
-  { key: 'pisos', label: 'Pisos', icon: Settings },
-  { key: 'acabamentos', label: 'Acabamentos', icon: Settings },
-  { key: 'geral', label: 'Geral', icon: Settings }
+  // Adicionar categorias abaixo quando houver documentação técnica real:
+  // { key: 'energia_solar', label: 'Solar', icon: Sun },
+  // { key: 'telha_shingle', label: 'Shingle', icon: Home },
+  // { key: 'drywall_divisorias', label: 'Drywall', icon: Layers },
+  // { key: 'steel_frame', label: 'Steel Frame', icon: Building2 },
+  // { key: 'forros', label: 'Forros', icon: Layers },
+  // { key: 'ferramentas', label: 'Ferramentas', icon: Wrench },
+  // { key: 'pisos', label: 'Pisos', icon: Settings },
+  // { key: 'acabamentos', label: 'Acabamentos', icon: Settings },
+  // { key: 'geral', label: 'Geral', icon: Settings }
 ];
 
 const units: { value: Database['public']['Enums']['product_unit']; label: string }[] = [
