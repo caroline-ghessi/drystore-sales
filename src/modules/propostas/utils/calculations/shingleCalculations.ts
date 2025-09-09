@@ -28,7 +28,7 @@ const URGENCY_MULTIPLIERS = {
 const MATERIAL_YIELDS = {
   shingleBundle: 3.0,        // m² por fardo
   starterBundle: 6.0,        // metros lineares por fardo Supreme
-  ridgeBundle: 10.0,         // metros lineares por fardo
+  ridgeBundle: 5.0,          // metros lineares por fardo Supreme recortada (cap de cumeeira)
   osbPlate: 2.88,           // m² por placa (1,20m x 2,40m)
   underlaymentRoll87: 86.0,  // m² úteis (90% de 95,7m²)
   underlaymentRoll50: 54.0,  // m² úteis (90% de 60m²)
