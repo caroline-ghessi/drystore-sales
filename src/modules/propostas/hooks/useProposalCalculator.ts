@@ -83,7 +83,11 @@ export function useProposalCalculator(productType: ProductType) {
             area: estimatedArea,
             bundles: shingleResult.totalShingleBundles,
             osbPlates: shingleResult.osbPlates,
-            underlayment: shingleResult.underlaymentRolls
+            underlayment: shingleResult.underlaymentRolls,
+            valleys: shingleResult.valleyRolls,
+            stepFlashing: shingleResult.stepFlashingPieces,
+            ridges: shingleResult.ridgeBundles + shingleResult.espigaoBundles,
+            sealing: shingleResult.monopolAsphalticTubes
           },
           quantity: estimatedArea,
           unitPrice: estimatedArea > 0 ? shingleResult.totalCost / estimatedArea : 0,
@@ -156,15 +160,27 @@ export function useProposalCalculator(productType: ProductType) {
       case 'shingle':
         const shingle = calculationResult as any;
         const shingleArea = shingle.totalShingleBundles * 3;
-        const totalWeight = shingle.totalShingleBundles * 30; // Estimativa de 30kg por fardo
+        const metrics = [
+          { label: 'Área Total', value: `${shingleArea.toFixed(0)} m²` },
+          { label: 'Total de Fardos', value: `${shingle.totalShingleBundles} unidades` },
+          { label: 'Subcobertura', value: `${shingle.underlaymentRolls} rolos` },
+          { label: 'Placas OSB', value: `${shingle.osbPlates} unidades` }
+        ];
+        
+        // Adicionar métricas condicionais
+        if (shingle.valleyRolls > 0) {
+          metrics.push({ label: 'Águas Furtadas', value: `${shingle.valleyRolls} rolos` });
+        }
+        if (shingle.stepFlashingPieces > 0) {
+          metrics.push({ label: 'Step Flashing', value: `${shingle.stepFlashingPieces} peças` });
+        }
+        if (shingle.rufosMeters) {
+          metrics.push({ label: 'Rufos', value: `${shingle.rufosMeters.toFixed(1)} m` });
+        }
+        
         return {
           totalCost: shingle.totalCost,
-          keyMetrics: [
-            { label: 'Área Total', value: `${shingleArea.toFixed(0)} m²` },
-            { label: 'Total de Fardos', value: `${shingle.totalShingleBundles} unidades` },
-            { label: 'Placas OSB', value: `${shingle.osbPlates} unidades` },
-            { label: 'Peso Estimado', value: `${totalWeight.toFixed(0)} kg` }
-          ]
+          keyMetrics: metrics
         };
         
       case 'drywall':

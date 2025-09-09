@@ -11,20 +11,11 @@ const SLOPE_CORRECTION_FACTORS = {
   50: 1.118,  // 50% (27°)
 };
 
-// Multiplicadores regionais
-const REGIONAL_MULTIPLIERS = {
-  north: 1.20,
-  northeast: 1.10,
-  center_west: 1.15,
-  southeast: 1.0,
-  south: 1.05
-};
-
-// Multiplicadores de complexidade
-const COMPLEXITY_MULTIPLIERS = {
-  low: 1.0,
-  medium: 1.20,
-  high: 1.45
+// Multiplicadores de complexidade do telhado (perdas)
+const ROOF_COMPLEXITY_WASTE = {
+  simple: 1.10,   // 10% de perdas
+  medium: 1.12,   // 12% de perdas  
+  complex: 1.15   // 15% de perdas
 };
 
 // Multiplicadores de urgência
@@ -64,21 +55,22 @@ function getSlopeCorrectionFactor(slope: number): number {
 }
 
 export function calculateShingleInstallation(input: ShingleCalculationInput): ShingleCalculationResult {
-  const { roofArea, roofSlope, roofComplexity, perimeter, ridgeLength, ventilationRequired } = input;
+  const { 
+    roofArea, roofSlope, roofComplexity, perimeter, ridgeLength, espigaoLength, 
+    valleyLength, stepFlashingLength, stepFlashingHeight, ventilationRequired, 
+    rufosIncluded, rufosPerimeter 
+  } = input;
   
   // 1. Calcular área real com correção de inclinação
   const slopeFactor = getSlopeCorrectionFactor(roofSlope);
   const realArea = roofArea * slopeFactor;
   
-  // 2. Aplicar fator de perdas (10% para simples, 15% para complexo)
-  const wasteFactor = roofComplexity === 'complex' ? 1.15 : 1.10;
+  // 2. Aplicar fator de perdas conforme complexidade do telhado
+  const wasteFactor = ROOF_COMPLEXITY_WASTE[roofComplexity];
   const totalArea = realArea * wasteFactor;
   
-  // 3. Calcular multiplicadores
-  const regionalMultiplier = REGIONAL_MULTIPLIERS[input.region];
-  const complexityMultiplier = COMPLEXITY_MULTIPLIERS[input.complexity];
-  const urgencyMultiplier = URGENCY_MULTIPLIERS[input.urgency];
-  const totalMultiplier = regionalMultiplier * complexityMultiplier * urgencyMultiplier;
+  // 3. Calcular multiplicador de urgência (único multiplicador mantido)
+  const urgencyMultiplier = URGENCY_MULTIPLIERS[input.urgency || 'normal'];
   
   // 4. QUANTIDADES DE MATERIAIS
   
@@ -88,17 +80,33 @@ export function calculateShingleInstallation(input: ShingleCalculationInput): Sh
   // Telhas Supreme para starter (primeira fiada)
   const starterBundles = Math.ceil(perimeter / MATERIAL_YIELDS.starterBundle);
   
-  // Telhas para cumeeiras e espigões
+  // Telhas para cumeeiras (não ventiladas - Supreme recortada)
   const ridgeBundles = Math.ceil(ridgeLength / MATERIAL_YIELDS.ridgeBundle);
   
+  // Telhas para espigões (sempre Supreme recortada)
+  const espigaoBundles = Math.ceil(espigaoLength / MATERIAL_YIELDS.ridgeBundle);
+  
   // Total de fardos
-  const totalShingleBundles = shingleBundles + starterBundles + ridgeBundles;
+  const totalShingleBundles = shingleBundles + starterBundles + ridgeBundles + espigaoBundles;
   
   // Placas OSB 11,1mm
   const osbPlates = Math.ceil(totalArea / MATERIAL_YIELDS.osbPlate * 1.05); // 5% adicional
   
-  // Manta de subcobertura (usar rolo de 87m como padrão)
+  // Subcobertura (usar rolo de 87m como padrão)
   const underlaymentRolls = Math.ceil(totalArea / MATERIAL_YIELDS.underlaymentRoll87);
+  
+  // Águas furtadas - Fita Autoadesiva 0,91m × 10m
+  const valleyRolls = valleyLength > 0 ? Math.ceil(valleyLength / 10) + 1 : 0;
+  
+  // Step Flashing - peças individuais 25cm × 18cm
+  const stepFlashingPieces = stepFlashingLength > 0 && stepFlashingHeight > 0 
+    ? Math.ceil((stepFlashingHeight / 0.14) * stepFlashingLength) 
+    : 0;
+  
+  // Rufos - bobina de alumínio (opcional)
+  const rufosMeters = rufosIncluded && rufosPerimeter 
+    ? rufosPerimeter * 1.05 
+    : undefined;
   
   // Pregos para telhas
   const totalShingles = Math.ceil(totalArea / 0.09); // cada telha cobre ~0,09m²
@@ -107,8 +115,15 @@ export function calculateShingleInstallation(input: ShingleCalculationInput): Sh
   // Pregos para OSB
   const nailsForOsb = osbPlates * MATERIAL_YIELDS.nailsPerOsb;
   
-  // Grampos para manta
+  // Grampos para subcobertura
   const underlaymentClamps = underlaymentRolls * MATERIAL_YIELDS.clampsPerRoll;
+  
+  // Monopol Asfáltico - vedação geral
+  let monopolAsphalticTubes = 0;
+  if (valleyLength > 0) monopolAsphalticTubes += Math.ceil(valleyLength / 10);
+  if (stepFlashingPieces > 0) monopolAsphalticTubes += Math.ceil(stepFlashingPieces / 20);
+  if (rufosMeters) monopolAsphalticTubes += Math.ceil(rufosMeters / 15);
+  monopolAsphalticTubes += Math.ceil((ridgeLength + espigaoLength) / 15); // cumeeiras e espigões
   
   // Ventilação (se solicitada)
   let ventilationAerators = 0;
@@ -130,9 +145,12 @@ export function calculateShingleInstallation(input: ShingleCalculationInput): Sh
     shingles: 0,
     osb: 0,
     underlayment: 0,
+    valleys: 0,
+    stepFlashing: 0,
+    rufos: rufosIncluded ? 0 : undefined,
     nails: 0,
+    sealing: 0,
     ventilation: ventilationRequired ? 0 : undefined,
-    gutters: input.guttersIncluded ? 0 : undefined,
   };
   
   const totalCost = 0; // Será calculado quando os preços dos produtos forem definidos
@@ -142,12 +160,17 @@ export function calculateShingleInstallation(input: ShingleCalculationInput): Sh
     shingleBundles,
     starterBundles,
     ridgeBundles,
+    espigaoBundles,
     totalShingleBundles,
     osbPlates,
     underlaymentRolls,
+    valleyRolls,
+    stepFlashingPieces,
+    rufosMeters,
     nailsForShingles,
     nailsForOsb,
     underlaymentClamps,
+    monopolAsphalticTubes,
     ventilationAerators,
     ventilatedRidgeMeters,
     

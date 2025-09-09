@@ -41,21 +41,31 @@ export interface ShingleCalculationInput extends BaseCalculationInput {
   shingleType: 'oakridge' | 'supreme';
   perimeter: number; // m (perímetro para beirais)
   ridgeLength: number; // m (comprimento da cumeeira)
+  espigaoLength: number; // m (comprimento dos espigões - separado de cumeeiras)
+  valleyLength: number; // m (comprimento das águas furtadas)
+  stepFlashingLength: number; // m (metros lineares de encontro com paredes)
+  stepFlashingHeight: number; // m (altura da água no encontro)
   ventilationRequired: boolean;
-  guttersIncluded: boolean;
+  rufosIncluded: boolean; // checkbox para incluir rufos
+  rufosPerimeter?: number; // m (perímetro para rufos - opcional)
 }
 
 export interface ShingleCalculationResult {
   // Quantidades de materiais
   shingleBundles: number; // fardos principais
   starterBundles: number; // fardos Supreme para starter
-  ridgeBundles: number; // fardos para cumeeiras
+  ridgeBundles: number; // fardos para cumeeiras (separado de espigões)
+  espigaoBundles: number; // fardos Supreme para espigões
   totalShingleBundles: number; // total de fardos
   osbPlates: number; // placas OSB
-  underlaymentRolls: number; // rolos de manta
+  underlaymentRolls: number; // rolos de subcobertura
+  valleyRolls: number; // rolos de fita autoadesiva para águas furtadas
+  stepFlashingPieces: number; // peças de step flashing
+  rufosMeters?: number; // metros de bobina para rufos (opcional)
   nailsForShingles: number; // pregos para telhas
   nailsForOsb: number; // pregos para OSB
-  underlaymentClamps: number; // grampos para manta
+  underlaymentClamps: number; // grampos para subcobertura
+  monopolAsphalticTubes: number; // tubos de monopol asfáltico
   ventilationAerators: number; // aeradores (se solicitado)
   ventilatedRidgeMeters: number; // metros de cumeeira ventilada (se solicitado)
   
@@ -63,9 +73,12 @@ export interface ShingleCalculationResult {
     shingles: number;
     osb: number;
     underlayment: number;
+    valleys: number;
+    stepFlashing: number;
+    rufos?: number;
     nails: number;
+    sealing: number;
     ventilation?: number;
-    gutters?: number;
   };
   totalCost: number;
 }
