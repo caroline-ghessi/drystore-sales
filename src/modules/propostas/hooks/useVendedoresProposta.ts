@@ -23,7 +23,7 @@ export function useVendedoresProposta() {
   return useQuery({
     queryKey: ['vendors-proposta'],
     queryFn: async () => {
-      // Buscar vendors e seus mapeamentos separadamente
+      // Buscar vendors ativos
       const { data: vendors, error: vendorError } = await supabase
         .from('vendors')
         .select('*')
@@ -32,31 +32,23 @@ export function useVendedoresProposta() {
 
       if (vendorError) throw vendorError;
 
-      // Buscar mapeamentos existentes
-      const { data: mappings, error: mappingError } = await supabase
-        .from('vendor_user_mapping')
-        .select('vendor_id, user_id, role_type');
-
-      if (mappingError) throw mappingError;
-
-      // Buscar profiles dos usuários mapeados
-      const userIds = mappings?.map(m => m.user_id) || [];
+      // Buscar profiles que correspondem aos vendor IDs (mapeamento direto)
+      const vendorIds = vendors?.map(v => v.id) || [];
       let profiles: any[] = [];
       
-      if (userIds.length > 0) {
+      if (vendorIds.length > 0) {
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('user_id, display_name, email, department')
-          .in('user_id', userIds);
+          .in('user_id', vendorIds);
 
         if (profilesError) throw profilesError;
         profiles = profilesData || [];
       }
 
-      // Combinar dados
+      // Combinar dados usando ID direto (vendors.id = profiles.user_id)
       const vendorsWithProfiles = vendors?.map(vendor => {
-        const mapping = mappings?.find(m => m.vendor_id === vendor.id);
-        const profile = mapping ? profiles.find(p => p.user_id === mapping.user_id) : null;
+        const profile = profiles.find(p => p.user_id === vendor.id);
 
         return {
           ...vendor,

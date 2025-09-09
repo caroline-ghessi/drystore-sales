@@ -2505,6 +2505,7 @@ export type Database = {
       vendors: {
         Row: {
           created_at: string | null
+          email: string | null
           id: string
           is_active: boolean | null
           name: string
@@ -2515,6 +2516,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          email?: string | null
           id?: string
           is_active?: boolean | null
           name: string
@@ -2525,6 +2527,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          email?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
@@ -2876,7 +2879,7 @@ export type Database = {
         | "lead_scorer"
         | "summarizer"
         | "quality_monitor"
-      app_role: "admin" | "supervisor" | "atendente"
+      app_role: "admin" | "supervisor" | "atendente" | "vendedor"
       conversation_status:
         | "waiting"
         | "active"
@@ -3080,7 +3083,7 @@ export const Constants = {
         "summarizer",
         "quality_monitor",
       ],
-      app_role: ["admin", "supervisor", "atendente"],
+      app_role: ["admin", "supervisor", "atendente", "vendedor"],
       conversation_status: [
         "waiting",
         "active",

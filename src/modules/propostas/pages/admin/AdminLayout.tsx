@@ -9,12 +9,18 @@ import {
   Settings,
   ArrowLeft,
   Users,
-  LinkIcon
+  LinkIcon,
+  Mail,
+  UserPlus,
+  AlertTriangle,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import MetasPage from './MetasPage';
 import ApprovacoesPage from './ApprovacoesPage';
 import VendorMappingModal from '../../components/admin/VendorMappingModal';
+import { VendorEmailSetupModal } from '../../components/admin/VendorEmailSetupModal';
+import { VendorAccountCreationModal } from '../../components/admin/VendorAccountCreationModal';
 import { useVendedoresProposta } from '../../hooks/useVendedoresProposta';
 import { useSalesQuotas } from '../../hooks/useSalesQuotas';
 import { useVendorApprovals } from '../../hooks/useVendorApprovals';
@@ -22,6 +28,8 @@ import { useVendorApprovals } from '../../hooks/useVendorApprovals';
 export default function AdminLayout() {
   const location = useLocation();
   const [showVendorMapping, setShowVendorMapping] = useState(false);
+  const [showEmailSetup, setShowEmailSetup] = useState(false);
+  const [showAccountCreation, setShowAccountCreation] = useState(false);
   
   const { data: vendors } = useVendedoresProposta();
   const { data: quotas } = useSalesQuotas();
@@ -132,7 +140,9 @@ export default function AdminLayout() {
             vendors={vendors || []} 
             quotas={quotas || []} 
             approvals={approvals || []}
-            onOpenVendorMapping={() => setShowVendorMapping(true)} 
+            onOpenVendorMapping={() => setShowVendorMapping(true)}
+            onOpenEmailSetup={() => setShowEmailSetup(true)}
+            onOpenAccountCreation={() => setShowAccountCreation(true)}
           />} />
           <Route path="metas" element={<MetasPage />} />
           <Route path="aprovacoes" element={<ApprovacoesPage />} />
@@ -141,6 +151,18 @@ export default function AdminLayout() {
         <VendorMappingModal 
           open={showVendorMapping} 
           onClose={() => setShowVendorMapping(false)} 
+        />
+        
+        <VendorEmailSetupModal
+          open={showEmailSetup}
+          onClose={() => setShowEmailSetup(false)}
+          vendors={vendors}
+        />
+        
+        <VendorAccountCreationModal
+          open={showAccountCreation}
+          onClose={() => setShowAccountCreation(false)}
+          vendors={vendors}
         />
       </div>
     </div>
@@ -151,15 +173,22 @@ function AdminDashboard({
   vendors, 
   quotas, 
   approvals, 
-  onOpenVendorMapping 
+  onOpenVendorMapping,
+  onOpenEmailSetup,
+  onOpenAccountCreation
 }: { 
   vendors: any[]; 
   quotas: any[]; 
   approvals: any[]; 
-  onOpenVendorMapping: () => void; 
+  onOpenVendorMapping: () => void;
+  onOpenEmailSetup: () => void;
+  onOpenAccountCreation: () => void;
 }) {
   const totalVendors = vendors.length;
-  const mappedVendors = vendors.filter(v => v.profile).length;
+  const vendorsWithEmail = vendors.filter(v => v.email).length;
+  const vendorsWithAccount = vendors.filter(v => v.profile?.user_id).length;
+  const vendorsNeedingEmail = totalVendors - vendorsWithEmail;
+  const vendorsNeedingAccount = vendorsWithEmail - vendorsWithAccount;
   const pendingApprovals = approvals.filter(a => a.status === 'pending').length;
   
   const totalQuota = quotas.reduce((sum, q) => sum + (q.quota_amount || 0), 0);
@@ -167,69 +196,160 @@ function AdminDashboard({
   const generalPercentage = totalQuota > 0 ? Math.round(totalAchieved / totalQuota * 100) : 0;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="space-y-8">
       {/* Overview Cards */}
-      <Card className="border-l-4 border-l-drystore-orange">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-drystore-medium-gray">
-            Aprovações Pendentes
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-drystore-dark-gray">{pendingApprovals}</div>
-          <p className="text-xs text-drystore-medium-gray mt-1">
-            Descontos aguardando aprovação
-          </p>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="border-l-4 border-l-drystore-orange">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between">
+              <span className="text-sm font-medium text-drystore-medium-gray">
+                Aprovações Pendentes
+              </span>
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-drystore-dark-gray">{pendingApprovals}</div>
+            <p className="text-xs text-drystore-medium-gray mt-1">
+              Descontos aguardando
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card className="border-l-4 border-l-green-500">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-drystore-medium-gray">
-            Vendedores
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-drystore-dark-gray">{totalVendors}</div>
-          <p className="text-xs text-drystore-medium-gray mt-1">
-            {mappedVendors} com perfis mapeados
-          </p>
-        </CardContent>
-      </Card>
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between">
+              <span className="text-sm font-medium text-drystore-medium-gray">
+                Total Vendedores
+              </span>
+              <Users className="h-4 w-4 text-blue-500" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-drystore-dark-gray">{totalVendors}</div>
+            <p className="text-xs text-drystore-medium-gray mt-1">
+              Cadastrados no WhatsApp
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card className="border-l-4 border-l-blue-500">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-drystore-medium-gray">
-            Meta Geral do Mês
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-drystore-dark-gray">{generalPercentage}%</div>
-          <p className="text-xs text-drystore-medium-gray mt-1">
-            R$ {(totalAchieved / 1000).toFixed(0)}k de R$ {(totalQuota / 1000).toFixed(0)}k
-          </p>
-        </CardContent>
-      </Card>
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between">
+              <span className="text-sm font-medium text-drystore-medium-gray">
+                Com Conta Sistema
+              </span>
+              <UserCheck className="h-4 w-4 text-green-500" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-drystore-dark-gray">{vendorsWithAccount}</div>
+            <p className="text-xs text-drystore-medium-gray mt-1">
+              de {totalVendors} vendedores
+            </p>
+          </CardContent>
+        </Card>
 
-      {/* Quick Actions */}
-      <Card className="md:col-span-2 lg:col-span-3">
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between">
+              <span className="text-sm font-medium text-drystore-medium-gray">
+                Meta do Mês
+              </span>
+              <Target className="h-4 w-4 text-purple-500" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-drystore-dark-gray">{generalPercentage}%</div>
+            <p className="text-xs text-drystore-medium-gray mt-1">
+              R$ {(totalAchieved / 1000).toFixed(0)}k de R$ {(totalQuota / 1000).toFixed(0)}k
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Integration Actions */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Adicionar Emails */}
+        {vendorsNeedingEmail > 0 && (
+          <Card className="border-l-4 border-l-orange-500 bg-orange-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-orange-800">
+                <Mail className="h-5 w-5" />
+                Adicionar Emails
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-orange-700 mb-4">
+                {vendorsNeedingEmail} vendedor(es) precisam de email para criar conta
+              </p>
+              <Button 
+                onClick={onOpenEmailSetup}
+                className="w-full bg-orange-600 hover:bg-orange-700"
+              >
+                Configurar Emails
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Criar Contas */}
+        {vendorsNeedingAccount > 0 && (
+          <Card className="border-l-4 border-l-blue-500 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-800">
+                <UserPlus className="h-5 w-5" />
+                Criar Contas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-blue-700 mb-4">
+                {vendorsNeedingAccount} vendedor(es) podem receber convite
+              </p>
+              <Button 
+                onClick={onOpenAccountCreation}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+              >
+                Enviar Convites
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Status Geral */}
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-drystore-dark-gray">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              Status da Integração
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-drystore-medium-gray">Total:</span>
+                <span className="font-medium">{totalVendors} vendedores</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-drystore-medium-gray">Com email:</span>
+                <span className="font-medium">{vendorsWithEmail}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-drystore-medium-gray">Com conta:</span>
+                <span className="font-medium text-green-600">{vendorsWithAccount}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Administrative Actions */}
+      <Card>
         <CardHeader>
-          <CardTitle className="text-drystore-dark-gray">Ações Rápidas</CardTitle>
+          <CardTitle className="text-drystore-dark-gray">Ações Administrativas</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button 
-              variant="outline" 
-              className="justify-start h-auto py-4 border-drystore-orange/20 hover:bg-drystore-light-orange/10"
-              onClick={onOpenVendorMapping}
-            >
-              <LinkIcon className="h-5 w-5 mr-3 text-drystore-orange" />
-              <div className="text-left">
-                <div className="font-medium text-drystore-dark-gray">Mapear Vendedores</div>
-                <div className="text-sm text-drystore-medium-gray">Conectar aos usuários do sistema</div>
-              </div>
-            </Button>
-
             <Button 
               variant="outline" 
               className="justify-start h-auto py-4 border-drystore-orange/20 hover:bg-drystore-light-orange/10"
@@ -248,7 +368,19 @@ function AdminDashboard({
               <CheckCircle className="h-5 w-5 mr-3 text-drystore-orange" />
               <div className="text-left">
                 <div className="font-medium text-drystore-dark-gray">Revisar Aprovações</div>
-                <div className="text-sm text-drystore-medium-gray">{pendingApprovals} solicitações pendentes</div>
+                <div className="text-sm text-drystore-medium-gray">{pendingApprovals} pendentes</div>
+              </div>
+            </Button>
+
+            <Button 
+              variant="outline" 
+              className="justify-start h-auto py-4 border-drystore-orange/20 hover:bg-drystore-light-orange/10"
+              onClick={onOpenVendorMapping}
+            >
+              <LinkIcon className="h-5 w-5 mr-3 text-drystore-orange" />
+              <div className="text-left">
+                <div className="font-medium text-drystore-dark-gray">Mapeamento Manual</div>
+                <div className="text-sm text-drystore-medium-gray">Casos especiais</div>
               </div>
             </Button>
           </div>

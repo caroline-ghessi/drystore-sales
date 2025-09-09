@@ -11,7 +11,8 @@ interface InviteRequest {
   email: string;
   displayName: string;
   department?: string;
-  role: 'admin' | 'supervisor' | 'atendente';
+  role: 'admin' | 'supervisor' | 'atendente' | 'vendedor';
+  customUserId?: string; // Para sincronizar com vendor ID
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -37,9 +38,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const resend = new Resend(resendApiKey);
     
-    const { email, displayName, department, role }: InviteRequest = await req.json();
+    const { email, displayName, department, role, customUserId }: InviteRequest = await req.json();
 
-    console.log('Processando convite para:', { email, displayName, role });
+    console.log('Processando convite para:', { email, displayName, role, customUserId });
 
     // Determinar URL de redirecionamento
     const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'http://localhost:3000';
@@ -48,16 +49,23 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('URL de redirecionamento:', redirectUrl);
 
     // Criar convite no Supabase Auth
+    const inviteOptions: any = {
+      data: {
+        display_name: displayName,
+        department: department || '',
+        invited_role: role
+      },
+      redirectTo: redirectUrl
+    };
+
+    // Se temos um customUserId (para vendedores), usar no convite
+    if (customUserId) {
+      inviteOptions.data.custom_user_id = customUserId;
+    }
+
     const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
       email,
-      {
-        data: {
-          display_name: displayName,
-          department: department || '',
-          invited_role: role
-        },
-        redirectTo: redirectUrl
-      }
+      inviteOptions
     );
 
     if (inviteError) {
