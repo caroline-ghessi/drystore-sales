@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DryStoreButton } from '../components/ui/DryStoreButton';
 import { DryStoreBadge } from '../components/ui/DryStoreBadge';
 import { NewProductModal, NewProductData } from '../components/products/NewProductModal';
-import { useProducts, Product } from '../hooks/useProducts';
+import { useUnifiedProducts, UnifiedProduct } from '../hooks/useUnifiedProducts';
 import { 
   Search,
   Plus,
@@ -30,13 +30,15 @@ import {
 } from 'lucide-react';
 import { Database } from '@/integrations/supabase/types';
 
-// Apenas categorias com produtos reais - expandir conforme novas documentações forem adicionadas
-const categories: { key: Database['public']['Enums']['product_category'] | 'all'; label: string; icon: any }[] = [
+import { UnifiedProductCategory } from '../hooks/useUnifiedProducts';
+
+const categories: { key: UnifiedProductCategory | 'all'; label: string; icon: any }[] = [
   { key: 'all', label: 'Todos', icon: Package },
+  { key: 'energia_solar', label: 'Solar', icon: Sun },
+  { key: 'battery_backup', label: 'Baterias', icon: Settings },
   { key: 'telha_shingle', label: 'Telha Shingle', icon: Home },
   { key: 'forro_drywall', label: 'Forro Drywall', icon: Layers },
   // Adicionar categorias abaixo quando houver documentação técnica real:
-  // { key: 'energia_solar', label: 'Solar', icon: Sun },
   // { key: 'drywall_divisorias', label: 'Drywall', icon: Layers },
   // { key: 'steel_frame', label: 'Steel Frame', icon: Building2 },
   // { key: 'forros', label: 'Forros', icon: Layers },
@@ -64,6 +66,8 @@ interface EditingProduct {
     description?: string;
     base_price?: string;
     unit?: string;
+    brand?: string;
+    model?: string;
   };
 }
 
@@ -72,13 +76,13 @@ type SortDirection = 'asc' | 'desc';
 
 export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<Database['public']['Enums']['product_category'] | 'all'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<UnifiedProductCategory | 'all'>('all');
   const [editingProduct, setEditingProduct] = useState<EditingProduct | null>(null);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
-  const { products, isLoading, updateProduct, isUpdating, createProduct, isCreating } = useProducts();
+  const { products, isLoading, updateProduct, isUpdating, createProduct, isCreating } = useUnifiedProducts();
 
   const filteredAndSortedProducts = React.useMemo(() => {
     let filtered = products.filter(product => {
@@ -122,7 +126,7 @@ export default function ProductsPage() {
     return filtered;
   }, [products, searchTerm, selectedCategory, sortField, sortDirection]);
 
-  const getProductsByCategory = (category: Database['public']['Enums']['product_category'] | 'all') => {
+  const getProductsByCategory = (category: UnifiedProductCategory | 'all') => {
     if (category === 'all') return filteredAndSortedProducts;
     return filteredAndSortedProducts.filter(product => product.category === category);
   };
@@ -136,14 +140,16 @@ export default function ProductsPage() {
     }
   };
 
-  const startEditing = useCallback((productId: string, currentValues: Product) => {
+  const startEditing = useCallback((productId: string, currentValues: UnifiedProduct) => {
     setEditingProduct({
       id: productId,
       fields: {
         name: currentValues.name,
         description: currentValues.description || '',
         base_price: String(currentValues.base_price),
-        unit: currentValues.unit
+        unit: currentValues.unit,
+        brand: currentValues.brand || '',
+        model: currentValues.model || ''
       }
     });
   }, []);
@@ -168,6 +174,8 @@ export default function ProductsPage() {
     if (editingProduct.fields.description !== undefined) updates.description = editingProduct.fields.description;
     if (editingProduct.fields.base_price) updates.base_price = parseFloat(editingProduct.fields.base_price);
     if (editingProduct.fields.unit) updates.unit = editingProduct.fields.unit;
+    if (editingProduct.fields.brand) updates.brand = editingProduct.fields.brand;
+    if (editingProduct.fields.model) updates.model = editingProduct.fields.model;
 
     updateProduct({ id: editingProduct.id, updates });
     setEditingProduct(null);
@@ -186,7 +194,13 @@ export default function ProductsPage() {
   }, [editingProduct, handleSaveEdit, handleCancelEdit]);
 
   const handleCreateProduct = (data: NewProductData) => {
-    createProduct(data);
+    const unifiedData = {
+      ...data,
+      source: 'products' as const,
+      specifications: {},
+      is_active: data.is_active
+    };
+    createProduct(unifiedData);
     setShowNewProductModal(false);
   };
 
@@ -196,7 +210,7 @@ export default function ProductsPage() {
     value, 
     type = 'text' 
   }: { 
-    product: Product; 
+    product: UnifiedProduct; 
     field: keyof EditingProduct['fields']; 
     value: string | number; 
     type?: 'text' | 'number' | 'select';
@@ -256,7 +270,7 @@ export default function ProductsPage() {
     );
   };
 
-  const ProductTableRow = ({ product }: { product: Product }) => {
+  const ProductTableRow = ({ product }: { product: UnifiedProduct }) => {
     const isEditing = editingProduct?.id === product.id;
     
     return (
@@ -268,7 +282,9 @@ export default function ProductsPage() {
             </div>
             <div>
               <EditableCell product={product} field="name" value={product.name} />
-              <div className="text-xs text-muted-foreground mt-1">{product.code}</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {product.source === 'solar_equipment' ? `${product.brand} - ${product.model}` : product.code}
+              </div>
             </div>
           </div>
         </TableCell>
@@ -282,7 +298,11 @@ export default function ProductsPage() {
         </TableCell>
         
         <TableCell>
-          <DryStoreBadge variant={product.category === 'forro_drywall' ? "drystore" : "info"}>
+          <DryStoreBadge variant={
+            product.category === 'forro_drywall' ? "drystore" : 
+            product.category === 'energia_solar' ? "success" :
+            product.category === 'battery_backup' ? "warning" : "info"
+          }>
             {categories.find(c => c.key === product.category)?.label || product.category}
           </DryStoreBadge>
         </TableCell>
@@ -396,7 +416,7 @@ export default function ProductsPage() {
       </Card>
 
       {/* Products by Category */}
-      <Tabs value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as Database['public']['Enums']['product_category'] | 'all')}>
+      <Tabs value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as UnifiedProductCategory | 'all')}>
         <TabsList className="grid w-full grid-cols-5 lg:grid-cols-12">
           {categories.map((category: any) => {
             const CategoryIcon = category.icon;
