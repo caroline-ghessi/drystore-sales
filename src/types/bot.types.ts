@@ -94,6 +94,7 @@ export type ProductCategory =
   | 'acabamentos'
   | 'forros'
   | 'forro_drywall'
+  | 'battery_backup'
   | 'saudacao'
   | 'institucional'
   | 'indefinido';

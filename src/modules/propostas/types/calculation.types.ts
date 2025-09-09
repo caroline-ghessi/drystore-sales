@@ -13,6 +13,29 @@ export interface SolarCalculationInput extends BaseCalculationInput {
   roofOrientation: 'north' | 'south' | 'east' | 'west' | 'northeast' | 'northwest' | 'southeast' | 'southwest';
   shadowing: 'none' | 'partial' | 'significant';
   installationType: 'grid_tie' | 'off_grid' | 'hybrid';
+  
+  // Configurações avançadas de consumo
+  dailyConsumptionPattern?: {
+    diurnal: number; // kWh (6h-18h)
+    nocturnal: number; // kWh (18h-6h)  
+    peak: number; // kWh (18h-21h)
+  };
+  
+  // Configurações de bateria (para sistemas híbridos e off-grid)
+  batteryConfig?: {
+    enabled: boolean;
+    desiredAutonomy: number; // horas
+    batteryType: 'lifepo4' | 'lithium' | 'lead_acid';
+    dod: number; // depth of discharge (0.9 para LiFePO4)
+    essentialLoads?: number; // kW para sistemas de backup
+  };
+  
+  // Configurações específicas de equipamentos
+  equipmentPreference?: {
+    panelModel?: string; // 'AS-6M-550W'
+    inverterModel?: string; // 'GF1-3K' ou 'GF1-5K'
+    batteryModel?: string; // 'BLF-B51100' ou 'BLF-B51150'
+  };
 }
 
 export interface SolarCalculationResult {
@@ -24,13 +47,98 @@ export interface SolarCalculationResult {
   paybackPeriod: number; // months
   roi25Years: number; // %
   co2Reduction: number; // kg/year
+  
+  // Configuração de strings
+  stringConfiguration: {
+    totalStrings: number;
+    panelsPerString: number;
+    stringVoltage: number;
+    withinMPPTRange: boolean;
+  };
+  
+  // Configuração de baterias (se aplicável)
+  batteryConfiguration?: {
+    batteryQuantity: number;
+    totalCapacityKwh: number;
+    autonomyHours: number;
+    bankVoltage: number;
+    usefulCapacityKwh: number;
+  };
+  
+  // Performance metrics
+  performanceMetrics: {
+    performanceRatio: number; // PR
+    selfConsumptionRate: number;
+    specificYield: number; // kWh/kWp/ano
+    capacityFactor: number;
+  };
+  
   itemizedCosts: {
     panels: number;
     inverters: number;
+    batteries?: number;
     structure: number;
+    installation: number;
     documentation: number;
   };
   totalCost: number;
+}
+
+// Sistema de Backup de Energia (apenas baterias)
+export interface BatteryBackupInput extends BaseCalculationInput {
+  essentialLoads: {
+    lighting: number; // W
+    refrigerator: number; // W  
+    freezer: number; // W
+    communication: number; // W (router, celular)
+    security: number; // W (alarmes, cameras)
+    medical?: number; // W (equipamentos médicos)
+    other: number; // W
+  };
+  
+  desiredAutonomy: number; // horas de backup
+  batteryType: 'lifepo4' | 'lithium' | 'lead_acid';
+  chargeSource: 'grid' | 'solar' | 'both';
+  
+  // Configurações avançadas
+  usagePattern?: {
+    simultaneousFactor: number; // 0.7 = 70% das cargas simultâneas
+    dailyUsageHours: number; // horas de uso por dia
+  };
+}
+
+export interface BatteryBackupResult {
+  totalPowerRequired: number; // kW
+  energyRequired: number; // kWh para autonomia desejada
+  inverterPower: number; // kW necessário
+  
+  batteryConfiguration: {
+    batteryQuantity: number;
+    totalCapacityKwh: number;
+    autonomyHours: number;
+    usefulCapacityKwh: number;
+    bankVoltage: number;
+  };
+  
+  inverterSpecifications: {
+    model: string;
+    continuousPower: number; // W
+    peakPower: number; // W
+    efficiency: number;
+  };
+  
+  itemizedCosts: {
+    batteries: number;
+    inverter: number;
+    installation: number;
+    accessories: number; // cabos, disjuntores, etc.
+  };
+  
+  totalCost: number;
+  
+  // Métricas de economia
+  monthlyGridCost: number; // custo mensal de carregamento via rede
+  backupValue: number; // valor estimado da proteção contra quedas
 }
 
 // Telha Shingle
@@ -217,6 +325,7 @@ export interface ForroDrywallCalculationResult {
 
 export type CalculationInput = 
   | SolarCalculationInput 
+  | BatteryBackupInput
   | ShingleCalculationInput 
   | DrywallCalculationInput 
   | SteelFrameCalculationInput 
@@ -225,6 +334,7 @@ export type CalculationInput =
 
 export type CalculationResult = 
   | SolarCalculationResult 
+  | BatteryBackupResult
   | ShingleCalculationResult 
   | DrywallCalculationResult 
   | SteelFrameCalculationResult 

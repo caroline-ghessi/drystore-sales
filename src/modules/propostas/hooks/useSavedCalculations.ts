@@ -40,7 +40,8 @@ function mapToDbProductType(productType: ProductType): DatabaseProductType {
     'drywall': 'drywall_divisorias',
     'steel_frame': 'steel_frame',
     'ceiling': 'forros',
-    'forro_drywall': 'forro_drywall'
+    'forro_drywall': 'forro_drywall',
+    'battery_backup': 'battery_backup'
   };
   return mapping[productType];
 }
@@ -53,6 +54,7 @@ function mapFromDbProductType(dbType: DatabaseProductType): ProductType {
     'steel_frame': 'steel_frame',
     'forros': 'ceiling',
     'forro_drywall': 'forro_drywall',
+    'battery_backup': 'battery_backup',
     // Default mappings for other categories
     'ferramentas': 'drywall',
     'pisos': 'drywall',

@@ -2141,6 +2141,42 @@ export type Database = {
         }
         Relationships: []
       }
+      solar_equipment: {
+        Row: {
+          brand: string
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean
+          model: string
+          price: number
+          specifications: Json
+          updated_at: string
+        }
+        Insert: {
+          brand: string
+          category: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          model: string
+          price?: number
+          specifications?: Json
+          updated_at?: string
+        }
+        Update: {
+          brand?: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          model?: string
+          price?: number
+          specifications?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       system_configs: {
         Row: {
           description: string | null
@@ -2969,6 +3005,7 @@ export type Database = {
         | "indefinido"
         | "geral"
         | "forro_drywall"
+        | "battery_backup"
       product_unit:
         | "m2"
         | "ml"
@@ -3175,6 +3212,7 @@ export const Constants = {
         "indefinido",
         "geral",
         "forro_drywall",
+        "battery_backup",
       ],
       product_unit: [
         "m2",

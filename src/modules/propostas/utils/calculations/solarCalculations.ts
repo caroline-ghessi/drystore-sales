@@ -98,6 +98,18 @@ export function calculateSolarSystem(input: SolarCalculationInput): SolarCalcula
     paybackPeriod,
     roi25Years,
     co2Reduction,
+    stringConfiguration: {
+      totalStrings: 1,
+      panelsPerString: panelQuantity,
+      stringVoltage: panelQuantity * 41,
+      withinMPPTRange: true
+    },
+    performanceMetrics: {
+      performanceRatio: 0.8,
+      selfConsumptionRate: 0.7,
+      specificYield: monthlyGeneration * 12 / systemPower,
+      capacityFactor: 0.2
+    },
     itemizedCosts,
     totalCost
   };
