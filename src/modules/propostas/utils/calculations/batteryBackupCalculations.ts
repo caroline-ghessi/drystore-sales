@@ -45,7 +45,7 @@ export function calculateBatteryBackup(input: BatteryBackupInput): BatteryBackup
   const totalPowerKW = totalPowerW / 1000;
   
   // Aplicar fator de simultaneidade (nem todas as cargas ligam ao mesmo tempo)
-  const simultaneousFactor = input.usagePattern?.simultaneousFactor || 0.7;
+  const simultaneousFactor = 0.7; // Fixed factor since usagePattern doesn't have simultaneousFactor
   const simultaneousPower = totalPowerKW * simultaneousFactor;
   
   // Calcular energia necessária para autonomia desejada
@@ -100,34 +100,44 @@ export function calculateBatteryBackup(input: BatteryBackupInput): BatteryBackup
   
   return {
     totalPowerRequired: simultaneousPower,
-    energyRequired,
-    inverterPower: inverterSpecs.powerContinuous / 1000, // kW
+    peakPowerRequired: simultaneousPower * 1.5,
+    totalEnergyRequired: energyRequired,
+    dailyEnergyConsumption: energyRequired / input.desiredAutonomy,
+    inverterPower: inverterSpecs.powerContinuous / 1000,
+    inverterQuantity: 1,
+    inverterEfficiency: inverterSpecs.efficiency,
     
     batteryConfiguration: {
       batteryQuantity: finalBatteryQuantity,
       totalCapacityKwh,
       autonomyHours,
       usefulCapacityKwh,
-      bankVoltage: batterySpecs.voltage
-    },
-    
-    inverterSpecifications: {
-      model: inverterModel,
-      continuousPower: inverterSpecs.powerContinuous,
-      peakPower: inverterSpecs.powerPeak,
-      efficiency: inverterSpecs.efficiency
+      bankVoltage: batterySpecs.voltage,
+      maxDischargeRate: simultaneousPower * 1.2 // 20% margin
     },
     
     itemizedCosts: {
       batteries: batteryCost,
-      inverter: inverterCost,
+      inverters: inverterCost,
       installation: installationCost,
-      accessories: accessoriesCost
+      monitoring: accessoriesCost * 0.3,
+      protection: accessoriesCost * 0.7
     },
+    totalCost: totalCost,
     
-    totalCost,
-    monthlyGridCost,
-    backupValue
+    economicMetrics: {
+      monthlySavings: backupValue,
+      paybackPeriod: totalCost / (backupValue * 12),
+      lifespan: 15,
+      maintenanceCostPerYear: totalCost * 0.02
+    },
+    technicalSpecs: {
+      chargeTime: 4,
+      dischargeTime: autonomyHours,
+      cyclesPerYear: 100,
+      expectedLifeCycles: batterySpecs.cycles,
+      warrantyYears: 10
+    }
   };
 }
 
@@ -187,11 +197,11 @@ export function validateEssentialLoads(loads: BatteryBackupInput['essentialLoads
     recommendations.push('Considere aumentar a potência de iluminação para pelo menos 200W');
   }
   
-  if (loads.refrigerator === 0) {
+  if (loads.refrigeration === 0) {
     recommendations.push('Geladeira é uma carga essencial. Considere incluí-la (150-300W)');
   }
   
-  if (loads.communication === 0) {
+  if (loads.communications === 0) {
     recommendations.push('Comunicação é essencial. Inclua router e celular (50-100W)');
   }
   

@@ -16,10 +16,14 @@ export function DrywallCalculator({ onCalculate }: DrywallCalculatorProps) {
   const [input, setInput] = useState<DrywallCalculationInput>({
     wallArea: 50,
     wallHeight: 2.8,
-    wallType: 'standard',
+    drywallType: 'standard',
     finishType: 'level_4',
-    insulationRequired: false,
-    electricalInstallation: false,
+    features: {
+      insulation: false,
+      electricalRuns: false,
+      plumbingRuns: false,
+      soundproofing: false
+    },
     complexity: 'medium',
     region: 'southeast',
     urgency: 'normal'
@@ -83,8 +87,8 @@ export function DrywallCalculator({ onCalculate }: DrywallCalculatorProps) {
           <div>
             <Label>Tipo de Placa *</Label>
             <Select
-              value={input.wallType}
-              onValueChange={(value: any) => setInput({ ...input, wallType: value })}
+              value={input.drywallType}
+              onValueChange={(value: any) => setInput({ ...input, drywallType: value })}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -179,10 +183,10 @@ export function DrywallCalculator({ onCalculate }: DrywallCalculatorProps) {
           <div className="flex items-center space-x-2">
             <Checkbox
               id="insulation"
-              checked={input.insulationRequired}
+              checked={input.features.insulation}
               onCheckedChange={(checked) => setInput({
                 ...input,
-                insulationRequired: checked as boolean
+                features: { ...input.features, insulation: checked as boolean }
               })}
             />
             <Label htmlFor="insulation" className="text-sm">
@@ -193,10 +197,10 @@ export function DrywallCalculator({ onCalculate }: DrywallCalculatorProps) {
           <div className="flex items-center space-x-2">
             <Checkbox
               id="electrical"
-              checked={input.electricalInstallation}
+              checked={input.features.electricalRuns}
               onCheckedChange={(checked) => setInput({
                 ...input,
-                electricalInstallation: checked as boolean
+                features: { ...input.features, electricalRuns: checked as boolean }
               })}
             />
             <Label htmlFor="electrical" className="text-sm">

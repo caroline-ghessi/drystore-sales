@@ -16,21 +16,24 @@ interface ForroDrywallCalculatorProps {
 export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorProps) {
   const [input, setInput] = useState<ForroDrywallCalculationInput>({
     ceilingArea: 20,
-    perimeter: 18,
+    perimeterLength: 18,
     plateType: 'standard',
-    plateDimension: '1_20x2_40',
-    tabicaType: 'tabica_50x50',
-    massType: 'powder',
-    fiberType: 'telada',
-    includeInsulation: false,
-    includeAccessories: false,
+    plateThickness: 12.5,
+    plateDimensions: '1200x2400',
+    perimeterFinishingType: 'L_profile',
+    massType: 'PVA',
+    fiberType: 'fiberglass',
     complexity: 'medium',
     region: 'southeast',
     urgency: 'normal',
-    accessoryQuantities: {
-      trapdoor: 0,
-      spotBoxes: 0,
-      acDiffusers: 0,
+    insulation: {
+      enabled: false,
+    },
+    accessories: {
+      lightFixtures: 0,
+      airVents: 0,
+      accessPanels: 0,
+      speakers: 0,
     }
   });
 
@@ -82,14 +85,14 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
             </div>
             
             <div>
-              <Label htmlFor="perimeter">Perímetro do Ambiente (m) *</Label>
+              <Label htmlFor="perimeterLength">Perímetro do Ambiente (m) *</Label>
               <Input
-                id="perimeter"
+                id="perimeterLength"
                 type="number"
-                value={input.perimeter}
+                value={input.perimeterLength}
                 onChange={(e) => setInput({
                   ...input,
-                  perimeter: Number(e.target.value)
+                  perimeterLength: Number(e.target.value)
                 })}
                 placeholder="18"
               />
@@ -135,16 +138,16 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
             <div>
               <Label>Dimensão da Placa *</Label>
               <Select
-                value={input.plateDimension}
-                onValueChange={(value: any) => setInput({ ...input, plateDimension: value })}
+                value={input.plateDimensions}
+                onValueChange={(value: any) => setInput({ ...input, plateDimensions: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1_20x2_40">1,20 × 2,40m (2,88 m²)</SelectItem>
-                  <SelectItem value="1_20x1_80">1,20 × 1,80m (2,16 m²)</SelectItem>
-                  <SelectItem value="1_20x2_50">1,20 × 2,50m (3,00 m²)</SelectItem>
+                  <SelectItem value="1200x2400">1,20 × 2,40m (2,88 m²)</SelectItem>
+                  <SelectItem value="1200x1800">1,20 × 1,80m (2,16 m²)</SelectItem>
+                  <SelectItem value="1200x3000">1,20 × 3,00m (3,60 m²)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -153,17 +156,16 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
             <div>
               <Label>Acabamento Perimetral *</Label>
               <Select
-                value={input.tabicaType}
-                onValueChange={(value: any) => setInput({ ...input, tabicaType: value })}
+                value={input.perimeterFinishingType}
+                onValueChange={(value: any) => setInput({ ...input, perimeterFinishingType: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="tabica_40x48">Tabica Lisa 40×48mm</SelectItem>
-                  <SelectItem value="tabica_50x50">Tabica Lisa 50×50mm</SelectItem>
-                  <SelectItem value="tabica_76x50">Tabica Lisa 76×50mm</SelectItem>
-                  <SelectItem value="cantoneira_25x30">Cantoneira 25×30mm</SelectItem>
+                  <SelectItem value="L_profile">Perfil L</SelectItem>
+                  <SelectItem value="shadow_gap">Shadow Gap</SelectItem>
+                  <SelectItem value="decorative_molding">Moldura Decorativa</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -179,8 +181,8 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="powder">Em Pó (0,35 kg/m²)</SelectItem>
-                  <SelectItem value="ready">Pronta (0,70 kg/m²)</SelectItem>
+                  <SelectItem value="PVA">PVA (0,35 kg/m²)</SelectItem>
+                  <SelectItem value="acrylic">Acrílica (0,70 kg/m²)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -196,8 +198,8 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="telada">Fita Telada 50mm</SelectItem>
-                  <SelectItem value="papel">Fita Papel Microperfurado 50mm</SelectItem>
+                  <SelectItem value="fiberglass">Fita Fibra de Vidro 50mm</SelectItem>
+                  <SelectItem value="paper">Fita Papel Microperfurado 50mm</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -268,10 +270,10 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="insulation"
-                checked={input.includeInsulation}
+                checked={input.insulation.enabled}
                 onCheckedChange={(checked) => setInput({
                   ...input,
-                  includeInsulation: checked as boolean
+                  insulation: { ...input.insulation, enabled: checked as boolean }
                 })}
               />
               <Label htmlFor="insulation" className="text-sm">
@@ -279,19 +281,23 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
               </Label>
             </div>
 
-            {input.includeInsulation && (
+            {input.insulation.enabled && (
               <div className="ml-6">
                 <Label>Tipo de Isolamento</Label>
                 <Select
-                  value={input.insulationType || 'glass_wool'}
-                  onValueChange={(value: any) => setInput({ ...input, insulationType: value })}
+                  value={input.insulation.type || 'rockwool'}
+                  onValueChange={(value: any) => setInput({ 
+                    ...input, 
+                    insulation: { ...input.insulation, type: value }
+                  })}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="glass_wool">Lã de Vidro 50mm</SelectItem>
-                    <SelectItem value="pet_wool">Lã de PET 50mm (sustentável)</SelectItem>
+                    <SelectItem value="rockwool">Lã de Rocha 50mm</SelectItem>
+                    <SelectItem value="fiberglass">Lã de Vidro 50mm</SelectItem>
+                    <SelectItem value="polyurethane">Poliuretano 50mm</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -301,10 +307,14 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="accessories"
-                checked={input.includeAccessories}
+                checked={input.accessories.lightFixtures > 0 || input.accessories.airVents > 0}
                 onCheckedChange={(checked) => setInput({
                   ...input,
-                  includeAccessories: checked as boolean
+                  accessories: {
+                    ...input.accessories,
+                    lightFixtures: checked ? 1 : 0,
+                    airVents: checked ? 1 : 0
+                  }
                 })}
               />
               <Label htmlFor="accessories" className="text-sm">
@@ -312,20 +322,20 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
               </Label>
             </div>
 
-            {input.includeAccessories && (
+            {(input.accessories.lightFixtures > 0 || input.accessories.airVents > 0) && (
               <div className="ml-6 space-y-3">
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <Label htmlFor="trapdoor">Alçapões</Label>
+                    <Label htmlFor="accessPanels">Alçapões</Label>
                     <Input
-                      id="trapdoor"
+                      id="accessPanels"
                       type="number"
-                      value={input.accessoryQuantities?.trapdoor || 0}
+                      value={input.accessories.accessPanels || 0}
                       onChange={(e) => setInput({
                         ...input,
-                        accessoryQuantities: {
-                          ...input.accessoryQuantities,
-                          trapdoor: Number(e.target.value)
+                        accessories: {
+                          ...input.accessories,
+                          accessPanels: Number(e.target.value)
                         }
                       })}
                       placeholder="0"
@@ -333,16 +343,16 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
                   </div>
                   
                   <div>
-                    <Label htmlFor="spots">Spots</Label>
+                    <Label htmlFor="lightFixtures">Spots</Label>
                     <Input
-                      id="spots"
+                      id="lightFixtures"
                       type="number"
-                      value={input.accessoryQuantities?.spotBoxes || 0}
+                      value={input.accessories.lightFixtures || 0}
                       onChange={(e) => setInput({
                         ...input,
-                        accessoryQuantities: {
-                          ...input.accessoryQuantities,
-                          spotBoxes: Number(e.target.value)
+                        accessories: {
+                          ...input.accessories,
+                          lightFixtures: Number(e.target.value)
                         }
                       })}
                       placeholder="0"
@@ -350,16 +360,16 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
                   </div>
                   
                   <div>
-                    <Label htmlFor="diffusers">Difusores AC</Label>
+                    <Label htmlFor="airVents">Difusores AC</Label>
                     <Input
-                      id="diffusers"
+                      id="airVents"
                       type="number"
-                      value={input.accessoryQuantities?.acDiffusers || 0}
+                      value={input.accessories.airVents || 0}
                       onChange={(e) => setInput({
                         ...input,
-                        accessoryQuantities: {
-                          ...input.accessoryQuantities,
-                          acDiffusers: Number(e.target.value)
+                        accessories: {
+                          ...input.accessories,
+                          airVents: Number(e.target.value)
                         }
                       })}
                       placeholder="0"

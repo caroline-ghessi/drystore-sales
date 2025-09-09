@@ -42,7 +42,7 @@ const URGENCY_MULTIPLIERS = {
 };
 
 export function calculateDrywallInstallation(input: DrywallCalculationInput): DrywallCalculationResult {
-  const { wallArea, wallHeight, wallType, finishType, insulationRequired, electricalInstallation } = input;
+  const { wallArea, wallHeight, drywallType, finishType, features } = input;
   
   // Calculate material quantities
   const plateQuantity = wallArea * 1.05; // 5% waste
@@ -69,11 +69,11 @@ export function calculateDrywallInstallation(input: DrywallCalculationInput): Dr
   let totalMultiplier = regionalMultiplier * complexityMultiplier * urgencyMultiplier;
   
   // Additional factors
-  if (insulationRequired) totalMultiplier *= 1.20;
-  if (electricalInstallation) totalMultiplier *= 1.30;
+  if (features.insulation) totalMultiplier *= 1.20;
+  if (features.electricalRuns) totalMultiplier *= 1.30;
   
   // Calculate costs
-  const plateCost = plateQuantity * DRYWALL_PRICES.plates[wallType] * totalMultiplier;
+  const plateCost = plateQuantity * DRYWALL_PRICES.plates[drywallType] * totalMultiplier;
   const profileCost = profileQuantity * DRYWALL_PRICES.profiles.steel * totalMultiplier;
   const screwsCost = screwsQuantity * DRYWALL_PRICES.screws;
   const jointCompoundCost = jointCompoundQuantity * DRYWALL_PRICES.jointCompound;
@@ -92,7 +92,10 @@ export function calculateDrywallInstallation(input: DrywallCalculationInput): Dr
   const itemizedCosts = {
     plates: plateCost,
     profiles: profileCost,
-    accessories: accessoriesCost,
+    screws: screwsCost,
+    compound: jointCompoundCost,
+    tape: tapeCost,
+    labor: baseHours * DRYWALL_PRICES.labor[finishType] * finishMultiplier,
   };
   
   const totalCost = Object.values(itemizedCosts).reduce((sum, cost) => sum + cost, 0);
@@ -100,7 +103,7 @@ export function calculateDrywallInstallation(input: DrywallCalculationInput): Dr
   return {
     plateQuantity,
     profileQuantity,
-    screwsQuantity,
+    screwQuantity: screwsQuantity,
     jointCompoundQuantity,
     tapeQuantity,
     itemizedCosts,

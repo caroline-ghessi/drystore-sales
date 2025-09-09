@@ -18,22 +18,26 @@ export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculator
   const [input, setInput] = useState<BatteryBackupInput>({
     essentialLoads: {
       lighting: 300,
-      refrigerator: 150,
-      freezer: 0,
-      communication: 80,
+      refrigeration: 150,
+      communications: 80,
       security: 50,
       medical: 0,
       other: 0
     },
     desiredAutonomy: 12,
     batteryType: 'lifepo4',
-    chargeSource: 'grid',
+    chargeSource: {
+      solar: false,
+      grid: true,
+      generator: false
+    },
     complexity: 'medium',
     region: 'southeast',
     urgency: 'normal',
     usagePattern: {
-      simultaneousFactor: 0.7,
-      dailyUsageHours: 12
+      dailyUsageHours: 12,
+      peakUsageHours: 4,
+      weeklyUsageDays: 7
     }
   });
 
@@ -82,34 +86,24 @@ export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculator
             </div>
             
             <div>
-              <Label htmlFor="refrigerator">Geladeira</Label>
+              <Label htmlFor="refrigeration">Geladeira/Freezer</Label>
               <Input
-                id="refrigerator"
+                id="refrigeration"
                 type="number"
-                value={input.essentialLoads.refrigerator}
-                onChange={(e) => handleLoadChange('refrigerator', Number(e.target.value))}
+                value={input.essentialLoads.refrigeration}
+                onChange={(e) => handleLoadChange('refrigeration', Number(e.target.value))}
                 placeholder="150"
               />
+              <p className="text-xs text-muted-foreground">Inclui geladeira e freezer</p>
             </div>
             
             <div>
-              <Label htmlFor="freezer">Freezer</Label>
+              <Label htmlFor="communications">Comunicação</Label>
               <Input
-                id="freezer"
+                id="communications"
                 type="number"
-                value={input.essentialLoads.freezer}
-                onChange={(e) => handleLoadChange('freezer', Number(e.target.value))}
-                placeholder="200"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="communication">Comunicação</Label>
-              <Input
-                id="communication"
-                type="number"
-                value={input.essentialLoads.communication}
-                onChange={(e) => handleLoadChange('communication', Number(e.target.value))}
+                value={input.essentialLoads.communications}
+                onChange={(e) => handleLoadChange('communications', Number(e.target.value))}
                 placeholder="80"
               />
               <p className="text-xs text-muted-foreground">Router, telefone</p>
@@ -154,7 +148,7 @@ export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculator
           <div className="mt-3 p-3 bg-muted rounded-lg">
             <p className="font-medium">Total de Cargas: {totalPower}W</p>
             <p className="text-sm text-muted-foreground">
-              Com fator de simultaneidade ({Math.round((input.usagePattern?.simultaneousFactor || 0.7) * 100)}%): {Math.round(totalPower * (input.usagePattern?.simultaneousFactor || 0.7))}W
+              Com fator de simultaneidade (70%): {Math.round(totalPower * 0.7)}W
             </p>
           </div>
         </div>
@@ -197,8 +191,15 @@ export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculator
           <div>
             <Label>Fonte de Carregamento</Label>
             <Select
-              value={input.chargeSource}
-              onValueChange={(value: any) => setInput({ ...input, chargeSource: value })}
+              value={input.chargeSource.grid ? 'grid' : input.chargeSource.solar ? 'solar' : 'generator'}
+              onValueChange={(value: any) => setInput({ 
+                ...input, 
+                chargeSource: {
+                  grid: value === 'grid',
+                  solar: value === 'solar', 
+                  generator: value === 'generator'
+                }
+              })}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -206,29 +207,28 @@ export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculator
               <SelectContent>
                 <SelectItem value="grid">Apenas Rede Elétrica</SelectItem>
                 <SelectItem value="solar">Apenas Energia Solar</SelectItem>
-                <SelectItem value="both">Rede + Solar (Híbrido)</SelectItem>
+                <SelectItem value="generator">Gerador</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
-            <Label>Fator de Simultaneidade (%)</Label>
+            <Label>Horas de Uso Diário</Label>
             <Input
               type="number"
-              min="50"
-              max="100"
-              value={Math.round((input.usagePattern?.simultaneousFactor || 0.7) * 100)}
+              min="1"
+              max="24"
+              value={input.usagePattern.dailyUsageHours}
               onChange={(e) => setInput({
                 ...input,
                 usagePattern: {
                   ...input.usagePattern,
-                  simultaneousFactor: Number(e.target.value) / 100,
-                  dailyUsageHours: input.usagePattern?.dailyUsageHours || 12
+                  dailyUsageHours: Number(e.target.value)
                 }
               })}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              % das cargas que funcionam simultaneamente
+              Horas de funcionamento por dia
             </p>
           </div>
 
@@ -303,7 +303,7 @@ export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculator
                 <Zap className="h-8 w-8 text-green-600 mr-3" />
                 <div>
                   <p className="font-semibold text-green-800">Potência</p>
-                  <p className="text-sm text-green-700">{Math.round(totalPower * (input.usagePattern?.simultaneousFactor || 0.7))}W ativos</p>
+                  <p className="text-sm text-green-700">{Math.round(totalPower * 0.7)}W ativos</p>
                 </div>
               </div>
             </CardContent>

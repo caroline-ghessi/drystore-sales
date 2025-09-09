@@ -1,46 +1,42 @@
 import { ForroDrywallCalculationInput, ForroDrywallCalculationResult } from '../../types/calculation.types';
 
-// Fatores de consumo por m² (baseados em especificações técnicas de forro drywall)
-const FORRO_DRYWALL_CONSUMPTION_FACTORS = {
-  // Placas por m² (considerando área da placa)
+const BASE_PRICES = {
   plates: {
-    '1_20x2_40': 1 / 2.88, // = 0.347 placas/m²
-    '1_20x1_80': 1 / 2.16, // = 0.463 placas/m²
-    '1_20x2_50': 1 / 3.00, // = 0.333 placas/m²
+    standard: 85,
+    moisture_resistant: 95,
+    acoustic: 105,
   },
-  
-  // Perfis para forro drywall - 2,20 ml por m²
-  profilePerSqm: 2.20,
-  
-  // Sistema de suspensão - 1,80 conjuntos por m²
-  suspensionPerSqm: 1.80,
-  
-  // Parafusos
-  plateScrewsPerSqm: 17, // parafusos 25mm
-  profileScrewsPerSqm: 4, // parafusos 13mm
-  
-  // Acabamento
-  mass: {
-    powder: 0.35, // kg/m² massa em pó
-    ready: 0.70,  // kg/m² massa pronta
+  profiles: {
+    steel: 15,
   },
-  fiber: 3.0, // ml/m² de fita
-  
-  // Isolamento opcional
-  insulation: 1.05, // m²/m² (5% a mais para sobreposição)
+  suspension: {
+    complete_set: 8,
+  },
+  perimetral: {
+    L_profile: 12,
+    shadow_gap: 15,
+    decorative_molding: 18,
+  },
+  screws: {
+    plate: 0.15,
+  },
+  finishing: {
+    mass: {
+      PVA: 8,
+      acrylic: 12,
+    },
+    fiber: {
+      fiberglass: 2.5,
+      paper: 2.8,
+    },
+  },
+  insulation: {
+    rockwool: 18,
+    fiberglass: 16,
+    polyurethane: 25,
+  },
 };
 
-// Perdas recomendadas
-const WASTE_FACTORS = {
-  plates: 1.10,      // 10% de perda
-  profiles: 1.05,    // 5% de perda
-  screws: 1.20,      // 20% de perda
-  mass: 1.10,        // 10% de perda
-  fiber: 1.10,       // 10% de perda
-  suspension: 1.05,  // 5% de perda
-};
-
-// Multiplicadores regionais e de complexidade
 const REGIONAL_MULTIPLIERS = {
   north: 1.25,
   northeast: 1.15,
@@ -60,185 +56,81 @@ const URGENCY_MULTIPLIERS = {
   express: 1.35
 };
 
-// Preços base (serão zero no banco, mas mantemos aqui para referência de cálculo)
-const BASE_PRICES = {
-  plates: {
-    standard: 85,  // R$/m²
-    ru: 95,        // R$/m²
-    rf: 105,       // R$/m²
-  },
-  profileF530: 15,     // R$/ml
-  suspension: 8,       // R$/conjunto
-  tabica: 12,         // R$/ml
-  screws25mm: 0.15,   // R$/unidade
-  screws13mm: 0.12,   // R$/unidade
-  anchors: 0.25,      // R$/unidade
-  mass: {
-    powder: 8,        // R$/kg
-    ready: 12,        // R$/kg
-  },
-  fiber: {
-    telada: 2.5,      // R$/ml
-    papel: 2.8,       // R$/ml
-  },
-  insulation: {
-    glass_wool: 18,   // R$/m²
-    pet_wool: 22,     // R$/m²
-  },
-  accessories: {
-    trapdoor: 180,    // R$/peça
-    spotBox: 25,      // R$/peça
-    acDiffuser: 85,   // R$/peça
-  },
-  labor: 35,          // R$/m²
-};
-
 export function calculateForroDrywall(input: ForroDrywallCalculationInput): ForroDrywallCalculationResult {
   const { 
     ceilingArea, 
-    perimeter, 
+    perimeterLength, 
     plateType, 
-    plateDimension, 
-    tabicaType, 
+    plateDimensions, 
+    perimeterFinishingType, 
     massType, 
     fiberType,
-    includeInsulation,
-    insulationType = 'glass_wool',
-    includeAccessories,
-    accessoryQuantities = {},
+    insulation,
+    accessories,
     complexity,
     region,
     urgency
   } = input;
 
-  // ===== CÁLCULO DE QUANTIDADES =====
-  
-  // 1. Placas
-  const platesPerSqm = FORRO_DRYWALL_CONSUMPTION_FACTORS.plates[plateDimension];
-  const rawPlateQuantity = ceilingArea * platesPerSqm;
-  const plateQuantity = Math.ceil(rawPlateQuantity * WASTE_FACTORS.plates);
-  
-  // Área real das placas (pode ser maior que área do forro devido às perdas)
-  const plateAreaMultiplier = {
-    '1_20x2_40': 2.88,
-    '1_20x1_80': 2.16,
-    '1_20x2_50': 3.00,
-  }[plateDimension];
-  const plateArea = plateQuantity * plateAreaMultiplier;
+  // Calculate quantities
+  const plateQuantity = Math.ceil(ceilingArea / 2.88 * 1.1); // 10% waste
+  const profileQuantity = ceilingArea * 2.2 * 1.05; // 5% waste
+  const suspensionSetQuantity = Math.ceil(ceilingArea * 1.8);
+  const perimetralFinishingQuantity = perimeterLength;
+  const screwQuantity = Math.ceil(ceilingArea * 17 * 1.2);
+  const massQuantity = ceilingArea * (massType === 'PVA' ? 0.35 : 0.7) * 1.1;
+  const tapeQuantity = ceilingArea * 3.0 * 1.1;
 
-  // 2. Perfis para forro drywall
-  const profileQuantityRaw = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.profilePerSqm;
-  const profileQuantity = profileQuantityRaw * WASTE_FACTORS.profiles;
-  const profileBars = Math.ceil(profileQuantity / 3); // barras de 3m
-
-  // 3. Sistema de Suspensão
-  const suspensionSetsRaw = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.suspensionPerSqm;
-  const suspensionSets = Math.ceil(suspensionSetsRaw * WASTE_FACTORS.suspension);
-
-  // 4. Acabamento Perimetral
-  const perimetralQuantity = perimeter;
-  const perimetralBars = Math.ceil(perimetralQuantity / 3); // barras de 3m
-
-  // 5. Parafusos
-  const plateScrewsRaw = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.plateScrewsPerSqm;
-  const plateScews = Math.ceil(plateScrewsRaw * WASTE_FACTORS.screws);
-  
-  const profileScrewsRaw = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.profileScrewsPerSqm;
-  const profileScrews = Math.ceil(profileScrewsRaw * WASTE_FACTORS.screws);
-  
-  const anchors = suspensionSets; // 1 bucha por ponto de suspensão
-
-  // 6. Acabamento
-  const massQuantityRaw = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.mass[massType];
-  const massQuantity = massQuantityRaw * WASTE_FACTORS.mass;
-  
-  const fiberQuantityRaw = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.fiber;
-  const fiberQuantity = fiberQuantityRaw * WASTE_FACTORS.fiber;
-
-  // 7. Isolamento (opcional)
   let insulationQuantity: number | undefined;
-  if (includeInsulation) {
-    insulationQuantity = ceilingArea * FORRO_DRYWALL_CONSUMPTION_FACTORS.insulation;
+  if (insulation.enabled) {
+    insulationQuantity = ceilingArea * 1.05;
   }
 
-  // 8. Acessórios
-  let accessories: { trapdoors: number; spotBoxes: number; acDiffusers: number; } | undefined;
-  if (includeAccessories && accessoryQuantities) {
-    accessories = {
-      trapdoors: accessoryQuantities.trapdoor || 0,
-      spotBoxes: accessoryQuantities.spotBoxes || 0,
-      acDiffusers: accessoryQuantities.acDiffusers || 0,
-    };
-  }
-
-  // ===== CÁLCULO DE MULTIPLICADORES =====
-  const regionalMultiplier = REGIONAL_MULTIPLIERS[region];
-  const complexityMultiplier = COMPLEXITY_MULTIPLIERS[complexity];
-  const urgencyMultiplier = URGENCY_MULTIPLIERS[urgency];
-  const totalMultiplier = regionalMultiplier * complexityMultiplier * urgencyMultiplier;
-
-  // ===== CÁLCULO DE CUSTOS =====
-  const platePrice = BASE_PRICES.plates[plateType];
-  const plateCost = plateArea * platePrice * totalMultiplier;
+  // Calculate costs
+  const totalMultiplier = REGIONAL_MULTIPLIERS[region] * COMPLEXITY_MULTIPLIERS[complexity] * URGENCY_MULTIPLIERS[urgency];
   
-  const profileCost = profileQuantity * BASE_PRICES.profileF530 * totalMultiplier;
-  
-  const suspensionCost = suspensionSets * BASE_PRICES.suspension * totalMultiplier;
-  
-  const perimetralCost = perimetralQuantity * BASE_PRICES.tabica * totalMultiplier;
-  
-  const screwsCost = (plateScews * BASE_PRICES.screws25mm) + 
-                     (profileScrews * BASE_PRICES.screws13mm) +
-                     (anchors * BASE_PRICES.anchors);
-  
-  const massCost = massQuantity * BASE_PRICES.mass[massType];
-  const fiberCost = fiberQuantity * BASE_PRICES.fiber[fiberType];
-  const finishingCost = (massCost + fiberCost) * totalMultiplier;
+  const platesCost = plateQuantity * BASE_PRICES.plates[plateType] * totalMultiplier;
+  const profilesCost = profileQuantity * BASE_PRICES.profiles.steel * totalMultiplier;
+  const suspensionCost = suspensionSetQuantity * BASE_PRICES.suspension.complete_set * totalMultiplier;
+  const perimetralCost = perimetralFinishingQuantity * BASE_PRICES.perimetral[perimeterFinishingType] * totalMultiplier;
+  const screwsCost = screwQuantity * BASE_PRICES.screws.plate;
+  const massCost = massQuantity * BASE_PRICES.finishing.mass[massType];
+  const tapeCost = tapeQuantity * BASE_PRICES.finishing.fiber[fiberType];
+  const laborCost = ceilingArea * 25;
   
   let insulationCost = 0;
-  if (insulationQuantity && includeInsulation) {
-    insulationCost = insulationQuantity * BASE_PRICES.insulation[insulationType] * totalMultiplier;
+  if (insulationQuantity && insulation.type) {
+    insulationCost = insulationQuantity * BASE_PRICES.insulation[insulation.type] * totalMultiplier;
   }
 
-  let accessoriesCost = 0;
-  if (accessories) {
-    accessoriesCost = (
-      (accessories.trapdoors * BASE_PRICES.accessories.trapdoor) +
-      (accessories.spotBoxes * BASE_PRICES.accessories.spotBox) +
-      (accessories.acDiffusers * BASE_PRICES.accessories.acDiffuser)
-    ) * totalMultiplier;
-  }
+  const accessoriesTotal = Object.values(accessories).reduce((sum, qty) => sum + qty, 0);
+  const accessoriesCost = accessoriesTotal * 50;
 
-  // ===== RESULTADO FINAL =====
   const itemizedCosts = {
-    plates: plateCost,
-    profiles: profileCost,
+    plates: platesCost,
+    profiles: profilesCost,
     suspension: suspensionCost,
-    perimetral: perimetralCost,
+    perimetralFinishing: perimetralCost,
     screws: screwsCost,
-    finishing: finishingCost,
-    insulation: includeInsulation ? insulationCost : undefined,
-    accessories: includeAccessories ? accessoriesCost : undefined,
+    mass: massCost,
+    tape: tapeCost,
+    insulation: insulationCost,
+    accessories: accessoriesCost,
+    labor: laborCost,
   };
 
-  const totalCost = plateCost + profileCost + suspensionCost + perimetralCost + 
-                   screwsCost + finishingCost + insulationCost + accessoriesCost;
+  const totalCost = Object.values(itemizedCosts).reduce((sum, cost) => sum + cost, 0);
 
   return {
     plateQuantity,
-    plateArea,
     profileQuantity,
-    profileBars,
-    suspensionSets,
-    perimetralQuantity,
-    perimetralBars,
-    plateScews,
-    profileScrews,
-    anchors,
+    suspensionSetQuantity,
+    perimetralFinishingQuantity,
+    screwQuantity,
     massQuantity,
-    fiberQuantity,
+    tapeQuantity,
     insulationQuantity,
-    accessories,
+    accessoriesQuantity: accessories,
     itemizedCosts,
     totalCost,
   };
