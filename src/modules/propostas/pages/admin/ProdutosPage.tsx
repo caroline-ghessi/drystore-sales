@@ -16,6 +16,7 @@ export default function ProdutosPage() {
 
   const { products: allProducts, updateProduct, isLoading } = useProducts();
   const { products: knaufProducts } = useProducts('forro_drywall');
+  const { products: drywallProducts } = useProducts('drywall_divisorias');
 
   const filteredProducts = allProducts.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -136,11 +137,23 @@ export default function ProdutosPage() {
             />
           </div>
 
-          <Tabs defaultValue="forro_drywall" className="w-full">
+          <Tabs defaultValue="drywall_divisorias" className="w-full">
             <TabsList>
-              <TabsTrigger value="forro_drywall">Produtos Forro Drywall</TabsTrigger>
+              <TabsTrigger value="drywall_divisorias">Drywall Divisórias</TabsTrigger>
+              <TabsTrigger value="forro_drywall">Forro Drywall</TabsTrigger>
               <TabsTrigger value="all">Todos os Produtos</TabsTrigger>
             </TabsList>
+            
+            <TabsContent value="drywall_divisorias" className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                {drywallProducts.length} produtos de drywall divisórias encontrados
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {drywallProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </TabsContent>
             
             <TabsContent value="forro_drywall" className="space-y-4">
               <div className="text-sm text-muted-foreground">

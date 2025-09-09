@@ -272,43 +272,86 @@ export interface ShingleCalculationResult {
 
 // ============= Drywall =============
 
+// Drywall types - Seguindo documentação técnica
 export interface DrywallCalculationInput extends BaseCalculationInput {
-  wallArea: number; // m²
-  wallHeight: number; // m
-  drywallType: 'standard' | 'moisture_resistant' | 'fire_resistant';
-  finishType: 'level_1' | 'level_2' | 'level_3' | 'level_4' | 'level_5';
-  
-  // Additional requirements
+  wallArea: number;
+  wallHeight: number;
+  wallConfiguration: 'W111' | 'W112' | 'W115' | 'mixed'; // W111: simples, W112: dupla, W115: reforçada
+  plateType: 'knauf_st' | 'knauf_ru' | 'knauf_rf' | 'placo_performa' | 'placo_performa_ru';
+  profileType: 'M48' | 'M70' | 'M90';
+  finishType: 'level_3' | 'level_4' | 'level_5';
+  openings: {
+    doors: number;
+    windows: number;
+  };
   features: {
     insulation: boolean;
+    insulationType?: 'la_vidro_50' | 'la_vidro_100' | 'la_rocha_50' | 'la_rocha_100';
+    acousticBand: boolean;
     electricalRuns: boolean;
-    plumbingRuns: boolean;
-    soundproofing: boolean;
+    plumbingRuns?: boolean;
+  };
+  laborIncluded: {
+    structure: boolean;
+    installation: boolean;
+    finishing: boolean;
+    insulation: boolean;
   };
 }
 
 export interface DrywallCalculationResult {
-  // Material quantities
-  plateQuantity: number; // sheets
-  profileQuantity: number; // m
-  screwQuantity: number; // units
-  jointCompoundQuantity: number; // kg
-  tapeQuantity: number; // m
+  // Quantidades de materiais
+  plateQuantity: number;
+  montanteQuantity: number;
+  guiaQuantity: number;
+  screw25mmQuantity: number;
+  screw35mmQuantity?: number;
+  screw13mmQuantity: number;
+  massQuantity: number;
+  tapeQuantity: number;
+  insulationQuantity?: number;
+  acousticBandQuantity?: number;
   
-  // Optional materials
-  insulationQuantity?: number; // m²
-  soundproofingQuantity?: number; // m²
-  
-  // Cost breakdown
-  itemizedCosts: {
-    plates: number;
-    profiles: number;
-    screws: number;
-    compound: number;
-    tape: number;
-    labor: number;
+  // Quantidades de mão de obra (horas)
+  laborHours: {
+    structure: number;
+    installation: number;
+    finishing: number;
+    insulation?: number;
   };
+  
+  // Custos detalhados
+  itemizedCosts: {
+    materials: {
+      plates: number;
+      profiles: number;
+      screws: number;
+      mass: number;
+      tape: number;
+      insulation?: number;
+      acousticBand?: number;
+      specialBuckets?: number;
+    };
+    labor: {
+      structure: number;
+      installation: number;
+      finishing: number;
+      insulation?: number;
+    };
+  };
+  
+  // Totais
+  totalMaterialCost: number;
+  totalLaborCost: number;
   totalCost: number;
+  
+  // Dados técnicos
+  technicalData: {
+    finalThickness: number;
+    acousticPerformance?: string;
+    fireResistance?: string;
+    weightPerM2: number;
+  };
 }
 
 // ============= Steel Frame =============

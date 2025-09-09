@@ -16,13 +16,24 @@ export function DrywallCalculator({ onCalculate }: DrywallCalculatorProps) {
   const [input, setInput] = useState<DrywallCalculationInput>({
     wallArea: 50,
     wallHeight: 2.8,
-    drywallType: 'standard',
+    wallConfiguration: 'W111',
+    plateType: 'knauf_st',
+    profileType: 'M70',
     finishType: 'level_4',
+    openings: {
+      doors: 0,
+      windows: 0
+    },
     features: {
       insulation: false,
-      electricalRuns: false,
-      plumbingRuns: false,
-      soundproofing: false
+      acousticBand: false,
+      electricalRuns: false
+    },
+    laborIncluded: {
+      structure: true,
+      installation: true,
+      finishing: true,
+      insulation: false
     },
     region: 'southeast'
   });
@@ -81,21 +92,21 @@ export function DrywallCalculator({ onCalculate }: DrywallCalculatorProps) {
             </p>
           </div>
 
-          {/* Wall Type */}
+          {/* Wall Type - Atualizado para nova estrutura */}
           <div>
-            <Label>Tipo de Placa *</Label>
+            <Label>Configuração da Parede *</Label>
             <Select
-              value={input.drywallType}
-              onValueChange={(value: any) => setInput({ ...input, drywallType: value })}
+              value={input.wallConfiguration}
+              onValueChange={(value: any) => setInput({ ...input, wallConfiguration: value })}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="standard">Padrão - Ambientes secos</SelectItem>
-                <SelectItem value="acoustic">Acústica - Isolamento sonoro</SelectItem>
-                <SelectItem value="moisture_resistant">Resistente à Umidade (RU)</SelectItem>
-                <SelectItem value="fire_resistant">Resistente ao Fogo (RF)</SelectItem>
+                <SelectItem value="W111">W111 - Parede Simples</SelectItem>
+                <SelectItem value="W112">W112 - Parede Dupla (Acústica)</SelectItem>
+                <SelectItem value="W115">W115 - Parede Reforçada</SelectItem>
+                <SelectItem value="mixed">Configuração Mista</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -160,15 +171,15 @@ export function DrywallCalculator({ onCalculate }: DrywallCalculatorProps) {
           
           <div className="flex items-center space-x-2">
             <Checkbox
-              id="electrical"
-              checked={input.features.electricalRuns}
+              id="acousticBand"
+              checked={input.features.acousticBand}
               onCheckedChange={(checked) => setInput({
                 ...input,
-                features: { ...input.features, electricalRuns: checked as boolean }
+                features: { ...input.features, acousticBand: checked as boolean }
               })}
             />
-            <Label htmlFor="electrical" className="text-sm">
-              Instalação elétrica incluída (tomadas e interruptores)
+            <Label htmlFor="acousticBand" className="text-sm">
+              Banda acústica nas guias
             </Label>
           </div>
         </div>
