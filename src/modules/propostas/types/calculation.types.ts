@@ -28,7 +28,6 @@ export interface SolarCalculationResult {
     panels: number;
     inverters: number;
     structure: number;
-    installation: number;
     documentation: number;
   };
   totalCost: number;
@@ -37,26 +36,38 @@ export interface SolarCalculationResult {
 // Telha Shingle
 export interface ShingleCalculationInput extends BaseCalculationInput {
   roofArea: number; // m²
-  roofSlope: number; // degrees
+  roofSlope: number; // % (inclinação em porcentagem)
   roofComplexity: 'simple' | 'medium' | 'complex';
-  underlaymentType: 'standard' | 'premium';
+  shingleType: 'oakridge' | 'supreme';
+  perimeter: number; // m (perímetro para beirais)
+  ridgeLength: number; // m (comprimento da cumeeira)
   ventilationRequired: boolean;
   guttersIncluded: boolean;
 }
 
 export interface ShingleCalculationResult {
-  shingleQuantity: number; // m²
-  underlaymentQuantity: number; // m²
-  accessoriesQuantity: number;
-  laborHours: number;
+  // Quantidades de materiais
+  shingleBundles: number; // fardos principais
+  starterBundles: number; // fardos Supreme para starter
+  ridgeBundles: number; // fardos para cumeeiras
+  totalShingleBundles: number; // total de fardos
+  osbPlates: number; // placas OSB
+  underlaymentRolls: number; // rolos de manta
+  nailsForShingles: number; // pregos para telhas
+  nailsForOsb: number; // pregos para OSB
+  underlaymentClamps: number; // grampos para manta
+  ventilationAerators: number; // aeradores (se solicitado)
+  ventilatedRidgeMeters: number; // metros de cumeeira ventilada (se solicitado)
+  
   itemizedCosts: {
     shingles: number;
+    osb: number;
     underlayment: number;
-    accessories: number;
-    labor: number;
+    nails: number;
+    ventilation?: number;
+    gutters?: number;
   };
   totalCost: number;
-  installationTime: number; // days
 }
 
 // Drywall
@@ -75,15 +86,12 @@ export interface DrywallCalculationResult {
   screwsQuantity: number;
   jointCompoundQuantity: number; // kg
   tapeQuantity: number; // linear meters
-  laborHours: number;
   itemizedCosts: {
     plates: number;
     profiles: number;
     accessories: number;
-    labor: number;
   };
   totalCost: number;
-  installationTime: number; // days
 }
 
 // Steel Frame
@@ -100,7 +108,6 @@ export interface SteelFrameCalculationResult {
   structuralSteel: number; // kg
   plateQuantity: number; // m²
   insulationQuantity: number; // m²
-  laborHours: number;
   itemizedCosts: {
     structure: number;
     plates: number;
@@ -108,10 +115,8 @@ export interface SteelFrameCalculationResult {
     foundation: number;
     roof: number;
     finishes: number;
-    labor: number;
   };
   totalCost: number;
-  constructionTime: number; // days
 }
 
 // Forros
@@ -128,15 +133,12 @@ export interface CeilingCalculationResult {
   plateQuantity: number; // m²
   profileQuantity: number; // linear meters
   accessoriesQuantity: number;
-  laborHours: number;
   itemizedCosts: {
     plates: number;
     structure: number;
     accessories: number;
-    labor: number;
   };
   totalCost: number;
-  installationTime: number; // days
 }
 
 // Forro Drywall
@@ -187,10 +189,6 @@ export interface ForroDrywallCalculationResult {
     acDiffusers: number;
   };
   
-  // Tempos e custos
-  laborHours: number;
-  installationTime: number; // dias
-  
   itemizedCosts: {
     plates: number;
     profiles: number;
@@ -200,7 +198,6 @@ export interface ForroDrywallCalculationResult {
     finishing: number;
     insulation?: number;
     accessories?: number;
-    labor: number;
   };
   totalCost: number;
 }

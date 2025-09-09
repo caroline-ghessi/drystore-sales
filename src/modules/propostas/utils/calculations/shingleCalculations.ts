@@ -1,24 +1,17 @@
 import { ShingleCalculationInput, ShingleCalculationResult } from '../../types/calculation.types';
 
-// Base prices per m²
-const SHINGLE_PRICES = {
-  shingles: {
-    basic: 85,      // R$/m²
-    standard: 120,
-    premium: 180
-  },
-  underlayment: {
-    standard: 25,   // R$/m²
-    premium: 45
-  },
-  accessories: 15,  // R$/m² (average)
-  labor: {
-    simple: 35,     // R$/m²
-    medium: 45,
-    complex: 65
-  }
+// Correção por inclinação conforme documentação técnica
+const SLOPE_CORRECTION_FACTORS = {
+  17: 1.015,  // 17% (10°)
+  25: 1.031,  // 25% (14°)
+  30: 1.044,  // 30% (17°)
+  35: 1.058,  // 35% (19°)
+  40: 1.077,  // 40% (22°)
+  45: 1.097,  // 45% (24°)
+  50: 1.118,  // 50% (27°)
 };
 
+// Multiplicadores regionais
 const REGIONAL_MULTIPLIERS = {
   north: 1.20,
   northeast: 1.10,
@@ -27,90 +20,139 @@ const REGIONAL_MULTIPLIERS = {
   south: 1.05
 };
 
+// Multiplicadores de complexidade
 const COMPLEXITY_MULTIPLIERS = {
   low: 1.0,
   medium: 1.20,
   high: 1.45
 };
 
+// Multiplicadores de urgência
 const URGENCY_MULTIPLIERS = {
   normal: 1.0,
   express: 1.30
 };
 
-// Slope adjustment factors
-const SLOPE_FACTORS = {
-  0: 1.0,    // 0-15 degrees
-  15: 1.05,  // 15-30 degrees
-  30: 1.15,  // 30-45 degrees
-  45: 1.30   // >45 degrees
+// Rendimentos dos materiais (conforme documentação)
+const MATERIAL_YIELDS = {
+  shingleBundle: 3.0,        // m² por fardo
+  starterBundle: 6.0,        // metros lineares por fardo Supreme
+  ridgeBundle: 10.0,         // metros lineares por fardo
+  osbPlate: 2.88,           // m² por placa (1,20m x 2,40m)
+  underlaymentRoll87: 86.0,  // m² úteis (90% de 95,7m²)
+  underlaymentRoll50: 54.0,  // m² úteis (90% de 60m²)
+  nailsPerShingle: 4,        // pregos mínimos por telha
+  nailsPerOsb: 50,          // pregos por placa OSB
+  clampsPerRoll: 100,       // grampos por rolo de manta
 };
 
+// Cálculo da área de ventilação (regra 1/300)
+const VENTILATION_RULE = {
+  areaRatio: 1/300,         // 1m² de ventilação para cada 300m² de telhado
+  aeratorNfva: 72,          // cm² NFVA por aerador
+  ridgeNfva: 141,           // cm² NFVA por metro de cumeeira ventilada
+};
+
+function getSlopeCorrectionFactor(slope: number): number {
+  if (slope <= 17) return SLOPE_CORRECTION_FACTORS[17];
+  if (slope <= 25) return SLOPE_CORRECTION_FACTORS[25];
+  if (slope <= 30) return SLOPE_CORRECTION_FACTORS[30];
+  if (slope <= 35) return SLOPE_CORRECTION_FACTORS[35];
+  if (slope <= 40) return SLOPE_CORRECTION_FACTORS[40];
+  if (slope <= 45) return SLOPE_CORRECTION_FACTORS[45];
+  return SLOPE_CORRECTION_FACTORS[50];
+}
+
 export function calculateShingleInstallation(input: ShingleCalculationInput): ShingleCalculationResult {
-  const { roofArea, roofSlope, roofComplexity, underlaymentType, ventilationRequired, guttersIncluded } = input;
+  const { roofArea, roofSlope, roofComplexity, perimeter, ridgeLength, ventilationRequired } = input;
   
-  // Calculate material quantities
-  const slopeFactor = getSlopeFactor(roofSlope);
-  const adjustedArea = roofArea * slopeFactor;
+  // 1. Calcular área real com correção de inclinação
+  const slopeFactor = getSlopeCorrectionFactor(roofSlope);
+  const realArea = roofArea * slopeFactor;
   
-  // Add 10% waste factor
-  const shingleQuantity = adjustedArea * 1.10;
-  const underlaymentQuantity = adjustedArea * 1.05;
+  // 2. Aplicar fator de perdas (10% para simples, 15% para complexo)
+  const wasteFactor = roofComplexity === 'complex' ? 1.15 : 1.10;
+  const totalArea = realArea * wasteFactor;
   
-  // Accessories calculation
-  let accessoriesQuantity = adjustedArea;
-  if (ventilationRequired) accessoriesQuantity *= 1.15;
-  if (guttersIncluded) accessoriesQuantity *= 1.25;
-  
-  // Calculate multipliers
+  // 3. Calcular multiplicadores
   const regionalMultiplier = REGIONAL_MULTIPLIERS[input.region];
   const complexityMultiplier = COMPLEXITY_MULTIPLIERS[input.complexity];
   const urgencyMultiplier = URGENCY_MULTIPLIERS[input.urgency];
-  
   const totalMultiplier = regionalMultiplier * complexityMultiplier * urgencyMultiplier;
   
-  // Calculate costs
-  const shingleCost = shingleQuantity * SHINGLE_PRICES.shingles.standard * totalMultiplier;
-  const underlaymentCost = underlaymentQuantity * SHINGLE_PRICES.underlayment[underlaymentType] * totalMultiplier;
-  const accessoriesCost = accessoriesQuantity * SHINGLE_PRICES.accessories * totalMultiplier;
+  // 4. QUANTIDADES DE MATERIAIS
   
-  // Labor calculation
-  const complexityFactor = {
-    simple: 1.0,
-    medium: 1.3,
-    complex: 1.7
-  }[roofComplexity];
+  // Telhas principais
+  const shingleBundles = Math.ceil(totalArea / MATERIAL_YIELDS.shingleBundle);
   
-  const laborHours = (adjustedArea * 0.8 * complexityFactor) * totalMultiplier;
-  const laborCost = adjustedArea * SHINGLE_PRICES.labor[roofComplexity] * totalMultiplier;
+  // Telhas Supreme para starter (primeira fiada)
+  const starterBundles = Math.ceil(perimeter / MATERIAL_YIELDS.starterBundle);
   
-  const itemizedCosts = {
-    shingles: shingleCost,
-    underlayment: underlaymentCost,
-    accessories: accessoriesCost,
-    labor: laborCost
+  // Telhas para cumeeiras e espigões
+  const ridgeBundles = Math.ceil(ridgeLength / MATERIAL_YIELDS.ridgeBundle);
+  
+  // Total de fardos
+  const totalShingleBundles = shingleBundles + starterBundles + ridgeBundles;
+  
+  // Placas OSB 11,1mm
+  const osbPlates = Math.ceil(totalArea / MATERIAL_YIELDS.osbPlate * 1.05); // 5% adicional
+  
+  // Manta de subcobertura (usar rolo de 87m como padrão)
+  const underlaymentRolls = Math.ceil(totalArea / MATERIAL_YIELDS.underlaymentRoll87);
+  
+  // Pregos para telhas
+  const totalShingles = Math.ceil(totalArea / 0.09); // cada telha cobre ~0,09m²
+  const nailsForShingles = totalShingles * MATERIAL_YIELDS.nailsPerShingle;
+  
+  // Pregos para OSB
+  const nailsForOsb = osbPlates * MATERIAL_YIELDS.nailsPerOsb;
+  
+  // Grampos para manta
+  const underlaymentClamps = underlaymentRolls * MATERIAL_YIELDS.clampsPerRoll;
+  
+  // Ventilação (se solicitada)
+  let ventilationAerators = 0;
+  let ventilatedRidgeMeters = 0;
+  
+  if (ventilationRequired) {
+    const ventilationAreaNeeded = totalArea * VENTILATION_RULE.areaRatio * 10000; // converter para cm²
+    const exitVentilationNeeded = ventilationAreaNeeded / 2; // 50% saída
+    
+    // Calcular aeradores necessários
+    ventilationAerators = Math.ceil(exitVentilationNeeded / VENTILATION_RULE.aeratorNfva);
+    
+    // Alternativa: metros de cumeeira ventilada
+    ventilatedRidgeMeters = Math.ceil(exitVentilationNeeded / VENTILATION_RULE.ridgeNfva);
+  }
+  
+  // 5. CUSTOS (preços base zerados - serão preenchidos posteriormente)
+  const baseCosts = {
+    shingles: 0,
+    osb: 0,
+    underlayment: 0,
+    nails: 0,
+    ventilation: ventilationRequired ? 0 : undefined,
+    gutters: input.guttersIncluded ? 0 : undefined,
   };
   
-  const totalCost = Object.values(itemizedCosts).reduce((sum, cost) => sum + cost, 0);
-  
-  // Installation time calculation (days)
-  const baseInstallationTime = Math.ceil(adjustedArea / 40); // 40m² per day base
-  const installationTime = Math.max(1, baseInstallationTime * complexityFactor);
+  const totalCost = 0; // Será calculado quando os preços dos produtos forem definidos
   
   return {
-    shingleQuantity,
-    underlaymentQuantity,
-    accessoriesQuantity,
-    laborHours,
-    itemizedCosts,
+    // Quantidades
+    shingleBundles,
+    starterBundles,
+    ridgeBundles,
+    totalShingleBundles,
+    osbPlates,
+    underlaymentRolls,
+    nailsForShingles,
+    nailsForOsb,
+    underlaymentClamps,
+    ventilationAerators,
+    ventilatedRidgeMeters,
+    
+    // Custos
+    itemizedCosts: baseCosts,
     totalCost,
-    installationTime
   };
-}
-
-function getSlopeFactor(slope: number): number {
-  if (slope <= 15) return SLOPE_FACTORS[0];
-  if (slope <= 30) return SLOPE_FACTORS[15];
-  if (slope <= 45) return SLOPE_FACTORS[30];
-  return SLOPE_FACTORS[45];
 }

@@ -89,21 +89,13 @@ export function calculateDrywallInstallation(input: DrywallCalculationInput): Dr
     level_5: 1.6
   }[finishType];
   
-  const laborHours = baseHours * finishMultiplier * complexityMultiplier;
-  const laborCost = wallArea * DRYWALL_PRICES.labor[finishType] * totalMultiplier;
-  
   const itemizedCosts = {
     plates: plateCost,
     profiles: profileCost,
     accessories: accessoriesCost,
-    labor: laborCost
   };
   
   const totalCost = Object.values(itemizedCosts).reduce((sum, cost) => sum + cost, 0);
-  
-  // Installation time calculation (days)
-  const baseInstallationTime = Math.ceil(wallArea / 25); // 25m² per day base
-  const installationTime = Math.max(1, baseInstallationTime * finishMultiplier);
   
   return {
     plateQuantity,
@@ -111,9 +103,7 @@ export function calculateDrywallInstallation(input: DrywallCalculationInput): Dr
     screwsQuantity,
     jointCompoundQuantity,
     tapeQuantity,
-    laborHours,
     itemizedCosts,
     totalCost,
-    installationTime
   };
 }

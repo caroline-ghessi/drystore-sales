@@ -15,9 +15,11 @@ interface ShingleCalculatorProps {
 export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
   const [input, setInput] = useState<ShingleCalculationInput>({
     roofArea: 100,
-    roofSlope: 30,
+    roofSlope: 25, // Now in percentage instead of degrees
     roofComplexity: 'medium',
-    underlaymentType: 'standard',
+    shingleType: 'oakridge',
+    perimeter: 40,
+    ridgeLength: 10,
     ventilationRequired: false,
     guttersIncluded: false,
     complexity: 'medium',
@@ -62,7 +64,7 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
 
           {/* Roof Slope */}
           <div>
-            <Label htmlFor="roofSlope">Inclinação do Telhado (graus) *</Label>
+            <Label htmlFor="roofSlope">Inclinação do Telhado (%) *</Label>
             <Input
               id="roofSlope"
               type="number"
@@ -71,12 +73,65 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
                 ...input,
                 roofSlope: Number(e.target.value)
               })}
-              placeholder="30"
-              min="0"
-              max="90"
+              placeholder="25"
+              min="17"
+              max="50"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              0° = plano, 30° = padrão, 45°+ = íngreme
+              Mínimo 17% (10°). 25% = padrão, 45%+ = íngreme
+            </p>
+          </div>
+
+          {/* Shingle Type */}
+          <div>
+            <Label>Tipo de Telha Shingle *</Label>
+            <Select
+              value={input.shingleType}
+              onValueChange={(value: any) => setInput({ ...input, shingleType: value })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="oakridge">Oakridge - 30 anos garantia</SelectItem>
+                <SelectItem value="supreme">Supreme - 25 anos garantia</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Perimeter */}
+          <div>
+            <Label htmlFor="perimeter">Perímetro dos Beirais (m) *</Label>
+            <Input
+              id="perimeter"
+              type="number"
+              value={input.perimeter}
+              onChange={(e) => setInput({
+                ...input,
+                perimeter: Number(e.target.value)
+              })}
+              placeholder="40"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Perímetro total das bordas do telhado
+            </p>
+          </div>
+
+          {/* Ridge Length */}
+          <div>
+            <Label htmlFor="ridgeLength">Comprimento da Cumeeira (m) *</Label>
+            <Input
+              id="ridgeLength"
+              type="number"
+              value={input.ridgeLength}
+              onChange={(e) => setInput({
+                ...input,
+                ridgeLength: Number(e.target.value)
+              })}
+              placeholder="10"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Comprimento total das cumeeiras e espigões
             </p>
           </div>
 
@@ -100,19 +155,21 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
 
           {/* Underlayment Type */}
           <div>
-            <Label>Tipo de Manta *</Label>
+            <Label>Tipo de Manta Asfáltica *</Label>
             <Select
-              value={input.underlaymentType}
-              onValueChange={(value: any) => setInput({ ...input, underlaymentType: value })}
+              value="rhinoroof"
+              disabled
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="standard">Padrão - Proteção básica</SelectItem>
-                <SelectItem value="premium">Premium - Proteção superior</SelectItem>
+                <SelectItem value="rhinoroof">RhinoRoof - 300g/m² (padrão)</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Manta de subcobertura padrão do sistema
+            </p>
           </div>
 
           {/* Region */}

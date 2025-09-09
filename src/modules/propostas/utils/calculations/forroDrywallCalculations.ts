@@ -209,17 +209,6 @@ export function calculateForroDrywall(input: ForroDrywallCalculationInput): Forr
     ) * totalMultiplier;
   }
 
-  // Mão de obra
-  const laborCost = ceilingArea * BASE_PRICES.labor * totalMultiplier;
-
-  // ===== TEMPOS DE INSTALAÇÃO =====
-  // Baseado na produtividade: 20-30 m²/dia para estrutura + placas
-  const baseInstallationDays = Math.ceil(ceilingArea / 25); // 25 m²/dia médio
-  const installationTime = Math.max(1, baseInstallationDays * complexityMultiplier);
-  
-  // Horas de mão de obra (8 horas por dia, 2 pessoas)
-  const laborHours = installationTime * 8 * 2;
-
   // ===== RESULTADO FINAL =====
   const itemizedCosts = {
     plates: plateCost,
@@ -230,11 +219,10 @@ export function calculateForroDrywall(input: ForroDrywallCalculationInput): Forr
     finishing: finishingCost,
     insulation: includeInsulation ? insulationCost : undefined,
     accessories: includeAccessories ? accessoriesCost : undefined,
-    labor: laborCost,
   };
 
   const totalCost = plateCost + profileCost + suspensionCost + perimetralCost + 
-                   screwsCost + finishingCost + insulationCost + accessoriesCost + laborCost;
+                   screwsCost + finishingCost + insulationCost + accessoriesCost;
 
   return {
     plateQuantity,
@@ -251,8 +239,6 @@ export function calculateForroDrywall(input: ForroDrywallCalculationInput): Forr
     fiberQuantity,
     insulationQuantity,
     accessories,
-    laborHours,
-    installationTime,
     itemizedCosts,
     totalCost,
   };
