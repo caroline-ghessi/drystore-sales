@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,8 @@ import {
   Download,
   MessageSquare,
   Calendar,
-  DollarSign
+  DollarSign,
+  Calculator
 } from 'lucide-react';
 
 interface Proposal {
@@ -26,6 +28,7 @@ interface Proposal {
 
 export default function ProposalsListPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
 
   // Mock data - would come from database
   const proposals: Proposal[] = [
@@ -126,10 +129,20 @@ export default function ProposalsListPage() {
             Gerencie todas as suas propostas comerciais
           </p>
         </div>
-        <DryStoreButton>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Proposta
-        </DryStoreButton>
+        <div className="flex items-center space-x-3">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/propostas/calculos-salvos')}
+            className="border-drystore-orange text-drystore-orange hover:bg-drystore-orange hover:text-white"
+          >
+            <Calculator className="mr-2 h-4 w-4" />
+            Cálculos Salvos
+          </Button>
+          <DryStoreButton>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Proposta
+          </DryStoreButton>
+        </div>
       </div>
 
       {/* Stats Cards */}
