@@ -12,7 +12,8 @@ import { ProductType, ClientData } from '../../types/proposal.types';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useProposalCalculator } from '../../hooks/useProposalCalculator';
 import { useSavedCalculations } from '../../hooks/useSavedCalculations';
-import { SolarCalculator } from '../calculator/SolarCalculator';
+import { SimpleSolarCalculator } from '../calculator/SimpleSolarCalculator';
+import { BatteryBackupCalculator } from '../calculator/BatteryBackupCalculator';
 import { ShingleCalculator } from '../calculator/ShingleCalculator';
 import { DrywallCalculator } from '../calculator/DrywallCalculator';
 import { ForroDrywallCalculator } from '../calculator/ForroDrywallCalculator';
@@ -114,7 +115,9 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   const renderCalculator = () => {
     switch (productType) {
       case 'solar':
-        return <SolarCalculator onCalculate={calculator.calculate} />;
+        return <SimpleSolarCalculator onCalculate={calculator.calculate} />;
+      case 'battery_backup':
+        return <BatteryBackupCalculator onCalculate={calculator.calculate} />;
       case 'shingle':
         return <ShingleCalculator onCalculate={calculator.calculate} />;
       case 'drywall':
@@ -209,6 +212,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {[
                     { value: 'solar', label: 'Energia Solar', description: 'Sistemas fotovoltaicos' },
+                    { value: 'battery_backup', label: 'Sistema de Backup', description: 'Baterias + inversor híbrido' },
                     { value: 'shingle', label: 'Telha Shingle', description: 'Telhados e coberturas' },
                     { value: 'drywall', label: 'Drywall', description: 'Divisórias e paredes' },
                     { value: 'steel_frame', label: 'Steel Frame', description: 'Estruturas metálicas' },

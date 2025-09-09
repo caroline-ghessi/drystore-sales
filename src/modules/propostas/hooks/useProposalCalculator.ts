@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo } from 'react';
 import { ProductType, ProposalItem } from '../types/proposal.types';
 import { CalculationInput, CalculationResult } from '../types/calculation.types';
-import { calculateSolarSystem } from '../utils/calculations/solarCalculations';
+import { calculateSimpleSolarSystem } from '../utils/calculations/simpleSolarCalculations';
+import { calculateBatteryBackup } from '../utils/calculations/batteryBackupCalculations';
 import { calculateShingleInstallation } from '../utils/calculations/shingleCalculations';
 import { calculateDrywallInstallation } from '../utils/calculations/drywallCalculations';
 import { calculateForroDrywall } from '../utils/calculations/forroDrywallCalculations';
@@ -21,7 +22,10 @@ export function useProposalCalculator(productType: ProductType) {
       
       switch (productType) {
         case 'solar':
-          result = calculateSolarSystem(input as any);
+          result = calculateSimpleSolarSystem(input as any);
+          break;
+        case 'battery_backup':
+          result = calculateBatteryBackup(input as any);
           break;
         case 'shingle':
           result = calculateShingleInstallation(input as any);
@@ -67,6 +71,25 @@ export function useProposalCalculator(productType: ProductType) {
           unitPrice: solarResult.totalCost,
           totalPrice: solarResult.totalCost,
           materialCost: solarResult.totalCost
+        });
+        break;
+        
+      case 'battery_backup':
+        const batteryResult = calculationResult as any;
+        items.push({
+          id: '1',
+          product: 'battery_backup',
+          description: `Sistema de Backup ${batteryResult.totalPowerRequired.toFixed(2)} kW`,
+          specifications: {
+            power: batteryResult.totalPowerRequired,
+            batteries: batteryResult.batteryConfiguration.batteryQuantity,
+            inverters: batteryResult.inverterQuantity,
+            autonomy: batteryResult.batteryConfiguration.autonomyHours
+          },
+          quantity: 1,
+          unitPrice: batteryResult.totalCost,
+          totalPrice: batteryResult.totalCost,
+          materialCost: batteryResult.totalCost
         });
         break;
         
@@ -153,7 +176,19 @@ export function useProposalCalculator(productType: ProductType) {
             { label: 'Potência do Sistema', value: `${solar.systemPower.toFixed(2)} kWp` },
             { label: 'Geração Mensal', value: `${solar.monthlyGeneration.toFixed(0)} kWh` },
             { label: 'Economia Mensal', value: `R$ ${solar.monthlySavings.toFixed(2)}` },
-            { label: 'Payback', value: `${solar.paybackPeriod.toFixed(1)} anos` }
+            { label: 'Payback', value: `${(solar.paybackPeriod / 12).toFixed(1)} anos` }
+          ]
+        };
+        
+      case 'battery_backup':
+        const battery = calculationResult as any;
+        return {
+          totalCost: battery.totalCost,
+          keyMetrics: [
+            { label: 'Potência do Sistema', value: `${battery.totalPowerRequired.toFixed(2)} kW` },
+            { label: 'Capacidade', value: `${battery.batteryConfiguration.totalCapacityKwh.toFixed(1)} kWh` },
+            { label: 'Autonomia', value: `${battery.batteryConfiguration.autonomyHours.toFixed(0)} horas` },
+            { label: 'Payback', value: `${(battery.economicMetrics.paybackPeriod / 12).toFixed(1)} anos` }
           ]
         };
         
