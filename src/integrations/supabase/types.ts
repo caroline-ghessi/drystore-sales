@@ -2419,6 +2419,62 @@ export type Database = {
           },
         ]
       }
+      vendor_permissions: {
+        Row: {
+          access_level: string
+          allowed_product_categories: Json | null
+          can_access_calculator: boolean | null
+          can_generate_proposals: boolean | null
+          can_save_calculations: boolean | null
+          can_view_ranking: boolean | null
+          created_at: string | null
+          id: string
+          max_discount_percentage: number | null
+          max_proposal_value: number | null
+          updated_at: string | null
+          user_id: string | null
+          vendor_id: string
+        }
+        Insert: {
+          access_level?: string
+          allowed_product_categories?: Json | null
+          can_access_calculator?: boolean | null
+          can_generate_proposals?: boolean | null
+          can_save_calculations?: boolean | null
+          can_view_ranking?: boolean | null
+          created_at?: string | null
+          id?: string
+          max_discount_percentage?: number | null
+          max_proposal_value?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          vendor_id: string
+        }
+        Update: {
+          access_level?: string
+          allowed_product_categories?: Json | null
+          can_access_calculator?: boolean | null
+          can_generate_proposals?: boolean | null
+          can_save_calculations?: boolean | null
+          can_view_ranking?: boolean | null
+          created_at?: string | null
+          id?: string
+          max_discount_percentage?: number | null
+          max_proposal_value?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_permissions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_quality_analysis: {
         Row: {
           agent_id: string | null

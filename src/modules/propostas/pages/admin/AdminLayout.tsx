@@ -21,6 +21,7 @@ import ApprovacoesPage from './ApprovacoesPage';
 import VendorMappingModal from '../../components/admin/VendorMappingModal';
 import { VendorEmailSetupModal } from '../../components/admin/VendorEmailSetupModal';
 import { VendorAccountCreationModal } from '../../components/admin/VendorAccountCreationModal';
+import { VendorPermissionsSetupModal } from '../../components/admin/VendorPermissionsSetupModal';
 import { useVendedoresProposta } from '../../hooks/useVendedoresProposta';
 import { useSalesQuotas } from '../../hooks/useSalesQuotas';
 import { useVendorApprovals } from '../../hooks/useVendorApprovals';
@@ -30,6 +31,8 @@ export default function AdminLayout() {
   const [showVendorMapping, setShowVendorMapping] = useState(false);
   const [showEmailSetup, setShowEmailSetup] = useState(false);
   const [showAccountCreation, setShowAccountCreation] = useState(false);
+  const [showPermissionsSetup, setShowPermissionsSetup] = useState(false);
+  const [selectedVendorForPermissions, setSelectedVendorForPermissions] = useState<any>(null);
   
   const { data: vendors } = useVendedoresProposta();
   const { data: quotas } = useSalesQuotas();
@@ -143,6 +146,10 @@ export default function AdminLayout() {
             onOpenVendorMapping={() => setShowVendorMapping(true)}
             onOpenEmailSetup={() => setShowEmailSetup(true)}
             onOpenAccountCreation={() => setShowAccountCreation(true)}
+            onOpenPermissionsSetup={(vendor) => {
+              setSelectedVendorForPermissions(vendor);
+              setShowPermissionsSetup(true);
+            }}
           />} />
           <Route path="metas" element={<MetasPage />} />
           <Route path="aprovacoes" element={<ApprovacoesPage />} />
@@ -164,6 +171,16 @@ export default function AdminLayout() {
           onClose={() => setShowAccountCreation(false)}
           vendors={vendors}
         />
+
+        <VendorPermissionsSetupModal
+          open={showPermissionsSetup}
+          onClose={() => setShowPermissionsSetup(false)}
+          vendor={selectedVendorForPermissions}
+          onComplete={() => {
+            setSelectedVendorForPermissions(null);
+            setShowPermissionsSetup(false);
+          }}
+        />
       </div>
     </div>
   );
@@ -175,7 +192,8 @@ function AdminDashboard({
   approvals, 
   onOpenVendorMapping,
   onOpenEmailSetup,
-  onOpenAccountCreation
+  onOpenAccountCreation,
+  onOpenPermissionsSetup
 }: { 
   vendors: any[]; 
   quotas: any[]; 
@@ -183,12 +201,15 @@ function AdminDashboard({
   onOpenVendorMapping: () => void;
   onOpenEmailSetup: () => void;
   onOpenAccountCreation: () => void;
+  onOpenPermissionsSetup: (vendor: any) => void;
 }) {
   const totalVendors = vendors.length;
   const vendorsWithEmail = vendors.filter(v => v.email).length;
   const vendorsWithAccount = vendors.filter(v => v.profile?.user_id).length;
+  const vendorsWithPermissions = vendors.filter(v => v.permissions_configured).length;
   const vendorsNeedingEmail = totalVendors - vendorsWithEmail;
   const vendorsNeedingAccount = vendorsWithEmail - vendorsWithAccount;
+  const vendorsNeedingPermissions = vendorsWithAccount - vendorsWithPermissions;
   const pendingApprovals = approvals.filter(a => a.status === 'pending').length;
   
   const totalQuota = quotas.reduce((sum, q) => sum + (q.quota_amount || 0), 0);
@@ -293,6 +314,44 @@ function AdminDashboard({
           </Card>
         )}
 
+        {/* Configurar Permissões */}
+        {vendorsNeedingPermissions > 0 && (
+          <Card className="border-l-4 border-l-purple-500 bg-purple-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-purple-800">
+                <Settings className="h-5 w-5" />
+                Configurar Permissões
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-purple-700 mb-4">
+                {vendorsNeedingPermissions} vendedor(es) precisam de permissões configuradas
+              </p>
+              <div className="space-y-2">
+                {vendors
+                  .filter(v => v.profile?.user_id && !v.permissions_configured)
+                  .slice(0, 3)
+                  .map(vendor => (
+                    <Button
+                      key={vendor.id}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onOpenPermissionsSetup(vendor)}
+                      className="w-full justify-start text-sm"
+                    >
+                      {vendor.name}
+                    </Button>
+                  ))}
+                {vendorsNeedingPermissions > 3 && (
+                  <p className="text-xs text-purple-600 text-center">
+                    +{vendorsNeedingPermissions - 3} mais vendedores
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Criar Contas */}
         {vendorsNeedingAccount > 0 && (
           <Card className="border-l-4 border-l-blue-500 bg-blue-50">
@@ -304,13 +363,14 @@ function AdminDashboard({
             </CardHeader>
             <CardContent>
               <p className="text-sm text-blue-700 mb-4">
-                {vendorsNeedingAccount} vendedor(es) podem receber convite
+                {vendorsNeedingAccount} vendedor(es) podem receber convite (após configurar permissões)
               </p>
               <Button 
                 onClick={onOpenAccountCreation}
                 className="w-full bg-blue-600 hover:bg-blue-700"
+                disabled={vendorsNeedingPermissions > 0}
               >
-                Enviar Convites
+                {vendorsNeedingPermissions > 0 ? 'Configure Permissões Primeiro' : 'Enviar Convites'}
               </Button>
             </CardContent>
           </Card>
@@ -336,7 +396,11 @@ function AdminDashboard({
               </div>
               <div className="flex justify-between">
                 <span className="text-drystore-medium-gray">Com conta:</span>
-                <span className="font-medium text-green-600">{vendorsWithAccount}</span>
+                <span className="font-medium text-blue-600">{vendorsWithAccount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-drystore-medium-gray">Com permissões:</span>
+                <span className="font-medium text-green-600">{vendorsWithPermissions}</span>
               </div>
             </div>
           </CardContent>
