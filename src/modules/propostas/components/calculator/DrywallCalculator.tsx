@@ -14,9 +14,16 @@ interface DrywallCalculatorProps {
 
 export function DrywallCalculator({ onCalculate }: DrywallCalculatorProps) {
   const [input, setInput] = useState<DrywallCalculationInput>({
+    area: 0,
+    quantity: 1,
+    region: 'southeast',
     wallArea: 50,
     wallHeight: 2.8,
+    configMode: 'predefined',
+    preDefinedConfig: 'divisoria_escritorio',
     wallConfiguration: 'W111',
+    face1Type: 'knauf_st',
+    face2Type: 'knauf_st',
     plateType: 'knauf_st',
     profileType: 'M70',
     finishType: 'level_4',
@@ -34,8 +41,7 @@ export function DrywallCalculator({ onCalculate }: DrywallCalculatorProps) {
       installation: true,
       finishing: true,
       insulation: false
-    },
-    region: 'southeast'
+    }
   });
 
   const handleCalculate = () => {
