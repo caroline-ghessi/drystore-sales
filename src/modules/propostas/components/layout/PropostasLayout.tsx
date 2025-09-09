@@ -12,6 +12,7 @@ import ProposalsListPage from "@/modules/propostas/pages/ProposalsListPage";
 import SavedCalculationsPage from "@/modules/propostas/pages/SavedCalculationsPage";
 import RankingPage from "@/modules/propostas/pages/RankingPage";
 import ProductsPage from "@/modules/propostas/pages/ProductsPage";
+import AdminLayout from "@/modules/propostas/pages/admin/AdminLayout";
 
 export default function PropostasLayout() {
   return (
@@ -32,7 +33,7 @@ export default function PropostasLayout() {
               <Route path="templates" element={<div className="p-6 bg-drystore-light-gray min-h-full"><div className="text-center py-20 text-drystore-medium-gray">Templates - Em desenvolvimento</div></div>} />
               <Route path="configuracoes" element={<div className="p-6 bg-drystore-light-gray min-h-full"><div className="text-center py-20 text-drystore-medium-gray">Configurações - Em desenvolvimento</div></div>} />
               <Route path="notificacoes" element={<div className="p-6 bg-drystore-light-gray min-h-full"><div className="text-center py-20 text-drystore-medium-gray">Notificações - Em desenvolvimento</div></div>} />
-              <Route path="administracao" element={<div className="p-6 bg-drystore-light-gray min-h-full"><div className="text-center py-20 text-drystore-medium-gray">Administração - Em desenvolvimento</div></div>} />
+              <Route path="administracao/*" element={<AdminLayout />} />
             </Routes>
           </main>
         </div>

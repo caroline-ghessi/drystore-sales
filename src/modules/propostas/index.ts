@@ -3,6 +3,9 @@ export { ProposalGenerator } from './components/generator/ProposalGenerator';
 export { default as ProposalsListPage } from './pages/ProposalsListPage';
 export { default as SavedCalculationsPage } from './pages/SavedCalculationsPage';
 
+// Admin Pages
+export { AdminLayout, MetasPage, ApprovacoesPage } from './pages/admin';
+
 // Hooks
 export { useAIGeneration } from './hooks/useAIGeneration';
 export { useProposalCalculator } from './hooks/useProposalCalculator';
