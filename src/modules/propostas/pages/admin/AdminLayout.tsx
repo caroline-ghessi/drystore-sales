@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,14 +7,28 @@ import {
   CheckCircle, 
   BarChart3, 
   Settings,
-  ArrowLeft
+  ArrowLeft,
+  Users,
+  LinkIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import MetasPage from './MetasPage';
 import ApprovacoesPage from './ApprovacoesPage';
+import VendorMappingModal from '../../components/admin/VendorMappingModal';
+import { useVendedoresProposta } from '../../hooks/useVendedoresProposta';
+import { useSalesQuotas } from '../../hooks/useSalesQuotas';
+import { useVendorApprovals } from '../../hooks/useVendorApprovals';
 
 export default function AdminLayout() {
   const location = useLocation();
+  const [showVendorMapping, setShowVendorMapping] = useState(false);
+  
+  const { data: vendors } = useVendedoresProposta();
+  const { data: quotas } = useSalesQuotas();
+  const { data: approvals } = useVendorApprovals();
+
+  const mappedVendors = vendors?.filter(v => v.profile) || [];
+  const pendingApprovals = approvals?.filter(a => a.status === 'pending') || [];
   
   const adminMenuItems = [
     {
@@ -27,13 +41,13 @@ export default function AdminLayout() {
       title: 'Metas de Vendas',
       path: '/propostas/administracao/metas',
       icon: Target,
-      badge: '5 vendedores'
+      badge: `${mappedVendors.length} vendedores`
     },
     {
       title: 'Aprovações',
       path: '/propostas/administracao/aprovacoes',
       icon: CheckCircle,
-      badge: '3 pendentes'
+      badge: `${pendingApprovals.length} pendentes`
     }
   ];
 
@@ -114,16 +128,44 @@ export default function AdminLayout() {
 
         {/* Content */}
         <Routes>
-          <Route index element={<AdminDashboard />} />
+          <Route index element={<AdminDashboard 
+            vendors={vendors || []} 
+            quotas={quotas || []} 
+            approvals={approvals || []}
+            onOpenVendorMapping={() => setShowVendorMapping(true)} 
+          />} />
           <Route path="metas" element={<MetasPage />} />
           <Route path="aprovacoes" element={<ApprovacoesPage />} />
         </Routes>
+
+        <VendorMappingModal 
+          open={showVendorMapping} 
+          onClose={() => setShowVendorMapping(false)} 
+        />
       </div>
     </div>
   );
 }
 
-function AdminDashboard() {
+function AdminDashboard({ 
+  vendors, 
+  quotas, 
+  approvals, 
+  onOpenVendorMapping 
+}: { 
+  vendors: any[]; 
+  quotas: any[]; 
+  approvals: any[]; 
+  onOpenVendorMapping: () => void; 
+}) {
+  const totalVendors = vendors.length;
+  const mappedVendors = vendors.filter(v => v.profile).length;
+  const pendingApprovals = approvals.filter(a => a.status === 'pending').length;
+  
+  const totalQuota = quotas.reduce((sum, q) => sum + (q.quota_amount || 0), 0);
+  const totalAchieved = quotas.reduce((sum, q) => sum + (q.achieved_amount || 0), 0);
+  const generalPercentage = totalQuota > 0 ? Math.round(totalAchieved / totalQuota * 100) : 0;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {/* Overview Cards */}
@@ -134,7 +176,7 @@ function AdminDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-drystore-dark-gray">3</div>
+          <div className="text-2xl font-bold text-drystore-dark-gray">{pendingApprovals}</div>
           <p className="text-xs text-drystore-medium-gray mt-1">
             Descontos aguardando aprovação
           </p>
@@ -144,13 +186,13 @@ function AdminDashboard() {
       <Card className="border-l-4 border-l-green-500">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium text-drystore-medium-gray">
-            Vendedores Ativos
+            Vendedores
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-drystore-dark-gray">5</div>
+          <div className="text-2xl font-bold text-drystore-dark-gray">{totalVendors}</div>
           <p className="text-xs text-drystore-medium-gray mt-1">
-            Com metas configuradas
+            {mappedVendors} com perfis mapeados
           </p>
         </CardContent>
       </Card>
@@ -162,9 +204,9 @@ function AdminDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-drystore-dark-gray">78%</div>
+          <div className="text-2xl font-bold text-drystore-dark-gray">{generalPercentage}%</div>
           <p className="text-xs text-drystore-medium-gray mt-1">
-            R$ 156k de R$ 200k
+            R$ {(totalAchieved / 1000).toFixed(0)}k de R$ {(totalQuota / 1000).toFixed(0)}k
           </p>
         </CardContent>
       </Card>
@@ -175,7 +217,19 @@ function AdminDashboard() {
           <CardTitle className="text-drystore-dark-gray">Ações Rápidas</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button 
+              variant="outline" 
+              className="justify-start h-auto py-4 border-drystore-orange/20 hover:bg-drystore-light-orange/10"
+              onClick={onOpenVendorMapping}
+            >
+              <LinkIcon className="h-5 w-5 mr-3 text-drystore-orange" />
+              <div className="text-left">
+                <div className="font-medium text-drystore-dark-gray">Mapear Vendedores</div>
+                <div className="text-sm text-drystore-medium-gray">Conectar aos usuários do sistema</div>
+              </div>
+            </Button>
+
             <Button 
               variant="outline" 
               className="justify-start h-auto py-4 border-drystore-orange/20 hover:bg-drystore-light-orange/10"
@@ -194,7 +248,7 @@ function AdminDashboard() {
               <CheckCircle className="h-5 w-5 mr-3 text-drystore-orange" />
               <div className="text-left">
                 <div className="font-medium text-drystore-dark-gray">Revisar Aprovações</div>
-                <div className="text-sm text-drystore-medium-gray">3 solicitações pendentes</div>
+                <div className="text-sm text-drystore-medium-gray">{pendingApprovals} solicitações pendentes</div>
               </div>
             </Button>
           </div>

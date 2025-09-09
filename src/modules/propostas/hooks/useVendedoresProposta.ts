@@ -23,24 +23,30 @@ export function useVendedoresProposta() {
   return useQuery({
     queryKey: ['vendors-proposta'],
     queryFn: async () => {
-      const { data: vendors, error } = await supabase
+      // Buscar vendors com seus mapeamentos
+      const { data: vendorsWithMapping, error } = await supabase
         .from('vendors')
-        .select('*')
+        .select(`
+          *,
+          vendor_user_mapping(
+            user_id,
+            role_type,
+            profiles(user_id, display_name, email, department)
+          )
+        `)
         .eq('is_active', true)
         .order('name');
 
       if (error) throw error;
 
-      // Por enquanto, retornar vendors sem mapping
-      // TODO: Implementar mapping quando tabela estiver criada
-      const vendorsWithProfiles = vendors?.map(vendor => ({
+      const vendorsWithProfiles = vendorsWithMapping?.map(vendor => ({
         ...vendor,
-        profile: {
-          user_id: vendor.id,
-          display_name: vendor.name,
-          email: `${vendor.name.toLowerCase().replace(' ', '.')}@empresa.com`,
-          department: 'Vendas'
-        }
+        profile: vendor.vendor_user_mapping?.[0]?.profiles ? {
+          user_id: vendor.vendor_user_mapping[0].profiles.user_id,
+          display_name: vendor.vendor_user_mapping[0].profiles.display_name,
+          email: vendor.vendor_user_mapping[0].profiles.email,
+          department: vendor.vendor_user_mapping[0].profiles.department || 'Vendas'
+        } : null
       })) || [];
 
       return vendorsWithProfiles as VendorProposta[];
@@ -48,7 +54,6 @@ export function useVendedoresProposta() {
   });
 }
 
-// Hook para criar mapeamento vendor -> user (mock por enquanto)
 export function useCreateVendorMapping() {
   const queryClient = useQueryClient();
 
@@ -58,12 +63,22 @@ export function useCreateVendorMapping() {
       userId: string;
       roleType?: string;
     }) => {
-      // Mock por enquanto - implementar quando tabela estiver criada
-      console.log('Create mapping (mock):', { vendorId, userId, roleType });
-      return { id: 'new-mapping', vendor_id: vendorId, user_id: userId, role_type: roleType };
+      const { data, error } = await supabase
+        .from('vendor_user_mapping')
+        .insert({
+          vendor_id: vendorId,
+          user_id: userId,
+          role_type: roleType
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors-proposta'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-quotas'] });
     },
   });
 }
