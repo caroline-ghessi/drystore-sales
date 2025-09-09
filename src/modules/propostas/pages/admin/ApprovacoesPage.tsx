@@ -11,9 +11,16 @@ import {
   DollarSign,
   Calendar,
   FileText,
-  Filter
+  Filter,
+  Loader2
 } from 'lucide-react';
 import { DryStoreButton } from '@/modules/propostas/components/ui/DryStoreButton';
+import { 
+  useVendorApprovals, 
+  useVendorApprovalsStats, 
+  useApproveVendorApproval, 
+  useRejectVendorApproval 
+} from '../../hooks/useVendorApprovals';
 
 interface DiscountApproval {
   id: string;
@@ -36,68 +43,22 @@ export default function ApprovacoesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
-  // Mock data - would come from database
-  const approvals: DiscountApproval[] = [
-    {
-      id: '1',
-      proposalId: 'PROP-2024-001',
-      clientName: 'Construtora ABC Ltda',
-      vendorName: 'João Silva',
-      vendorEmail: 'joao@empresa.com',
-      originalValue: 50000,
-      discountPercentage: 15,
-      discountValue: 7500,
-      finalValue: 42500,
-      reason: 'Cliente solicitou desconto para fechar hoje',
-      requestedAt: '2024-01-15T10:30:00Z',
-      status: 'pending'
-    },
-    {
-      id: '2',
-      proposalId: 'PROP-2024-002',
-      clientName: 'Incorporadora XYZ',
-      vendorName: 'Maria Santos',
-      vendorEmail: 'maria@empresa.com',
-      originalValue: 75000,
-      discountPercentage: 12,
-      discountValue: 9000,
-      finalValue: 66000,
-      reason: 'Concorrência ofereceu preço menor',
-      requestedAt: '2024-01-14T15:45:00Z',
-      status: 'approved',
-      approvedBy: 'Admin Master',
-      approvedAt: '2024-01-14T16:20:00Z'
-    },
-    {
-      id: '3',
-      proposalId: 'PROP-2024-003',
-      clientName: 'Reformas Silva & Cia',
-      vendorName: 'Pedro Costa',
-      vendorEmail: 'pedro@empresa.com',
-      originalValue: 30000,
-      discountPercentage: 20,
-      discountValue: 6000,
-      finalValue: 24000,
-      reason: 'Desconto solicitado sem justificativa adequada',
-      requestedAt: '2024-01-13T09:15:00Z',
-      status: 'rejected',
-      approvedBy: 'Admin Master',
-      approvedAt: '2024-01-13T14:30:00Z'
-    }
-  ];
+  // Hooks para dados reais
+  const { data: approvals = [], isLoading } = useVendorApprovals(statusFilter);
+  const stats = useVendorApprovalsStats();
+  const approveApproval = useApproveVendorApproval();
+  const rejectApproval = useRejectVendorApproval();
 
   const filteredApprovals = approvals.filter(approval => {
     const matchesSearch = 
-      approval.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      approval.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      approval.proposalId.toLowerCase().includes(searchTerm.toLowerCase());
+      approval.proposal?.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      approval.user_profile?.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      approval.proposal?.proposal_number?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || approval.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
 
-  const getStatusBadge = (status: DiscountApproval['status']) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
         return (
@@ -135,19 +96,35 @@ export default function ApprovacoesPage() {
     });
   };
 
-  const handleApprove = (approvalId: string) => {
-    console.log('Aprovando:', approvalId);
-    // Implementar lógica de aprovação
+  const handleApprove = async (approvalId: string) => {
+    try {
+      await approveApproval.mutateAsync({ 
+        id: approvalId,
+        // Pode passar approved_amount se necessário
+      });
+    } catch (error) {
+      console.error('Erro ao aprovar:', error);
+    }
   };
 
-  const handleReject = (approvalId: string) => {
-    console.log('Rejeitando:', approvalId);
-    // Implementar lógica de rejeição
+  const handleReject = async (approvalId: string) => {
+    try {
+      await rejectApproval.mutateAsync({ 
+        id: approvalId,
+        notes: 'Rejeitado pelo administrador'
+      });
+    } catch (error) {
+      console.error('Erro ao rejeitar:', error);
+    }
   };
 
-  const getPendingCount = () => approvals.filter(a => a.status === 'pending').length;
-  const getApprovedCount = () => approvals.filter(a => a.status === 'approved').length;
-  const getRejectedCount = () => approvals.filter(a => a.status === 'rejected').length;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-drystore-orange" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -159,10 +136,10 @@ export default function ApprovacoesPage() {
             Gerencie solicitações de aprovação de desconto
           </p>
         </div>
-        <div className="text-right">
-          <div className="text-sm text-drystore-medium-gray">Pendentes</div>
-          <div className="text-2xl font-bold text-drystore-orange">{getPendingCount()}</div>
-        </div>
+          <div className="text-right">
+            <div className="text-sm text-drystore-medium-gray">Pendentes</div>
+            <div className="text-2xl font-bold text-drystore-orange">{stats.pendingCount}</div>
+          </div>
       </div>
 
       {/* Summary Cards */}
@@ -175,7 +152,7 @@ export default function ApprovacoesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-drystore-dark-gray">{getPendingCount()}</div>
+            <div className="text-2xl font-bold text-drystore-dark-gray">{stats.pendingCount}</div>
           </CardContent>
         </Card>
 
@@ -187,7 +164,7 @@ export default function ApprovacoesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-drystore-dark-gray">{getApprovedCount()}</div>
+            <div className="text-2xl font-bold text-drystore-dark-gray">{stats.approvedCount}</div>
           </CardContent>
         </Card>
 
@@ -199,7 +176,7 @@ export default function ApprovacoesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-drystore-dark-gray">{getRejectedCount()}</div>
+            <div className="text-2xl font-bold text-drystore-dark-gray">{stats.rejectedCount}</div>
           </CardContent>
         </Card>
       </div>
@@ -243,10 +220,14 @@ export default function ApprovacoesPage() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
-                        <h3 className="font-medium text-drystore-dark-gray">{approval.proposalId}</h3>
+                        <h3 className="font-medium text-drystore-dark-gray">
+                          {approval.proposal?.proposal_number || `Aprovação ${approval.id.slice(0, 8)}`}
+                        </h3>
                         {getStatusBadge(approval.status)}
                       </div>
-                      <p className="text-sm text-drystore-medium-gray">{approval.clientName}</p>
+                      <p className="text-sm text-drystore-medium-gray">
+                        {approval.proposal?.customer?.name || 'Cliente não informado'}
+                      </p>
                     </div>
                   </div>
 
@@ -256,44 +237,55 @@ export default function ApprovacoesPage() {
                       <div className="flex items-center space-x-2">
                         <User className="h-4 w-4 text-drystore-medium-gray" />
                         <span className="text-sm text-drystore-medium-gray">
-                          Vendedor: <span className="font-medium text-drystore-dark-gray">{approval.vendorName}</span>
+                          Solicitante: <span className="font-medium text-drystore-dark-gray">
+                            {approval.user_profile?.display_name || 'Usuário não identificado'}
+                          </span>
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4 text-drystore-medium-gray" />
                         <span className="text-sm text-drystore-medium-gray">
-                          Solicitado em: <span className="font-medium text-drystore-dark-gray">{formatDate(approval.requestedAt)}</span>
+                          Solicitado em: <span className="font-medium text-drystore-dark-gray">
+                            {formatDate(approval.requested_at)}
+                          </span>
                         </span>
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-drystore-medium-gray">Valor Original:</span>
-                        <span className="font-medium text-drystore-dark-gray">R$ {approval.originalValue.toLocaleString()}</span>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-drystore-medium-gray">Valor Solicitado:</span>
+                          <span className="font-medium text-drystore-dark-gray">
+                            R$ {(approval.requested_amount || 0).toLocaleString()}
+                          </span>
+                        </div>
+                        {approval.approved_amount && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-drystore-medium-gray">Valor Aprovado:</span>
+                            <span className="font-medium text-green-600">
+                              R$ {approval.approved_amount.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between border-t pt-2">
+                          <span className="text-sm font-medium text-drystore-dark-gray">Tipo:</span>
+                          <span className="font-bold text-drystore-orange">{approval.approval_type}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-drystore-medium-gray">Desconto ({approval.discountPercentage}%):</span>
-                        <span className="font-medium text-red-600">- R$ {approval.discountValue.toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center justify-between border-t pt-2">
-                        <span className="text-sm font-medium text-drystore-dark-gray">Valor Final:</span>
-                        <span className="font-bold text-drystore-orange">R$ {approval.finalValue.toLocaleString()}</span>
-                      </div>
-                    </div>
                   </div>
 
                   {/* Reason */}
                   <div className="bg-drystore-light-gray/50 p-3 rounded-md">
                     <p className="text-sm text-drystore-medium-gray">
-                      <span className="font-medium">Justificativa:</span> {approval.reason}
+                      <span className="font-medium">Justificativa:</span> {approval.justification || 'Não informado'}
                     </p>
                   </div>
 
                   {/* Approval Info */}
-                  {approval.status !== 'pending' && (
+                  {approval.status !== 'pending' && approval.responded_at && (
                     <div className="text-sm text-drystore-medium-gray">
-                      {approval.status === 'approved' ? 'Aprovado' : 'Rejeitado'} por {approval.approvedBy} em {formatDate(approval.approvedAt!)}
+                      {approval.status === 'approved' ? 'Aprovado' : 'Rejeitado'} por {' '}
+                      {approval.approver_profile?.display_name || 'Sistema'} em {formatDate(approval.responded_at)}
                     </div>
                   )}
                 </div>

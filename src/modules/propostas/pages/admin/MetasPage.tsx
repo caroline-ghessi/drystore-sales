@@ -11,79 +11,44 @@ import {
   User,
   DollarSign,
   Edit2,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { DryStoreButton } from '@/modules/propostas/components/ui/DryStoreButton';
-
-interface SalesQuota {
-  id: string;
-  vendorName: string;
-  vendorEmail: string;
-  period: string;
-  quota: number;
-  achieved: number;
-  percentage: number;
-  status: 'on-track' | 'behind' | 'exceeded';
-}
+import { useSalesQuotas, useSalesQuotasStats } from '../../hooks/useSalesQuotas';
 
 export default function MetasPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
 
-  // Mock data - would come from database
-  const salesQuotas: SalesQuota[] = [
-    {
-      id: '1',
-      vendorName: 'João Silva',
-      vendorEmail: 'joao@empresa.com',
-      period: 'Janeiro 2024',
-      quota: 50000,
-      achieved: 39000,
-      percentage: 78,
-      status: 'on-track'
-    },
-    {
-      id: '2',
-      vendorName: 'Maria Santos',
-      vendorEmail: 'maria@empresa.com',
-      period: 'Janeiro 2024',
-      quota: 45000,
-      achieved: 52000,
-      percentage: 115,
-      status: 'exceeded'
-    },
-    {
-      id: '3',
-      vendorName: 'Pedro Costa',
-      vendorEmail: 'pedro@empresa.com',
-      period: 'Janeiro 2024',
-      quota: 40000,
-      achieved: 22000,
-      percentage: 55,
-      status: 'behind'
-    }
-  ];
+  // Hooks para dados reais
+  const { data: salesQuotas = [], isLoading } = useSalesQuotas(currentYear, currentMonth);
+  const stats = useSalesQuotasStats(currentYear, currentMonth);
 
   const filteredQuotas = salesQuotas.filter(quota =>
-    quota.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    quota.vendorEmail.toLowerCase().includes(searchTerm.toLowerCase())
+    quota.profile?.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    quota.profile?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    quota.vendor?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusBadge = (status: SalesQuota['status']) => {
-    switch (status) {
-      case 'exceeded':
-        return <Badge className="bg-green-100 text-green-800">Superou Meta</Badge>;
-      case 'on-track':
-        return <Badge className="bg-blue-100 text-blue-800">No Caminho</Badge>;
-      case 'behind':
-        return <Badge className="bg-red-100 text-red-800">Abaixo da Meta</Badge>;
-      default:
-        return <Badge variant="secondary">Indefinido</Badge>;
+  const getStatusBadge = (percentage: number) => {
+    if (percentage >= 100) {
+      return <Badge className="bg-green-100 text-green-800">Superou Meta</Badge>;
+    } else if (percentage >= 70) {
+      return <Badge className="bg-blue-100 text-blue-800">No Caminho</Badge>;
+    } else {
+      return <Badge className="bg-red-100 text-red-800">Abaixo da Meta</Badge>;
     }
   };
 
-  const getTotalQuota = () => salesQuotas.reduce((sum, quota) => sum + quota.quota, 0);
-  const getTotalAchieved = () => salesQuotas.reduce((sum, quota) => sum + quota.achieved, 0);
-  const getAveragePercentage = () => Math.round(salesQuotas.reduce((sum, quota) => sum + quota.percentage, 0) / salesQuotas.length);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-drystore-orange" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -112,7 +77,7 @@ export default function MetasPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-drystore-dark-gray">
-              R$ {getTotalQuota().toLocaleString()}
+              R$ {stats.totalQuota.toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -126,7 +91,7 @@ export default function MetasPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-drystore-dark-gray">
-              R$ {getTotalAchieved().toLocaleString()}
+              R$ {stats.totalAchieved.toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -140,7 +105,7 @@ export default function MetasPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-drystore-dark-gray">
-              {getAveragePercentage()}%
+              {stats.averagePercentage}%
             </div>
           </CardContent>
         </Card>
@@ -154,7 +119,7 @@ export default function MetasPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-drystore-dark-gray">
-              {salesQuotas.length}
+              {stats.totalVendors}
             </div>
           </CardContent>
         </Card>
@@ -190,11 +155,20 @@ export default function MetasPage() {
                     <User className="h-6 w-6 text-drystore-orange" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-drystore-dark-gray">{quota.vendorName}</h3>
-                    <p className="text-sm text-drystore-medium-gray">{quota.vendorEmail}</p>
+                    <h3 className="font-medium text-drystore-dark-gray">
+                      {quota.profile?.display_name || quota.vendor?.name || 'Usuário'}
+                    </h3>
+                    <p className="text-sm text-drystore-medium-gray">
+                      {quota.profile?.email || 'Email não informado'}
+                    </p>
                     <div className="flex items-center space-x-2 mt-1">
                       <Calendar className="h-3 w-3 text-drystore-medium-gray" />
-                      <span className="text-xs text-drystore-medium-gray">{quota.period}</span>
+                      <span className="text-xs text-drystore-medium-gray">
+                        {new Date(quota.period_year, quota.period_month - 1).toLocaleDateString('pt-BR', { 
+                          month: 'long', 
+                          year: 'numeric' 
+                        })}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -203,26 +177,26 @@ export default function MetasPage() {
                   <div className="text-right">
                     <div className="text-sm text-drystore-medium-gray">Meta</div>
                     <div className="font-medium text-drystore-dark-gray">
-                      R$ {quota.quota.toLocaleString()}
+                      R$ {quota.quota_amount.toLocaleString()}
                     </div>
                   </div>
                   
                   <div className="text-right">
                     <div className="text-sm text-drystore-medium-gray">Realizado</div>
                     <div className="font-medium text-drystore-dark-gray">
-                      R$ {quota.achieved.toLocaleString()}
+                      R$ {(quota.achieved_amount || 0).toLocaleString()}
                     </div>
                   </div>
 
                   <div className="text-right">
                     <div className="text-sm text-drystore-medium-gray">Atingimento</div>
                     <div className="font-bold text-lg text-drystore-dark-gray">
-                      {quota.percentage}%
+                      {quota.percentage_achieved || 0}%
                     </div>
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    {getStatusBadge(quota.status)}
+                    {getStatusBadge(quota.percentage_achieved || 0)}
                   </div>
 
                   <div className="flex items-center space-x-2">
