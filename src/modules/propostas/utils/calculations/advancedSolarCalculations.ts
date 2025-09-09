@@ -310,7 +310,7 @@ function calculateItemizedCosts(
     batteriesCost = batteryConfig.batteryQuantity * batteryPrice;
   }
   
-  // Aplicar multiplicadores regionais e de complexidade
+  // Aplicar multiplicador regional
   const regionalMultiplier = {
     north: 1.15,
     northeast: 1.05,
@@ -319,13 +319,7 @@ function calculateItemizedCosts(
     south: 1.08
   }[input.region];
   
-  const complexityMultiplier = {
-    low: 1.0,
-    medium: 1.15,
-    high: 1.35
-  }[input.complexity];
-  
-  const multiplier = regionalMultiplier * complexityMultiplier;
+  const multiplier = regionalMultiplier;
   
   return {
     panels: panelsCost * multiplier,

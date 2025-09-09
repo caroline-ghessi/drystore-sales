@@ -11,18 +11,6 @@ const SLOPE_CORRECTION_FACTORS = {
   50: 1.118,  // 50% (27°)
 };
 
-// Multiplicadores de complexidade do telhado (perdas)
-const ROOF_COMPLEXITY_WASTE = {
-  simple: 1.10,   // 10% de perdas
-  medium: 1.12,   // 12% de perdas  
-  complex: 1.15   // 15% de perdas
-};
-
-// Multiplicadores de urgência
-const URGENCY_MULTIPLIERS = {
-  normal: 1.0,
-  express: 1.30
-};
 
 // Multiplicadores regionais
 const REGIONAL_MULTIPLIERS = {
@@ -63,26 +51,23 @@ export function calculateShingleInstallation(input: ShingleCalculationInput): Sh
   const { 
     roofArea, 
     roofSlope, 
-    roofComplexity, 
     shingleType,
     roofDetails,
     features,
-    region,
-    urgency
+    region
   } = input;
   
   // 1. Calcular área real com correção de inclinação
   const slopeFactor = getSlopeCorrectionFactor(roofSlope);
   const realArea = roofArea * slopeFactor;
   
-  // 2. Aplicar fator de perdas conforme complexidade do telhado
-  const wasteFactor = ROOF_COMPLEXITY_WASTE[roofComplexity];
+  // 2. Aplicar fator de perdas padrão (12%)
+  const wasteFactor = 1.12;
   const totalArea = realArea * wasteFactor;
   
   // 3. Calcular multiplicadores
-  const urgencyMultiplier = URGENCY_MULTIPLIERS[urgency];
   const regionalMultiplier = REGIONAL_MULTIPLIERS[region];
-  const totalMultiplier = urgencyMultiplier * regionalMultiplier;
+  const totalMultiplier = regionalMultiplier;
   
   // 4. QUANTIDADES DE MATERIAIS
   

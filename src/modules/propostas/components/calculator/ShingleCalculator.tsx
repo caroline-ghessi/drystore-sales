@@ -16,7 +16,6 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
   const [input, setInput] = useState<ShingleCalculationInput>({
     roofArea: 100,
     roofSlope: 25,
-    roofComplexity: 'medium',
     shingleType: 'asphalt',
     roofDetails: {
       perimeterLength: 40,
@@ -31,9 +30,7 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
       ventilation: false,
       insulation: false,
     },
-    complexity: 'medium',
-    region: 'southeast',
-    urgency: 'normal'
+    region: 'southeast'
   });
 
   const handleCalculate = () => {
@@ -133,23 +130,6 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
               </Select>
             </div>
 
-            {/* Roof Complexity */}
-            <div>
-              <Label>Complexidade do Telhado *</Label>
-              <Select
-                value={input.roofComplexity}
-                onValueChange={(value: any) => setInput(prev => ({ ...prev, roofComplexity: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="simple">Simples - Formato retangular</SelectItem>
-                  <SelectItem value="medium">Médio - Com algumas águas</SelectItem>
-                  <SelectItem value="complex">Complexo - Múltiplas águas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
 
@@ -252,22 +232,6 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
               </Select>
             </div>
 
-            {/* Urgency */}
-            <div>
-              <Label>Urgência do Pedido *</Label>
-              <Select
-                value={input.urgency}
-                onValueChange={(value: any) => setInput(prev => ({ ...prev, urgency: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">Normal (15-20 dias)</SelectItem>
-                  <SelectItem value="express">Expresso (7-10 dias)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
 

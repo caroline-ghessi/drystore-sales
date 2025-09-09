@@ -24,9 +24,7 @@ export function DrywallCalculator({ onCalculate }: DrywallCalculatorProps) {
       plumbingRuns: false,
       soundproofing: false
     },
-    complexity: 'medium',
-    region: 'southeast',
-    urgency: 'normal'
+    region: 'southeast'
   });
 
   const handleCalculate = () => {
@@ -140,40 +138,6 @@ export function DrywallCalculator({ onCalculate }: DrywallCalculatorProps) {
             </Select>
           </div>
 
-          {/* Complexity */}
-          <div>
-            <Label>Complexidade da Instalação *</Label>
-            <Select
-              value={input.complexity}
-              onValueChange={(value: any) => setInput({ ...input, complexity: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Baixa - Paredes retas simples</SelectItem>
-                <SelectItem value="medium">Média - Com algumas aberturas</SelectItem>
-                <SelectItem value="high">Alta - Curvas e detalhes especiais</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Urgency */}
-          <div>
-            <Label>Urgência do Pedido *</Label>
-            <Select
-              value={input.urgency}
-              onValueChange={(value: any) => setInput({ ...input, urgency: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="normal">Normal (10-15 dias)</SelectItem>
-                <SelectItem value="express">Expresso (5-7 dias)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         {/* Optional Features */}

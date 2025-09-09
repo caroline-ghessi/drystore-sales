@@ -18,9 +18,7 @@ export function SolarCalculator({ onCalculate }: SolarCalculatorProps) {
     roofOrientation: 'north',
     shadowing: 'none',
     installationType: 'grid_tie',
-    complexity: 'medium',
-    region: 'southeast',
-    urgency: 'normal'
+    region: 'southeast'
   });
 
   const handleCalculate = () => {
@@ -136,24 +134,6 @@ export function SolarCalculator({ onCalculate }: SolarCalculatorProps) {
             </Select>
           </div>
 
-          {/* Complexity */}
-          <div>
-            <Label>Complexidade da Instalação *</Label>
-            <Select
-              value={input.complexity}
-              onValueChange={(value: any) => setInput({ ...input, complexity: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Baixa - Telhado simples</SelectItem>
-                <SelectItem value="medium">Média - Telhado padrão</SelectItem>
-                <SelectItem value="high">Alta - Telhado complexo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Region */}
           <div>
             <Label>Região *</Label>
@@ -170,23 +150,6 @@ export function SolarCalculator({ onCalculate }: SolarCalculatorProps) {
                 <SelectItem value="center_west">Centro-Oeste</SelectItem>
                 <SelectItem value="southeast">Sudeste</SelectItem>
                 <SelectItem value="south">Sul</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Urgency */}
-          <div>
-            <Label>Urgência do Pedido *</Label>
-            <Select
-              value={input.urgency}
-              onValueChange={(value: any) => setInput({ ...input, urgency: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="normal">Normal (30-45 dias)</SelectItem>
-                <SelectItem value="express">Expresso (15-20 dias)</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -1,9 +1,7 @@
 export interface BaseCalculationInput {
   area?: number;
   quantity?: number;
-  complexity: 'low' | 'medium' | 'high';
   region: 'north' | 'northeast' | 'center_west' | 'southeast' | 'south';
-  urgency: 'normal' | 'express';
 }
 
 // Energia Solar
@@ -224,7 +222,6 @@ export interface BatteryBackupResult {
 export interface ShingleCalculationInput extends BaseCalculationInput {
   roofArea: number; // m²
   roofSlope: number; // degrees
-  roofComplexity: 'simple' | 'medium' | 'complex';
   shingleType: 'asphalt' | 'ceramic' | 'concrete' | 'metal';
   
   // Roof details

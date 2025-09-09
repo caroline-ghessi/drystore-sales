@@ -25,16 +25,6 @@ const REGIONAL_MULTIPLIERS = {
   south: 1.08
 };
 
-const COMPLEXITY_MULTIPLIERS = {
-  low: 1.0,
-  medium: 1.15,
-  high: 1.35
-};
-
-const URGENCY_MULTIPLIERS = {
-  normal: 1.0,
-  express: 1.25
-};
 
 // Solar irradiation by region (kWh/kWp/day)
 const SOLAR_IRRADIATION = {
@@ -59,10 +49,8 @@ export function calculateSolarSystem(input: SolarCalculationInput): SolarCalcula
   
   // Calculate costs
   const regionalMultiplier = REGIONAL_MULTIPLIERS[input.region];
-  const complexityMultiplier = COMPLEXITY_MULTIPLIERS[input.complexity];
-  const urgencyMultiplier = URGENCY_MULTIPLIERS[input.urgency];
   
-  const totalMultiplier = regionalMultiplier * complexityMultiplier * urgencyMultiplier;
+  const totalMultiplier = regionalMultiplier;
   
   const itemizedCosts = {
     panels: SOLAR_PRICES.panels.standard * systemPower * totalMultiplier,

@@ -30,16 +30,6 @@ const REGIONAL_MULTIPLIERS = {
   south: 1.08
 };
 
-const COMPLEXITY_MULTIPLIERS = {
-  low: 1.0,
-  medium: 1.25,
-  high: 1.50
-};
-
-const URGENCY_MULTIPLIERS = {
-  normal: 1.0,
-  express: 1.35
-};
 
 export function calculateDrywallInstallation(input: DrywallCalculationInput): DrywallCalculationResult {
   const { wallArea, wallHeight, drywallType, finishType, features } = input;
@@ -63,10 +53,8 @@ export function calculateDrywallInstallation(input: DrywallCalculationInput): Dr
   
   // Calculate multipliers
   const regionalMultiplier = REGIONAL_MULTIPLIERS[input.region];
-  const complexityMultiplier = COMPLEXITY_MULTIPLIERS[input.complexity];
-  const urgencyMultiplier = URGENCY_MULTIPLIERS[input.urgency];
   
-  let totalMultiplier = regionalMultiplier * complexityMultiplier * urgencyMultiplier;
+  let totalMultiplier = regionalMultiplier;
   
   // Additional factors
   if (features.insulation) totalMultiplier *= 1.20;

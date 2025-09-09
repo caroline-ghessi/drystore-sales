@@ -23,9 +23,7 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
     perimeterFinishingType: 'L_profile',
     massType: 'PVA',
     fiberType: 'fiberglass',
-    complexity: 'medium',
     region: 'southeast',
-    urgency: 'normal',
     insulation: {
       enabled: false,
     },
@@ -224,40 +222,6 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
               </Select>
             </div>
 
-            {/* Complexidade */}
-            <div>
-              <Label>Complexidade da Instalação *</Label>
-              <Select
-                value={input.complexity}
-                onValueChange={(value: any) => setInput({ ...input, complexity: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Baixa - Ambiente retangular simples</SelectItem>
-                  <SelectItem value="medium">Média - Com recortes e detalhes</SelectItem>
-                  <SelectItem value="high">Alta - Formas complexas e sancas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Urgência */}
-            <div>
-              <Label>Urgência do Pedido *</Label>
-              <Select
-                value={input.urgency}
-                onValueChange={(value: any) => setInput({ ...input, urgency: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">Normal (10-15 dias)</SelectItem>
-                  <SelectItem value="express">Expresso (5-7 dias)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
 

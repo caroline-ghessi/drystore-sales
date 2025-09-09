@@ -21,9 +21,7 @@ export function AdvancedSolarCalculator({ onCalculate }: AdvancedSolarCalculator
     roofOrientation: 'north',
     shadowing: 'none',
     installationType: 'grid_tie',
-    complexity: 'medium',
     region: 'southeast',
-    urgency: 'normal',
     dailyConsumptionPattern: {
       diurnal: 360,  // 60% diurno
       nocturnal: 240, // 40% noturno
@@ -384,41 +382,6 @@ export function AdvancedSolarCalculator({ onCalculate }: AdvancedSolarCalculator
 
         <Separator />
 
-        {/* Configurações de Projeto */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label>Complexidade da Instalação</Label>
-            <Select
-              value={input.complexity}
-              onValueChange={(value: any) => setInput({ ...input, complexity: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Baixa - Telhado simples, fácil acesso</SelectItem>
-                <SelectItem value="medium">Média - Telhado padrão</SelectItem>
-                <SelectItem value="high">Alta - Telhado complexo, difícil acesso</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label>Urgência do Projeto</Label>
-            <Select
-              value={input.urgency}
-              onValueChange={(value: any) => setInput({ ...input, urgency: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="normal">Normal (30-45 dias)</SelectItem>
-                <SelectItem value="express">Expresso (15-20 dias) +25%</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
 
         {/* Cards Informativos */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

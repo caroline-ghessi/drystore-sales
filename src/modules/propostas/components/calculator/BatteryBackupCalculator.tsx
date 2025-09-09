@@ -31,9 +31,7 @@ export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculator
       grid: true,
       generator: false
     },
-    complexity: 'medium',
     region: 'southeast',
-    urgency: 'normal',
     usagePattern: {
       dailyUsageHours: 12,
       peakUsageHours: 4,
@@ -251,22 +249,6 @@ export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculator
             </Select>
           </div>
 
-          <div>
-            <Label>Complexidade da Instalação</Label>
-            <Select
-              value={input.complexity}
-              onValueChange={(value: any) => setInput({ ...input, complexity: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Baixa - Instalação simples</SelectItem>
-                <SelectItem value="medium">Média - Instalação padrão</SelectItem>
-                <SelectItem value="high">Alta - Instalação complexa</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         {/* Validações e Alertas */}

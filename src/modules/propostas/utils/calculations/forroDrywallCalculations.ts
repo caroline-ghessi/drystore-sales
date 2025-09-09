@@ -45,16 +45,6 @@ const REGIONAL_MULTIPLIERS = {
   south: 1.08
 };
 
-const COMPLEXITY_MULTIPLIERS = {
-  low: 1.0,
-  medium: 1.25,
-  high: 1.50
-};
-
-const URGENCY_MULTIPLIERS = {
-  normal: 1.0,
-  express: 1.35
-};
 
 export function calculateForroDrywall(input: ForroDrywallCalculationInput): ForroDrywallCalculationResult {
   const { 
@@ -67,9 +57,7 @@ export function calculateForroDrywall(input: ForroDrywallCalculationInput): Forr
     fiberType,
     insulation,
     accessories,
-    complexity,
-    region,
-    urgency
+    region
   } = input;
 
   // Calculate quantities
@@ -87,7 +75,7 @@ export function calculateForroDrywall(input: ForroDrywallCalculationInput): Forr
   }
 
   // Calculate costs
-  const totalMultiplier = REGIONAL_MULTIPLIERS[region] * COMPLEXITY_MULTIPLIERS[complexity] * URGENCY_MULTIPLIERS[urgency];
+  const totalMultiplier = REGIONAL_MULTIPLIERS[region];
   
   const platesCost = plateQuantity * BASE_PRICES.plates[plateType] * totalMultiplier;
   const profilesCost = profileQuantity * BASE_PRICES.profiles.steel * totalMultiplier;
