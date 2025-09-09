@@ -17,16 +17,20 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
     roofArea: 100,
     roofSlope: 25,
     roofComplexity: 'medium',
-    shingleType: 'oakridge',
-    perimeter: 40,
-    ridgeLength: 10,
-    espigaoLength: 0,
-    valleyLength: 0,
-    stepFlashingLength: 0,
-    stepFlashingHeight: 0,
-    ventilationRequired: false,
-    rufosIncluded: false,
-    rufosPerimeter: 0,
+    shingleType: 'asphalt',
+    roofDetails: {
+      perimeterLength: 40,
+      ridgeLength: 10,
+      valleyLength: 0,
+      hipLength: 0,
+      numberOfPenetrations: 2,
+    },
+    features: {
+      gutters: false,
+      underlayment: 'standard',
+      ventilation: false,
+      insulation: false,
+    },
     complexity: 'medium',
     region: 'southeast',
     urgency: 'normal'
@@ -34,6 +38,26 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
 
   const handleCalculate = () => {
     onCalculate(input);
+  };
+
+  const updateRoofDetails = (field: keyof typeof input.roofDetails, value: number) => {
+    setInput(prev => ({
+      ...prev,
+      roofDetails: {
+        ...prev.roofDetails,
+        [field]: value
+      }
+    }));
+  };
+
+  const updateFeatures = (field: keyof typeof input.features, value: boolean | string) => {
+    setInput(prev => ({
+      ...prev,
+      features: {
+        ...prev.features,
+        [field]: value
+      }
+    }));
   };
 
   return (
@@ -59,10 +83,10 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
                 id="roofArea"
                 type="number"
                 value={input.roofArea}
-                onChange={(e) => setInput({
-                  ...input,
+                onChange={(e) => setInput(prev => ({
+                  ...prev,
                   roofArea: Number(e.target.value)
-                })}
+                }))}
                 placeholder="100"
               />
               <p className="text-xs text-muted-foreground mt-1">
@@ -72,21 +96,21 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
 
             {/* Roof Slope */}
             <div>
-              <Label htmlFor="roofSlope">Inclinação do Telhado (%) *</Label>
+              <Label htmlFor="roofSlope">Inclinação do Telhado (graus) *</Label>
               <Input
                 id="roofSlope"
                 type="number"
                 value={input.roofSlope}
-                onChange={(e) => setInput({
-                  ...input,
+                onChange={(e) => setInput(prev => ({
+                  ...prev,
                   roofSlope: Number(e.target.value)
-                })}
+                }))}
                 placeholder="25"
                 min="17"
                 max="80"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Mínimo 17% (10°). Exemplo: 25% = padrão, 45%+ = íngreme
+                Ângulo de inclinação em graus
               </p>
             </div>
 
@@ -95,14 +119,16 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
               <Label>Tipo de Telha Shingle *</Label>
               <Select
                 value={input.shingleType}
-                onValueChange={(value: any) => setInput({ ...input, shingleType: value })}
+                onValueChange={(value: any) => setInput(prev => ({ ...prev, shingleType: value }))}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="oakridge">Oakridge - 30 anos garantia</SelectItem>
-                  <SelectItem value="supreme">Supreme - 25 anos garantia</SelectItem>
+                  <SelectItem value="asphalt">Asfáltica - 30 anos garantia</SelectItem>
+                  <SelectItem value="ceramic">Cerâmica - 25 anos garantia</SelectItem>
+                  <SelectItem value="concrete">Concreto - 20 anos garantia</SelectItem>
+                  <SelectItem value="metal">Metálica - 50 anos garantia</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -112,36 +138,17 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
               <Label>Complexidade do Telhado *</Label>
               <Select
                 value={input.roofComplexity}
-                onValueChange={(value: any) => setInput({ ...input, roofComplexity: value })}
+                onValueChange={(value: any) => setInput(prev => ({ ...prev, roofComplexity: value }))}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="simple">Simples - Formato retangular (+10% perdas)</SelectItem>
-                  <SelectItem value="medium">Médio - Com algumas águas (+12% perdas)</SelectItem>
-                  <SelectItem value="complex">Complexo - Múltiplas águas (+15% perdas)</SelectItem>
+                  <SelectItem value="simple">Simples - Formato retangular</SelectItem>
+                  <SelectItem value="medium">Médio - Com algumas águas</SelectItem>
+                  <SelectItem value="complex">Complexo - Múltiplas águas</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Underlayment Type */}
-            <div className="md:col-span-2">
-              <Label>Tipo de Subcobertura *</Label>
-              <Select
-                value="rhinoroof"
-                disabled
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="rhinoroof">RhinoRoof - 300g/m² (padrão Drystore)</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Subcobertura padrão do sistema shingle
-              </p>
             </div>
           </div>
         </div>
@@ -150,39 +157,33 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
         <div>
           <Label className="text-base font-semibold">Elementos Lineares do Telhado</Label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+            {/* Perimeter Length */}
+            <div>
+              <Label htmlFor="perimeterLength">Perímetro dos Beirais (m) *</Label>
+              <Input
+                id="perimeterLength"
+                type="number"
+                value={input.roofDetails.perimeterLength}
+                onChange={(e) => updateRoofDetails('perimeterLength', Number(e.target.value))}
+                placeholder="40"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Perímetro total das bordas do telhado
+              </p>
+            </div>
+
             {/* Ridge Length */}
             <div>
               <Label htmlFor="ridgeLength">Comprimento das Cumeeiras (m) *</Label>
               <Input
                 id="ridgeLength"
                 type="number"
-                value={input.ridgeLength}
-                onChange={(e) => setInput({
-                  ...input,
-                  ridgeLength: Number(e.target.value)
-                })}
+                value={input.roofDetails.ridgeLength}
+                onChange={(e) => updateRoofDetails('ridgeLength', Number(e.target.value))}
                 placeholder="10"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Metros lineares de cumeeiras (não ventiladas)
-              </p>
-            </div>
-
-            {/* Espigao Length */}
-            <div>
-              <Label htmlFor="espigaoLength">Comprimento dos Espigões (m)</Label>
-              <Input
-                id="espigaoLength"
-                type="number"
-                value={input.espigaoLength}
-                onChange={(e) => setInput({
-                  ...input,
-                  espigaoLength: Number(e.target.value)
-                })}
-                placeholder="0"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Metros lineares de espigões (sempre Supreme recortada)
+                Metros lineares de cumeeiras
               </p>
             </div>
 
@@ -192,11 +193,8 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
               <Input
                 id="valleyLength"
                 type="number"
-                value={input.valleyLength}
-                onChange={(e) => setInput({
-                  ...input,
-                  valleyLength: Number(e.target.value)
-                })}
+                value={input.roofDetails.valleyLength}
+                onChange={(e) => updateRoofDetails('valleyLength', Number(e.target.value))}
                 placeholder="0"
               />
               <p className="text-xs text-muted-foreground mt-1">
@@ -204,83 +202,69 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
               </p>
             </div>
 
-            {/* Perimeter */}
+            {/* Hip Length */}
             <div>
-              <Label htmlFor="perimeter">Perímetro dos Beirais (m) *</Label>
+              <Label htmlFor="hipLength">Comprimento dos Espigões (m)</Label>
               <Input
-                id="perimeter"
+                id="hipLength"
                 type="number"
-                value={input.perimeter}
-                onChange={(e) => setInput({
-                  ...input,
-                  perimeter: Number(e.target.value)
-                })}
-                placeholder="40"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Perímetro total das bordas do telhado
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Seção Step Flashing */}
-        <div>
-          <Label className="text-base font-semibold">Encontros com Paredes</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-            <div>
-              <Label htmlFor="stepFlashingLength">Comprimento do Encontro (m)</Label>
-              <Input
-                id="stepFlashingLength"
-                type="number"
-                value={input.stepFlashingLength}
-                onChange={(e) => setInput({
-                  ...input,
-                  stepFlashingLength: Number(e.target.value)
-                })}
+                value={input.roofDetails.hipLength}
+                onChange={(e) => updateRoofDetails('hipLength', Number(e.target.value))}
                 placeholder="0"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Metros lineares de encontro telhado-parede
+                Metros lineares de espigões
               </p>
             </div>
 
+            {/* Number of Penetrations */}
             <div>
-              <Label htmlFor="stepFlashingHeight">Altura da Água no Encontro (m)</Label>
+              <Label htmlFor="numberOfPenetrations">Número de Penetrações</Label>
               <Input
-                id="stepFlashingHeight"
+                id="numberOfPenetrations"
                 type="number"
-                step="0.1"
-                value={input.stepFlashingHeight}
-                onChange={(e) => setInput({
-                  ...input,
-                  stepFlashingHeight: Number(e.target.value)
-                })}
-                placeholder="0"
+                value={input.roofDetails.numberOfPenetrations}
+                onChange={(e) => updateRoofDetails('numberOfPenetrations', Number(e.target.value))}
+                placeholder="2"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Altura da água do telhado no encontro com a parede
+                Chaminés, ventilações, etc.
               </p>
             </div>
-          </div>
-        </div>
 
-        {/* Seção Urgência */}
-        <div>
-          <Label className="text-base font-semibold">Configurações do Pedido</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+            {/* Region */}
+            <div>
+              <Label>Região *</Label>
+              <Select
+                value={input.region}
+                onValueChange={(value: any) => setInput(prev => ({ ...prev, region: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="north">Norte</SelectItem>
+                  <SelectItem value="northeast">Nordeste</SelectItem>
+                  <SelectItem value="center_west">Centro-Oeste</SelectItem>
+                  <SelectItem value="southeast">Sudeste</SelectItem>
+                  <SelectItem value="south">Sul</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Urgency */}
             <div>
               <Label>Urgência do Pedido *</Label>
               <Select
                 value={input.urgency}
-                onValueChange={(value: any) => setInput({ ...input, urgency: value })}
+                onValueChange={(value: any) => setInput(prev => ({ ...prev, urgency: value }))}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="normal">Normal (15-20 dias)</SelectItem>
-                  <SelectItem value="express">Expresso (7-10 dias) +30%</SelectItem>
+                  <SelectItem value="express">Expresso (7-10 dias)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -289,75 +273,55 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
 
         {/* Optional Features */}
         <div>
-          <Label className="text-base font-semibold">Serviços Adicionais</Label>
+          <Label className="text-base font-semibold">Características Adicionais</Label>
           <div className="space-y-3 mt-3">
             <div className="flex items-center space-x-2">
               <Checkbox
-                id="ventilation"
-                checked={input.ventilationRequired}
-                onCheckedChange={(checked) => setInput({
-                  ...input,
-                  ventilationRequired: checked as boolean
-                })}
+                id="gutters"
+                checked={input.features.gutters}
+                onCheckedChange={(checked) => updateFeatures('gutters', !!checked)}
               />
-              <Label htmlFor="ventilation" className="text-sm">
-                Sistema de ventilação (cumeeiras ventiladas)
+              <Label htmlFor="gutters" className="text-sm">
+                Incluir calhas
               </Label>
             </div>
 
             <div className="flex items-center space-x-2">
               <Checkbox
-                id="stepflashing"
-                checked={input.stepFlashingLength > 0}
-                onCheckedChange={(checked) => {
-                  if (!checked) {
-                    setInput({
-                      ...input,
-                      stepFlashingLength: 0,
-                      stepFlashingHeight: 0
-                    });
-                  }
-                }}
+                id="ventilation"
+                checked={input.features.ventilation}
+                onCheckedChange={(checked) => updateFeatures('ventilation', !!checked)}
               />
-              <Label htmlFor="stepflashing" className="text-sm">
-                Step Flashing (encontros com paredes verticais)
+              <Label htmlFor="ventilation" className="text-sm">
+                Sistema de ventilação
               </Label>
             </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="rufos"
-                  checked={input.rufosIncluded}
-                  onCheckedChange={(checked) => setInput({
-                    ...input,
-                    rufosIncluded: checked as boolean,
-                    rufosPerimeter: checked ? input.rufosPerimeter : 0
-                  })}
-                />
-                <Label htmlFor="rufos" className="text-sm">
-                  Rufos incluídos (pingadeiras)
-                </Label>
-              </div>
 
-              {input.rufosIncluded && (
-                <div className="ml-6">
-                  <Label htmlFor="rufosPerimeter">Perímetro para Rufos (m)</Label>
-                  <Input
-                    id="rufosPerimeter"
-                    type="number"
-                    value={input.rufosPerimeter || 0}
-                    onChange={(e) => setInput({
-                      ...input,
-                      rufosPerimeter: Number(e.target.value)
-                    })}
-                    placeholder="0"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Perímetro onde serão instalados os rufos
-                  </p>
-                </div>
-              )}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="insulation"
+                checked={input.features.insulation}
+                onCheckedChange={(checked) => updateFeatures('insulation', !!checked)}
+              />
+              <Label htmlFor="insulation" className="text-sm">
+                Isolamento térmico
+              </Label>
+            </div>
+
+            <div>
+              <Label>Tipo de Subcobertura</Label>
+              <Select
+                value={input.features.underlayment}
+                onValueChange={(value: any) => updateFeatures('underlayment', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">Padrão</SelectItem>
+                  <SelectItem value="premium">Premium</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
