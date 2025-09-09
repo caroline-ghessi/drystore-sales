@@ -2059,7 +2059,7 @@ export type Database = {
           name: string
           notes: string | null
           product_type: Database["public"]["Enums"]["product_category"]
-          status: string
+          status: Database["public"]["Enums"]["saved_calculation_status"]
           updated_at: string
           user_id: string
         }
@@ -2072,7 +2072,7 @@ export type Database = {
           name: string
           notes?: string | null
           product_type: Database["public"]["Enums"]["product_category"]
-          status?: string
+          status?: Database["public"]["Enums"]["saved_calculation_status"]
           updated_at?: string
           user_id: string
         }
@@ -2085,7 +2085,7 @@ export type Database = {
           name?: string
           notes?: string | null
           product_type?: Database["public"]["Enums"]["product_category"]
-          status?: string
+          status?: Database["public"]["Enums"]["saved_calculation_status"]
           updated_at?: string
           user_id?: string
         }
@@ -2773,6 +2773,13 @@ export type Database = {
         | "accepted"
         | "rejected"
         | "expired"
+      saved_calculation_status:
+        | "draft"
+        | "ready_to_propose"
+        | "aguardando_revisao"
+        | "aprovado"
+        | "rejeitado"
+        | "alteracoes_solicitadas"
       sender_type: "customer" | "bot" | "agent" | "system"
       task_priority: "low" | "normal" | "high" | "urgent"
       task_status: "pending" | "in_progress" | "completed" | "cancelled"
@@ -2974,6 +2981,14 @@ export const Constants = {
         "accepted",
         "rejected",
         "expired",
+      ],
+      saved_calculation_status: [
+        "draft",
+        "ready_to_propose",
+        "aguardando_revisao",
+        "aprovado",
+        "rejeitado",
+        "alteracoes_solicitadas",
       ],
       sender_type: ["customer", "bot", "agent", "system"],
       task_priority: ["low", "normal", "high", "urgent"],
