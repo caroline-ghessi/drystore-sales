@@ -115,14 +115,10 @@ export default function VendorMappingModal({ open, onClose }: VendorMappingModal
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um usuário..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[100]" position="popper">
                     {profiles?.map((profile) => (
                       <SelectItem key={profile.user_id} value={profile.user_id}>
-                        <div className="flex items-center space-x-2">
-                          <User className="h-4 w-4" />
-                          <span>{profile.display_name}</span>
-                          <Badge variant="secondary">{profile.email}</Badge>
-                        </div>
+                        {profile.display_name} ({profile.email})
                       </SelectItem>
                     ))}
                   </SelectContent>
