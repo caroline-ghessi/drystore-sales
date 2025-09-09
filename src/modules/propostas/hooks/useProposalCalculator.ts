@@ -6,6 +6,7 @@ import { calculateBatteryBackup } from '../utils/calculations/batteryBackupCalcu
 import { calculateShingleInstallation } from '../utils/calculations/shingleCalculations';
 import { calculateDrywallInstallation } from '../utils/calculations/drywallCalculations';
 import { calculateForroDrywall } from '../utils/calculations/forroDrywallCalculations';
+import { calculateAcousticMineralCeiling } from '../utils/calculations/acousticMineralCeilingCalculations';
 
 export function useProposalCalculator(productType: ProductType) {
   const [calculationInput, setCalculationInput] = useState<CalculationInput | null>(null);
@@ -35,6 +36,9 @@ export function useProposalCalculator(productType: ProductType) {
           break;
         case 'forro_drywall':
           result = calculateForroDrywall(input as any);
+          break;
+        case 'acoustic_mineral_ceiling':
+          result = calculateAcousticMineralCeiling(input as any);
           break;
         default:
           throw new Error(`Cálculo não implementado para o produto: ${productType}`);

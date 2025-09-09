@@ -41,7 +41,8 @@ function mapToDbProductType(productType: ProductType): DatabaseProductType {
     'steel_frame': 'steel_frame',
     'ceiling': 'forros',
     'forro_drywall': 'forro_drywall',
-    'battery_backup': 'battery_backup'
+    'battery_backup': 'battery_backup',
+    'acoustic_mineral_ceiling': 'forros'
   };
   return mapping[productType];
 }
@@ -52,7 +53,7 @@ function mapFromDbProductType(dbType: DatabaseProductType): ProductType {
     'telha_shingle': 'shingle',
     'drywall_divisorias': 'drywall',
     'steel_frame': 'steel_frame',
-    'forros': 'ceiling',
+    'forros': 'ceiling', // Default mapping - pode ser 'ceiling' ou 'acoustic_mineral_ceiling'
     'forro_drywall': 'forro_drywall',
     'battery_backup': 'battery_backup',
     // Default mappings for other categories

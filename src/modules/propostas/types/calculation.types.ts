@@ -553,6 +553,165 @@ export interface ForroDrywallCalculationResult {
   totalCost: number;
 }
 
+// ============= Acoustic Mineral Ceiling =============
+
+// Tipos de modelos baseados no manual
+export type AcousticMineralCeilingModel = 
+  | 'ALCOR' | 'APUS' | 'LUCIDA' | 'NAVI' | 'ADHARA' 
+  | 'KYROS' | 'LYRA' | 'ECOMIN' | 'THERMATEX' | 'TOPIQ_PRIME';
+
+// Tipos de modulação
+export type CeilingModulation = 
+  | '625x625' | '625x1250' | '600x600' | '600x1200';
+
+// Tipos de borda
+export type EdgeType = 'lay_in' | 'tegular';
+
+// Formato do ambiente
+export type RoomFormat = 'rectangular' | 'l_shape' | 'irregular' | 'multiple_rooms';
+
+// Necessidades do ambiente
+export type RoomNeed = 'acoustic' | 'humidity' | 'premium' | 'economy';
+
+export interface AcousticMineralCeilingInput extends BaseCalculationInput {
+  // Dimensões básicas
+  roomLength: number; // m
+  roomWidth: number; // m
+  roomFormat: RoomFormat;
+  ceilingHeight: number; // m desejada do forro
+  availableSpace: number; // cm espaço disponível acima (mín 15cm)
+  
+  // Obstáculos
+  obstacles: {
+    columns: number;
+    beams: boolean;
+    ducts: boolean;
+    pipes: boolean;
+  };
+  
+  // Necessidade principal (para árvore de decisão)
+  primaryNeed: RoomNeed;
+  humidityLevel?: number; // % RH se necessidade for umidade
+  nrcRequired?: number; // NRC se necessidade for acústica
+  
+  // Instalações integradas
+  installations: {
+    lightFixtures: number;
+    airConditioning: boolean;
+    sprinklers: boolean;
+    smokeDetectors: boolean;
+    cameras: boolean;
+  };
+  
+  // Tipo de laje/cobertura
+  slabType: 'massive' | 'ribbed' | 'steel_deck' | 'metallic' | 'wood';
+  
+  // Seleção manual (opcional)
+  manualModel?: AcousticMineralCeilingModel;
+  manualModulation?: CeilingModulation;
+  manualEdgeType?: EdgeType;
+}
+
+export interface AcousticMineralCeilingResult {
+  // Modelo selecionado
+  selectedModel: {
+    name: AcousticMineralCeilingModel;
+    manufacturer: string;
+    modulation: CeilingModulation;
+    edgeType: EdgeType;
+    nrc: number;
+    rh: number;
+    weight: number; // kg/m²
+    platesPerBox: number;
+  };
+  
+  // Áreas de cálculo
+  areas: {
+    total: number; // m²
+    obstacles: number; // m² descontada
+    useful: number; // m² útil
+    perimeter: number; // m linear
+  };
+  
+  // Quantidades de placas
+  plates: {
+    baseQuantity: number;
+    lossPercentage: number;
+    totalPlates: number;
+    boxesNeeded: number;
+    platesDiscountedLights: number; // descontadas luminárias
+  };
+  
+  // Estrutura de sustentação
+  structure: {
+    mainProfile: {
+      meters: number;
+      bars: number; // barras de 3,66m
+    };
+    secondaryProfile1250?: {
+      meters: number;
+      pieces: number;
+    };
+    secondaryProfile625?: {
+      meters: number;
+      pieces: number;
+    };
+    perimeterEdge: {
+      meters: number;
+      bars: number; // barras de 3m
+    };
+    suspension: {
+      hangers: number;
+      regulators: number;
+      anchors: number;
+    };
+  };
+  
+  // Acessórios especiais
+  accessories: {
+    tegularClips?: number; // para borda tegular
+    lightSupports: number; // 4 por luminária
+    specialAnchors?: number;
+  };
+  
+  // Custos detalhados
+  itemizedCosts: {
+    plates: number;
+    mainProfile: number;
+    secondaryProfiles: number;
+    perimeterEdge: number;
+    suspension: number;
+    accessories: number;
+    labor: number;
+  };
+  totalCost: number;
+  
+  // Performance acústica
+  acousticPerformance: {
+    nrc: number; // coeficiente de redução de ruído
+    classification: 'baixa' | 'média' | 'alta' | 'premium';
+    suitableFor: string[]; // ambientes recomendados
+  };
+  
+  // Dados técnicos
+  technicalSpecs: {
+    configuration: string;
+    finalThickness: number; // mm
+    weight: number; // kg/m²
+    fireResistance?: string;
+    moistureResistance: number; // % RH
+    installationComplexity: 'simples' | 'média' | 'complexa';
+  };
+  
+  // Validações automáticas
+  validations: {
+    minSpaceOk: boolean;
+    structureCompatible: boolean;
+    modelSuitable: boolean;
+    warnings: string[];
+  };
+}
+
 // ============= Union Types =============
 
 export type CalculationInput = 
@@ -563,7 +722,8 @@ export type CalculationInput =
   | DrywallCalculationInput 
   | SteelFrameCalculationInput 
   | CeilingCalculationInput
-  | ForroDrywallCalculationInput;
+  | ForroDrywallCalculationInput
+  | AcousticMineralCeilingInput;
 
 export type CalculationResult = 
   | SolarCalculationResult 
@@ -573,4 +733,5 @@ export type CalculationResult =
   | DrywallCalculationResult 
   | SteelFrameCalculationResult 
   | CeilingCalculationResult
-  | ForroDrywallCalculationResult;
+  | ForroDrywallCalculationResult
+  | AcousticMineralCeilingResult;
