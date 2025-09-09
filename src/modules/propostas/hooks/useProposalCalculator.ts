@@ -72,16 +72,23 @@ export function useProposalCalculator(productType: ProductType) {
         
       case 'shingle':
         const shingleResult = calculationResult as any;
+        // Calcular área total baseada nos fardos (cada fardo cobre ~3m²)
+        const estimatedArea = shingleResult.totalShingleBundles * 3;
+        // Calcular tempo de instalação baseado na área (1 dia para cada 50m²)
+        const estimatedInstallationTime = Math.ceil(estimatedArea / 50);
+        
         items.push({
           id: '1',
           product: 'shingle',
-          description: `Telhado Shingle ${shingleResult.shingleQuantity.toFixed(0)} m²`,
+          description: `Telhado Shingle ${estimatedArea.toFixed(0)} m²`,
           specifications: {
-            area: shingleResult.shingleQuantity,
-            installationTime: shingleResult.installationTime
+            area: estimatedArea,
+            bundles: shingleResult.totalShingleBundles,
+            osbPlates: shingleResult.osbPlates,
+            installationTime: estimatedInstallationTime
           },
-          quantity: shingleResult.shingleQuantity,
-          unitPrice: shingleResult.totalCost / shingleResult.shingleQuantity,
+          quantity: estimatedArea,
+          unitPrice: estimatedArea > 0 ? shingleResult.totalCost / estimatedArea : 0,
           totalPrice: shingleResult.totalCost,
           materialCost: shingleResult.totalCost
         });
@@ -89,16 +96,20 @@ export function useProposalCalculator(productType: ProductType) {
         
       case 'drywall':
         const drywallResult = calculationResult as any;
+        // Calcular tempo de instalação baseado na área (1 dia para cada 30m²)
+        const drywallInstallationTime = Math.ceil(drywallResult.plateQuantity / 30);
+        
         items.push({
           id: '1',
           product: 'drywall',
           description: `Drywall ${drywallResult.plateQuantity.toFixed(0)} m²`,
           specifications: {
             area: drywallResult.plateQuantity,
-            installationTime: drywallResult.installationTime
+            profiles: drywallResult.profileQuantity,
+            installationTime: drywallInstallationTime
           },
           quantity: drywallResult.plateQuantity,
-          unitPrice: drywallResult.totalCost / drywallResult.plateQuantity,
+          unitPrice: drywallResult.plateQuantity > 0 ? drywallResult.totalCost / drywallResult.plateQuantity : 0,
           totalPrice: drywallResult.totalCost,
           materialCost: drywallResult.totalCost
         });
@@ -106,6 +117,9 @@ export function useProposalCalculator(productType: ProductType) {
         
         case 'forro_drywall':
           const forroDrywallResult = calculationResult as any;
+          // Calcular tempo de instalação baseado na área (1 dia para cada 40m²)
+          const forroInstallationTime = Math.ceil(forroDrywallResult.plateArea / 40);
+          
           items.push({
             id: '1',
             product: 'forro_drywall',
@@ -113,10 +127,11 @@ export function useProposalCalculator(productType: ProductType) {
             specifications: {
               area: forroDrywallResult.plateArea,
               plates: forroDrywallResult.plateQuantity,
-              installationTime: forroDrywallResult.installationTime
+              profiles: forroDrywallResult.profileBars,
+              installationTime: forroInstallationTime
             },
             quantity: forroDrywallResult.plateArea,
-            unitPrice: forroDrywallResult.totalCost / forroDrywallResult.plateArea,
+            unitPrice: forroDrywallResult.plateArea > 0 ? forroDrywallResult.totalCost / forroDrywallResult.plateArea : 0,
             totalPrice: forroDrywallResult.totalCost,
             materialCost: forroDrywallResult.totalCost
           });
@@ -144,33 +159,40 @@ export function useProposalCalculator(productType: ProductType) {
         
       case 'shingle':
         const shingle = calculationResult as any;
+        const shingleArea = shingle.totalShingleBundles * 3;
+        const shingleTime = Math.ceil(shingleArea / 50);
         return {
           totalCost: shingle.totalCost,
           keyMetrics: [
-            { label: 'Área Total', value: `${shingle.shingleQuantity.toFixed(0)} m²` },
-            { label: 'Prazo de Instalação', value: `${shingle.installationTime} dias` }
+            { label: 'Área Total', value: `${shingleArea.toFixed(0)} m²` },
+            { label: 'Total de Fardos', value: `${shingle.totalShingleBundles} unidades` },
+            { label: 'Placas OSB', value: `${shingle.osbPlates} unidades` },
+            { label: 'Prazo de Instalação', value: `${shingleTime} dias` }
           ]
         };
         
       case 'drywall':
         const drywall = calculationResult as any;
+        const drywallTime = Math.ceil(drywall.plateQuantity / 30);
         return {
           totalCost: drywall.totalCost,
           keyMetrics: [
             { label: 'Área Total', value: `${drywall.plateQuantity.toFixed(0)} m²` },
-            { label: 'Prazo de Instalação', value: `${drywall.installationTime} dias` }
+            { label: 'Perfis Metálicos', value: `${drywall.profileQuantity.toFixed(0)} ml` },
+            { label: 'Prazo de Instalação', value: `${drywallTime} dias` }
           ]
         };
         
         case 'forro_drywall':
           const forroDrywall = calculationResult as any;
+          const forroTime = Math.ceil(forroDrywall.plateArea / 40);
           return {
             totalCost: forroDrywall.totalCost,
             keyMetrics: [
               { label: 'Área do Forro', value: `${forroDrywall.plateArea.toFixed(0)} m²` },
               { label: 'Placas Drywall', value: `${forroDrywall.plateQuantity} unidades` },
-              { label: 'Prazo de Instalação', value: `${forroDrywall.installationTime} dias` },
-              { label: 'Perfis Metálicos', value: `${forroDrywall.profileBars} barras` }
+              { label: 'Perfis Metálicos', value: `${forroDrywall.profileBars} barras` },
+              { label: 'Prazo de Instalação', value: `${forroTime} dias` }
             ]
           };
         
