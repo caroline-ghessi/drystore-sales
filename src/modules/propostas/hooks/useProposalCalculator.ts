@@ -66,8 +66,7 @@ export function useProposalCalculator(productType: ProductType) {
           quantity: 1,
           unitPrice: solarResult.totalCost,
           totalPrice: solarResult.totalCost,
-          materialCost: solarResult.itemizedCosts.panels + solarResult.itemizedCosts.inverters + solarResult.itemizedCosts.structure,
-          laborCost: solarResult.itemizedCosts.installation
+          materialCost: solarResult.totalCost
         });
         break;
         
@@ -84,8 +83,7 @@ export function useProposalCalculator(productType: ProductType) {
           quantity: shingleResult.shingleQuantity,
           unitPrice: shingleResult.totalCost / shingleResult.shingleQuantity,
           totalPrice: shingleResult.totalCost,
-          materialCost: shingleResult.itemizedCosts.shingles + shingleResult.itemizedCosts.underlayment + shingleResult.itemizedCosts.accessories,
-          laborCost: shingleResult.itemizedCosts.labor
+          materialCost: shingleResult.totalCost
         });
         break;
         
@@ -102,8 +100,7 @@ export function useProposalCalculator(productType: ProductType) {
           quantity: drywallResult.plateQuantity,
           unitPrice: drywallResult.totalCost / drywallResult.plateQuantity,
           totalPrice: drywallResult.totalCost,
-          materialCost: drywallResult.itemizedCosts.plates + drywallResult.itemizedCosts.profiles + drywallResult.itemizedCosts.accessories,
-          laborCost: drywallResult.itemizedCosts.labor
+          materialCost: drywallResult.totalCost
         });
         break;
         
@@ -121,11 +118,7 @@ export function useProposalCalculator(productType: ProductType) {
             quantity: forroDrywallResult.plateArea,
             unitPrice: forroDrywallResult.totalCost / forroDrywallResult.plateArea,
             totalPrice: forroDrywallResult.totalCost,
-            materialCost: forroDrywallResult.itemizedCosts.plates + forroDrywallResult.itemizedCosts.profiles + 
-                         forroDrywallResult.itemizedCosts.suspension + forroDrywallResult.itemizedCosts.perimetral +
-                         forroDrywallResult.itemizedCosts.screws + forroDrywallResult.itemizedCosts.finishing +
-                         (forroDrywallResult.itemizedCosts.insulation || 0) + (forroDrywallResult.itemizedCosts.accessories || 0),
-            laborCost: forroDrywallResult.itemizedCosts.labor
+            materialCost: forroDrywallResult.totalCost
           });
           break;
     }

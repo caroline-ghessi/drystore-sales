@@ -16,7 +16,7 @@ export interface SavedCalculation {
   calculation_input: CalculationInput;
   calculation_result: CalculationResult;
   name: string;
-  status: 'draft' | 'ready_to_propose';
+  status: 'draft' | 'ready_to_propose' | 'aguardando_revisao' | 'aprovado' | 'rejeitado' | 'alteracoes_solicitadas';
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -29,7 +29,7 @@ export interface SaveCalculationData {
   calculation_input: CalculationInput;
   calculation_result: CalculationResult;
   notes?: string;
-  status?: 'draft' | 'ready_to_propose';
+  status?: 'draft' | 'ready_to_propose' | 'aguardando_revisao' | 'aprovado' | 'rejeitado' | 'alteracoes_solicitadas';
 }
 
 // Mapping functions between our ProductType and database product_category
@@ -85,7 +85,7 @@ export function useSavedCalculations() {
       return data?.map(item => ({
         ...item,
         product_type: mapFromDbProductType(item.product_type),
-        status: (item.status as 'draft' | 'ready_to_propose') || 'draft',
+        status: (item.status as 'draft' | 'ready_to_propose' | 'aguardando_revisao' | 'aprovado' | 'rejeitado' | 'alteracoes_solicitadas') || 'draft',
         client_data: (item.client_data as unknown) as ClientData,
         calculation_input: (item.calculation_input as unknown) as CalculationInput,
         calculation_result: (item.calculation_result as unknown) as CalculationResult,
@@ -118,7 +118,7 @@ export function useSavedCalculations() {
       return {
         ...data,
         product_type: mapFromDbProductType(data.product_type),
-        status: (data.status as 'draft' | 'ready_to_propose') || 'draft',
+        status: (data.status as 'draft' | 'ready_to_propose' | 'aguardando_revisao' | 'aprovado' | 'rejeitado' | 'alteracoes_solicitadas') || 'draft',
         client_data: (data.client_data as unknown) as ClientData,
         calculation_input: (data.calculation_input as unknown) as CalculationInput,
         calculation_result: (data.calculation_result as unknown) as CalculationResult,
@@ -162,7 +162,7 @@ export function useSavedCalculations() {
       return {
         ...data,
         product_type: mapFromDbProductType(data.product_type),
-        status: (data.status as 'draft' | 'ready_to_propose') || 'draft',
+        status: (data.status as 'draft' | 'ready_to_propose' | 'aguardando_revisao' | 'aprovado' | 'rejeitado' | 'alteracoes_solicitadas') || 'draft',
         client_data: (data.client_data as unknown) as ClientData,
         calculation_input: (data.calculation_input as unknown) as CalculationInput,
         calculation_result: (data.calculation_result as unknown) as CalculationResult,

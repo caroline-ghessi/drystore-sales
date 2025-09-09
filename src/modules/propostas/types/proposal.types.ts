@@ -37,7 +37,6 @@ export interface ProposalItem {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  laborCost?: number;
   materialCost?: number;
 }
 
