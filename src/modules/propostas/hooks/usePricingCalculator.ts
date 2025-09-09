@@ -6,7 +6,6 @@ import { useProductPricing } from './useProductPricing';
 interface PricedCalculationResult {
   // Include all calculation result properties
   totalCost: number;
-  installationTime?: number;
   // Add pricing-specific properties
   pricedItems: Array<{
     id: string;
@@ -219,7 +218,6 @@ export function usePricingCalculator(productType: ProductType) {
 
       const pricedCalculationResult: PricedCalculationResult = {
         totalCost: (calculationResult as any).totalCost,
-        installationTime: (calculationResult as any).installationTime,
         pricedItems,
         totalMaterialCost,
         totalProfit,

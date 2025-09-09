@@ -242,7 +242,7 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
 
             {/* Urgência */}
             <div>
-              <Label>Prazo de Instalação *</Label>
+              <Label>Urgência do Pedido *</Label>
               <Select
                 value={input.urgency}
                 onValueChange={(value: any) => setInput({ ...input, urgency: value })}
