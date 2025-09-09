@@ -2049,6 +2049,56 @@ export type Database = {
           },
         ]
       }
+      sales_quotas: {
+        Row: {
+          achieved_amount: number | null
+          created_at: string | null
+          id: string
+          percentage_achieved: number | null
+          period_month: number
+          period_year: number
+          quota_amount: number
+          status: string | null
+          updated_at: string | null
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          achieved_amount?: number | null
+          created_at?: string | null
+          id?: string
+          percentage_achieved?: number | null
+          period_month: number
+          period_year: number
+          quota_amount?: number
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          achieved_amount?: number | null
+          created_at?: string | null
+          id?: string
+          percentage_achieved?: number | null
+          period_month?: number
+          period_year?: number
+          quota_amount?: number
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_quotas_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_calculations: {
         Row: {
           calculation_input: Json
@@ -2165,6 +2215,72 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vendor_approvals: {
+        Row: {
+          approval_type: string
+          approved_amount: number | null
+          approver_id: string | null
+          created_at: string | null
+          id: string
+          justification: string | null
+          notes: string | null
+          proposal_id: string | null
+          requested_amount: number | null
+          requested_at: string | null
+          responded_at: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          approval_type: string
+          approved_amount?: number | null
+          approver_id?: string | null
+          created_at?: string | null
+          id?: string
+          justification?: string | null
+          notes?: string | null
+          proposal_id?: string | null
+          requested_amount?: number | null
+          requested_at?: string | null
+          responded_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          approval_type?: string
+          approved_amount?: number | null
+          approver_id?: string | null
+          created_at?: string | null
+          id?: string
+          justification?: string | null
+          notes?: string | null
+          proposal_id?: string | null
+          requested_amount?: number | null
+          requested_at?: string | null
+          responded_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_approvals_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_with_context"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_approvals_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vendor_conversations: {
         Row: {
@@ -2347,6 +2463,44 @@ export type Database = {
           vendor_id?: string
         }
         Relationships: []
+      }
+      vendor_user_mapping: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          role_type: string | null
+          updated_at: string | null
+          user_id: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          role_type?: string | null
+          updated_at?: string | null
+          user_id: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          role_type?: string | null
+          updated_at?: string | null
+          user_id?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_user_mapping_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vendors: {
         Row: {

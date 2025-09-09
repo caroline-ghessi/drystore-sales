@@ -23,20 +23,51 @@ export function useVendedoresProposta() {
   return useQuery({
     queryKey: ['vendors-proposta'],
     queryFn: async () => {
-      // Buscar apenas vendors por enquanto (vendor_user_mapping será criado depois)
-      const { data: vendors, error } = await supabase
+      // Buscar vendors e seus mapeamentos separadamente
+      const { data: vendors, error: vendorError } = await supabase
         .from('vendors')
         .select('*')
         .eq('is_active', true)
         .order('name');
 
-      if (error) throw error;
+      if (vendorError) throw vendorError;
 
-      // Por enquanto retornar vendors sem mapeamento de perfil
-      const vendorsWithProfiles = vendors?.map(vendor => ({
-        ...vendor,
-        profile: null // Será preenchido quando a tabela vendor_user_mapping for criada
-      })) || [];
+      // Buscar mapeamentos existentes
+      const { data: mappings, error: mappingError } = await supabase
+        .from('vendor_user_mapping')
+        .select('vendor_id, user_id, role_type');
+
+      if (mappingError) throw mappingError;
+
+      // Buscar profiles dos usuários mapeados
+      const userIds = mappings?.map(m => m.user_id) || [];
+      let profiles: any[] = [];
+      
+      if (userIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, email, department')
+          .in('user_id', userIds);
+
+        if (profilesError) throw profilesError;
+        profiles = profilesData || [];
+      }
+
+      // Combinar dados
+      const vendorsWithProfiles = vendors?.map(vendor => {
+        const mapping = mappings?.find(m => m.vendor_id === vendor.id);
+        const profile = mapping ? profiles.find(p => p.user_id === mapping.user_id) : null;
+
+        return {
+          ...vendor,
+          profile: profile ? {
+            user_id: profile.user_id,
+            display_name: profile.display_name,
+            email: profile.email,
+            department: profile.department || 'Vendas'
+          } : null
+        };
+      }) || [];
 
       return vendorsWithProfiles as VendorProposta[];
     },
@@ -52,17 +83,18 @@ export function useCreateVendorMapping() {
       userId: string;
       roleType?: string;
     }) => {
-      // Mock implementation - será implementado quando a tabela vendor_user_mapping for criada
-      console.log('Mock: Creating vendor mapping', { vendorId, userId, roleType });
-      
-      // Simular sucesso
-      return Promise.resolve({
-        id: crypto.randomUUID(),
-        vendor_id: vendorId,
-        user_id: userId,
-        role_type: roleType,
-        created_at: new Date().toISOString()
-      });
+      const { data, error } = await supabase
+        .from('vendor_user_mapping')
+        .insert({
+          vendor_id: vendorId,
+          user_id: userId,
+          role_type: roleType
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors-proposta'] });
