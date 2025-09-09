@@ -272,45 +272,103 @@ export interface ShingleCalculationResult {
 
 // ============= Drywall =============
 
-// Drywall types - Seguindo documentação técnica
+// Drywall types - Sistema expandido com configurações por face
+export type FaceMaterialType = 
+  | 'knauf_st' 
+  | 'knauf_ru' 
+  | 'knauf_rf' 
+  | 'placo_performa' 
+  | 'placo_performa_ru'
+  | 'osb_11mm' 
+  | 'osb_15mm' 
+  | 'cimenticia_6mm' 
+  | 'cimenticia_8mm'
+  | 'none'; // Para paredes de face única
+
+export type WallConfigurationType = 
+  | 'W111' | 'W112' | 'W115' // Configurações padrão
+  | 'W111_OSB' | 'W111_MIXED' | 'W111_CEMENT' // Variações W111
+  | 'W112_OSB' | 'W112_MIXED' | 'W112_CEMENT' // Variações W112
+  | 'ACOUSTIC' | 'HUMID' | 'FIRE' // Configurações especializadas
+  | 'CUSTOM'; // Configuração personalizada
+
+export type PreDefinedConfig = 
+  | 'divisoria_escritorio' 
+  | 'parede_banheiro' 
+  | 'parede_tv' 
+  | 'parede_rustica' 
+  | 'parede_industrial' 
+  | 'parede_acustica'
+  | 'custom';
+
 export interface DrywallCalculationInput extends BaseCalculationInput {
   wallArea: number;
   wallHeight: number;
-  wallConfiguration: 'W111' | 'W112' | 'W115' | 'mixed'; // W111: simples, W112: dupla, W115: reforçada
-  plateType: 'knauf_st' | 'knauf_ru' | 'knauf_rf' | 'placo_performa' | 'placo_performa_ru';
+  
+  // Sistema de configuração expandido
+  configMode: 'predefined' | 'custom';
+  preDefinedConfig?: PreDefinedConfig;
+  wallConfiguration: WallConfigurationType;
+  
+  // Configuração por face (para modo custom)
+  face1Type: FaceMaterialType;
+  face2Type: FaceMaterialType;
+  
+  // Materiais tradicionais (mantidos para compatibilidade)
+  plateType?: 'knauf_st' | 'knauf_ru' | 'knauf_rf' | 'placo_performa' | 'placo_performa_ru';
   profileType: 'M48' | 'M70' | 'M90';
   finishType: 'level_3' | 'level_4' | 'level_5';
+  
   openings: {
     doors: number;
     windows: number;
   };
+  
   features: {
     insulation: boolean;
     insulationType?: 'la_vidro_50' | 'la_vidro_100' | 'la_rocha_50' | 'la_rocha_100';
     acousticBand: boolean;
     electricalRuns: boolean;
     plumbingRuns?: boolean;
+    waterproofing?: boolean; // Para áreas úmidas
+    osbFinish?: 'natural' | 'verniz' | 'tinta'; // Acabamento OSB
   };
+  
   laborIncluded: {
     structure: boolean;
     installation: boolean;
     finishing: boolean;
     insulation: boolean;
+    waterproofing?: boolean;
+    osbFinishing?: boolean;
   };
 }
 
 export interface DrywallCalculationResult {
-  // Quantidades de materiais
+  // Quantidades de materiais por tipo
   plateQuantity: number;
+  osbQuantity?: number;
+  cementiciousQuantity?: number;
   montanteQuantity: number;
   guiaQuantity: number;
-  screw25mmQuantity: number;
-  screw35mmQuantity?: number;
-  screw13mmQuantity: number;
+  
+  // Parafusos específicos por material
+  screw25mmQuantity: number; // Drywall padrão
+  screw35mmQuantity?: number; // Drywall dupla camada
+  screw13mmQuantity: number; // Metal-metal
+  screwWoodQuantity?: number; // Para OSB
+  screwCementQuantity?: number; // Para cimentícia
+  
+  // Materiais de acabamento
   massQuantity: number;
   tapeQuantity: number;
+  
+  // Materiais especiais
   insulationQuantity?: number;
   acousticBandQuantity?: number;
+  waterproofingQuantity?: number;
+  osbFinishQuantity?: number; // Verniz/tinta para OSB
+  specialAnchorsQuantity?: number; // Buchas especiais
   
   // Quantidades de mão de obra (horas)
   laborHours: {
@@ -318,25 +376,33 @@ export interface DrywallCalculationResult {
     installation: number;
     finishing: number;
     insulation?: number;
+    waterproofing?: number;
+    osbFinishing?: number;
   };
   
-  // Custos detalhados
+  // Custos detalhados expandidos
   itemizedCosts: {
     materials: {
       plates: number;
+      osb?: number;
+      cementicious?: number;
       profiles: number;
       screws: number;
       mass: number;
       tape: number;
       insulation?: number;
       acousticBand?: number;
-      specialBuckets?: number;
+      waterproofing?: number;
+      osbFinish?: number;
+      specialAnchors?: number;
     };
     labor: {
       structure: number;
       installation: number;
       finishing: number;
       insulation?: number;
+      waterproofing?: number;
+      osbFinishing?: number;
     };
   };
   
@@ -345,12 +411,16 @@ export interface DrywallCalculationResult {
   totalLaborCost: number;
   totalCost: number;
   
-  // Dados técnicos
+  // Dados técnicos expandidos
   technicalData: {
     finalThickness: number;
     acousticPerformance?: string;
     fireResistance?: string;
     weightPerM2: number;
+    configuration: string;
+    face1Material: string;
+    face2Material: string;
+    recommendedUse: string[];
   };
 }
 

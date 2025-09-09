@@ -75,7 +75,11 @@ export function calculateDrywallInstallation(input: DrywallCalculationInput): Dr
       finalThickness: wallConfiguration === 'W111' ? 95 : wallConfiguration === 'W112' ? 120 : 107,
       acousticPerformance: features.insulation ? "44-46 dB" : "38-40 dB",
       fireResistance: "30 minutos",
-      weightPerM2: wallConfiguration === 'W111' ? 19 : wallConfiguration === 'W112' ? 38 : 27
+      weightPerM2: wallConfiguration === 'W111' ? 19 : wallConfiguration === 'W112' ? 38 : 27,
+      configuration: wallConfiguration.replace('_', ' ').toLowerCase(),
+      face1Material: 'drywall padrão',
+      face2Material: 'drywall padrão',
+      recommendedUse: ['Divisórias internas', 'Uso geral']
     }
   };
 }

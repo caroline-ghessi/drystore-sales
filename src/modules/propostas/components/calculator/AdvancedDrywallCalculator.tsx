@@ -16,10 +16,16 @@ interface AdvancedDrywallCalculatorProps {
 
 export function AdvancedDrywallCalculator({ onCalculate }: AdvancedDrywallCalculatorProps) {
   const [input, setInput] = useState<DrywallCalculationInput>({
+    area: 0,
+    quantity: 1,
+    region: 'southeast',
     wallArea: 10,
     wallHeight: 2.8,
+    configMode: 'predefined',
+    preDefinedConfig: 'divisoria_escritorio',
     wallConfiguration: 'W111',
-    plateType: 'knauf_st',
+    face1Type: 'knauf_st',
+    face2Type: 'knauf_st',
     profileType: 'M70',
     finishType: 'level_4',
     openings: {
@@ -36,8 +42,7 @@ export function AdvancedDrywallCalculator({ onCalculate }: AdvancedDrywallCalcul
       installation: true,
       finishing: true,
       insulation: false
-    },
-    region: 'southeast'
+    }
   });
 
   const configurations = {
