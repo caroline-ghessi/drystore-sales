@@ -118,7 +118,7 @@ export function CalculationReviewCard({
               <p className="font-semibold">{calculation.client_data.name}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Telefone</p>
+              <p className="text-sm font-medium text-muted-foreground">WhatsApp</p>
               <p className="font-semibold">{calculation.client_data.phone}</p>
             </div>
           </div>

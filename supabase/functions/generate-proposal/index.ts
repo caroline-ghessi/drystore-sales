@@ -283,7 +283,7 @@ function generateProposalHTML(data: {
     <div class="client-info">
         <h3 style="color: ${primaryColor};">DADOS DO CLIENTE</h3>
         <p><strong>Nome:</strong> ${clientData.name}</p>
-        <p><strong>Telefone:</strong> ${clientData.phone}</p>
+        <p><strong>WhatsApp:</strong> ${clientData.phone}</p>
         ${clientData.email ? `<p><strong>E-mail:</strong> ${clientData.email}</p>` : ''}
     </div>
 

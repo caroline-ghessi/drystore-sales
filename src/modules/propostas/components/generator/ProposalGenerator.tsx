@@ -265,23 +265,23 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                   </div>
                   
                   <div>
-                    <Label htmlFor="phone">Telefone *</Label>
+                    <Label htmlFor="phone">WhatsApp *</Label>
                     <Input
                       id="phone"
                       value={clientData.phone}
                       onChange={(e) => setClientData({ ...clientData, phone: e.target.value })}
-                      placeholder="(11) 99999-9999"
+                      placeholder="(11) 99999-9999 - WhatsApp"
                     />
                   </div>
                   
                   <div>
-                    <Label htmlFor="email">E-mail</Label>
+                    <Label htmlFor="email">E-mail (opcional)</Label>
                     <Input
                       id="email"
                       type="email"
                       value={clientData.email || ''}
                       onChange={(e) => setClientData({ ...clientData, email: e.target.value })}
-                      placeholder="cliente@email.com"
+                      placeholder="cliente@email.com (opcional)"
                     />
                   </div>
                 </div>

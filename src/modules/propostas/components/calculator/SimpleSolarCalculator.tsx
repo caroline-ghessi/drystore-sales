@@ -73,7 +73,7 @@ export function SimpleSolarCalculator({ onCalculate }: SimpleSolarCalculatorProp
             />
           </div>
           <div>
-            <Label htmlFor="clientPhone">Telefone</Label>
+            <Label htmlFor="clientPhone">WhatsApp</Label>
             <Input
               id="clientPhone"
               value={input.clientData?.phone || ''}
@@ -81,7 +81,7 @@ export function SimpleSolarCalculator({ onCalculate }: SimpleSolarCalculatorProp
                 ...input,
                 clientData: { ...input.clientData, phone: e.target.value }
               })}
-              placeholder="(11) 99999-9999"
+              placeholder="(11) 99999-9999 - WhatsApp"
             />
           </div>
         </div>
