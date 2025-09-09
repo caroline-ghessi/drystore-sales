@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DryStoreButton } from '../components/ui/DryStoreButton';
 import { DryStoreBadge } from '../components/ui/DryStoreBadge';
 import { NewProductModal, NewProductData } from '../components/products/NewProductModal';
@@ -21,7 +22,11 @@ import {
   Building2,
   Brush,
   Wrench,
-  Package
+  Package,
+  ArrowUpDown,
+  MoreHorizontal,
+  Eye,
+  Trash2
 } from 'lucide-react';
 import { Database } from '@/integrations/supabase/types';
 
@@ -54,206 +59,300 @@ const units: { value: Database['public']['Enums']['product_unit']; label: string
 
 interface EditingProduct {
   id: string;
-  field: 'name' | 'description' | 'base_price' | 'unit';
-  value: string;
+  fields: {
+    name?: string;
+    description?: string;
+    base_price?: string;
+    unit?: string;
+  };
 }
+
+type SortField = 'name' | 'base_price' | 'category' | 'created_at';
+type SortDirection = 'asc' | 'desc';
 
 export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Database['public']['Enums']['product_category'] | 'all'>('all');
   const [editingProduct, setEditingProduct] = useState<EditingProduct | null>(null);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const { products, isLoading, updateProduct, isUpdating, createProduct, isCreating } = useProducts();
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (product.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-    
-    return matchesSearch && matchesCategory;
-  });
+  const filteredAndSortedProducts = React.useMemo(() => {
+    let filtered = products.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (product.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+      
+      return matchesSearch && matchesCategory;
+    });
+
+    // Aplicar ordenação
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortField) {
+        case 'name':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'base_price':
+          aValue = a.base_price;
+          bValue = b.base_price;
+          break;
+        case 'category':
+          aValue = a.category;
+          bValue = b.category;
+          break;
+        case 'created_at':
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [products, searchTerm, selectedCategory, sortField, sortDirection]);
 
   const getProductsByCategory = (category: Database['public']['Enums']['product_category'] | 'all') => {
-    if (category === 'all') return filteredProducts;
-    return filteredProducts.filter(product => product.category === category);
+    if (category === 'all') return filteredAndSortedProducts;
+    return filteredAndSortedProducts.filter(product => product.category === category);
   };
 
-  const handleEdit = (productId: string, field: 'name' | 'description' | 'base_price' | 'unit', currentValue: string | number) => {
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const startEditing = useCallback((productId: string, currentValues: Product) => {
     setEditingProduct({
       id: productId,
-      field,
-      value: String(currentValue || '')
+      fields: {
+        name: currentValues.name,
+        description: currentValues.description || '',
+        base_price: String(currentValues.base_price),
+        unit: currentValues.unit
+      }
     });
-  };
+  }, []);
 
-  const handleSaveEdit = (productId: string) => {
+  const handleFieldChange = useCallback((field: keyof EditingProduct['fields'], value: string) => {
+    if (!editingProduct) return;
+    setEditingProduct({
+      ...editingProduct,
+      fields: {
+        ...editingProduct.fields,
+        [field]: value
+      }
+    });
+  }, [editingProduct]);
+
+  const handleSaveEdit = useCallback(async () => {
     if (!editingProduct) return;
 
     const updates: any = {};
     
-    if (editingProduct.field === 'base_price') {
-      updates.base_price = parseFloat(editingProduct.value);
-    } else if (editingProduct.field === 'name') {
-      updates.name = editingProduct.value;
-    } else if (editingProduct.field === 'description') {
-      updates.description = editingProduct.value;
-    } else if (editingProduct.field === 'unit') {
-      updates.unit = editingProduct.value;
+    if (editingProduct.fields.name) updates.name = editingProduct.fields.name;
+    if (editingProduct.fields.description !== undefined) updates.description = editingProduct.fields.description;
+    if (editingProduct.fields.base_price) updates.base_price = parseFloat(editingProduct.fields.base_price);
+    if (editingProduct.fields.unit) updates.unit = editingProduct.fields.unit;
+
+    updateProduct({ id: editingProduct.id, updates });
+    setEditingProduct(null);
+  }, [editingProduct, updateProduct]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingProduct(null);
+  }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && editingProduct) {
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
     }
-
-    updateProduct({ id: productId, updates });
-    setEditingProduct(null);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingProduct(null);
-  };
+  }, [editingProduct, handleSaveEdit, handleCancelEdit]);
 
   const handleCreateProduct = (data: NewProductData) => {
     createProduct(data);
     setShowNewProductModal(false);
   };
 
-  const renderEditableField = (product: Product, field: 'name' | 'description' | 'base_price' | 'unit', currentValue: string | number) => {
-    const isEditing = editingProduct?.id === product.id && editingProduct.field === field;
+  const EditableCell = ({ 
+    product, 
+    field, 
+    value, 
+    type = 'text' 
+  }: { 
+    product: Product; 
+    field: keyof EditingProduct['fields']; 
+    value: string | number; 
+    type?: 'text' | 'number' | 'select';
+  }) => {
+    const isEditing = editingProduct?.id === product.id;
+    const fieldValue = isEditing ? editingProduct.fields[field] || '' : value;
 
     if (isEditing) {
-      if (field === 'unit') {
+      if (type === 'select' && field === 'unit') {
         return (
-          <div className="flex items-center space-x-2">
-            <Select 
-              value={editingProduct.value} 
-              onValueChange={(value) => setEditingProduct({...editingProduct, value})}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {units.map((unit) => (
-                  <SelectItem key={unit.value} value={unit.value}>
-                    {unit.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button size="sm" variant="ghost" onClick={() => handleSaveEdit(product.id)}>
-              <Check className="h-3 w-3" />
-            </Button>
-            <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
+          <Select 
+            value={String(fieldValue)} 
+            onValueChange={(value) => handleFieldChange(field, value)}
+          >
+            <SelectTrigger className="h-8 min-w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {units.map((unit) => (
+                <SelectItem key={unit.value} value={unit.value}>
+                  {unit.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         );
       }
 
       return (
-        <div className="flex items-center space-x-2">
-          <Input
-            value={editingProduct.value}
-            onChange={(e) => setEditingProduct({...editingProduct, value: e.target.value})}
-            className={`h-8 ${field === 'description' ? 'text-xs' : ''}`}
-            type={field === 'base_price' ? 'number' : 'text'}
-            step={field === 'base_price' ? '0.01' : undefined}
-          />
-          <Button size="sm" variant="ghost" onClick={() => handleSaveEdit(product.id)}>
-            <Check className="h-3 w-3" />
-          </Button>
-          <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
-            <X className="h-3 w-3" />
-          </Button>
-        </div>
+        <Input
+          value={String(fieldValue)}
+          onChange={(e) => handleFieldChange(field, e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="h-8 min-w-[120px]"
+          type={type}
+          step={type === 'number' ? '0.01' : undefined}
+          autoFocus={editingProduct.fields[field] === undefined}
+        />
       );
     }
 
+    const displayValue = field === 'base_price' 
+      ? `R$ ${Number(value).toFixed(2)}` 
+      : field === 'unit'
+        ? units.find(u => u.value === value)?.label || value
+        : String(value || '-');
+
     return (
-      <div className="flex items-center space-x-2 group">
-        <span className={field === 'description' ? 'text-sm text-drystore-medium-gray' : 'font-semibold'}>
-          {field === 'base_price' 
-            ? `R$ ${Number(currentValue).toFixed(2)}` 
-            : field === 'unit'
-            ? units.find(u => u.value === currentValue)?.label || currentValue
-            : String(currentValue || '-')
-          }
+      <div 
+        className="cursor-pointer hover:bg-muted/50 p-1 rounded min-h-[32px] flex items-center"
+        onDoubleClick={() => startEditing(product.id, product)}
+      >
+        <span className={field === 'description' ? 'text-sm text-muted-foreground' : ''}>
+          {displayValue}
         </span>
-        <Button 
-          size="sm" 
-          variant="ghost" 
-          className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
-          onClick={() => handleEdit(product.id, field, currentValue)}
-        >
-          <Edit2 className="h-3 w-3" />
-        </Button>
       </div>
     );
   };
 
-  const ProductCard = ({ product }: { product: Product }) => (
-    <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-200">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-drystore-orange/10 rounded-lg flex items-center justify-center">
-              <Package className="h-6 w-6 text-drystore-orange" />
+  const ProductTableRow = ({ product }: { product: Product }) => {
+    const isEditing = editingProduct?.id === product.id;
+    
+    return (
+      <TableRow className={`hover:bg-muted/50 ${isEditing ? 'bg-muted/30 border-primary' : ''}`}>
+        <TableCell className="font-medium">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+              <Package className="h-4 w-4 text-primary" />
             </div>
-            <div className="flex-1">
-              <CardTitle className="text-lg text-drystore-dark-gray">
-                {renderEditableField(product, 'name', product.name)}
-              </CardTitle>
-              <div className="flex items-center space-x-2 mt-1">
-                <DryStoreBadge variant={product.is_active ? "success" : "danger"}>
-                  {product.is_active ? 'Ativo' : 'Inativo'}
-                </DryStoreBadge>
-                <span className="text-xs text-drystore-medium-gray">
-                  {product.code}
-                </span>
-              </div>
+            <div>
+              <EditableCell product={product} field="name" value={product.name} />
+              <div className="text-xs text-muted-foreground mt-1">{product.code}</div>
             </div>
           </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
-        <div>
-          {renderEditableField(product, 'description', product.description || '')}
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-drystore-medium-gray">Preço Base:</span>
-            {renderEditableField(product, 'base_price', product.base_price)}
+        </TableCell>
+        
+        <TableCell>
+          <EditableCell 
+            product={product} 
+            field="description" 
+            value={product.description || ''} 
+          />
+        </TableCell>
+        
+        <TableCell>
+          <DryStoreBadge variant={product.category === 'forro_drywall' ? "drystore" : "info"}>
+            {categories.find(c => c.key === product.category)?.label || product.category}
+          </DryStoreBadge>
+        </TableCell>
+        
+        <TableCell>
+          <EditableCell 
+            product={product} 
+            field="unit" 
+            value={product.unit} 
+            type="select"
+          />
+        </TableCell>
+        
+        <TableCell>
+          <EditableCell 
+            product={product} 
+            field="base_price" 
+            value={product.base_price} 
+            type="number"
+          />
+        </TableCell>
+        
+        <TableCell>
+          <DryStoreBadge variant={product.is_active ? "success" : "warning"}>
+            {product.is_active ? 'Ativo' : 'Inativo'}
+          </DryStoreBadge>
+        </TableCell>
+        
+        <TableCell>
+          <div className="flex items-center space-x-2">
+            {isEditing ? (
+              <>
+                <Button 
+                  size="sm" 
+                  onClick={handleSaveEdit}
+                  disabled={isUpdating}
+                  className="h-8"
+                >
+                  <Check className="h-3 w-3" />
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleCancelEdit}
+                  className="h-8"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => startEditing(product.id, product)}
+                  className="h-8"
+                >
+                  <Edit2 className="h-3 w-3" />
+                </Button>
+                <DryStoreButton size="sm" className="h-8">
+                  <Eye className="h-3 w-3 mr-1" />
+                  Usar
+                </DryStoreButton>
+              </>
+            )}
           </div>
-
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-drystore-medium-gray">Unidade:</span>
-            {renderEditableField(product, 'unit', product.unit)}
-          </div>
-
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-drystore-medium-gray">Categoria:</span>
-            <span className="font-semibold text-drystore-dark-gray capitalize">
-              {categories.find(c => c.key === product.category)?.label || product.category}
-            </span>
-          </div>
-
-          {product.supplier && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-drystore-medium-gray">Fornecedor:</span>
-              <span className="font-semibold text-drystore-dark-gray">
-                {product.supplier}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex space-x-2 pt-4">
-          <DryStoreButton size="sm" className="flex-1">
-            Usar em Proposta
-          </DryStoreButton>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </TableCell>
+      </TableRow>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -318,22 +417,74 @@ export default function ProductsPage() {
 
         {categories.map((category) => (
           <TabsContent key={category.key} value={category.key} className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {getProductsByCategory(category.key).map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-            
-            {getProductsByCategory(category.key).length === 0 && (
+            {getProductsByCategory(category.key).length > 0 ? (
+              <Card className="border-0 shadow-md">
+                <CardContent className="p-0">
+                  <div className="rounded-md border">
+                    <div className="bg-muted/20 px-4 py-2 border-b">
+                      <p className="text-sm text-muted-foreground">
+                        Duplo clique em qualquer célula para editar • Enter para salvar • Esc para cancelar
+                      </p>
+                    </div>
+                    
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[300px]">
+                            <Button 
+                              variant="ghost" 
+                              className="h-auto p-0 font-semibold hover:text-primary"
+                              onClick={() => handleSort('name')}
+                            >
+                              Produto
+                              <ArrowUpDown className="ml-2 h-4 w-4" />
+                            </Button>
+                          </TableHead>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead>
+                            <Button 
+                              variant="ghost" 
+                              className="h-auto p-0 font-semibold hover:text-primary"
+                              onClick={() => handleSort('category')}
+                            >
+                              Categoria
+                              <ArrowUpDown className="ml-2 h-4 w-4" />
+                            </Button>
+                          </TableHead>
+                          <TableHead>Unidade</TableHead>
+                          <TableHead>
+                            <Button 
+                              variant="ghost" 
+                              className="h-auto p-0 font-semibold hover:text-primary"
+                              onClick={() => handleSort('base_price')}
+                            >
+                              Preço Base
+                              <ArrowUpDown className="ml-2 h-4 w-4" />
+                            </Button>
+                          </TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="w-[140px]">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {getProductsByCategory(category.key).map((product) => (
+                          <ProductTableRow key={product.id} product={product} />
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
               <Card className="border-0 shadow-md">
                 <CardContent className="p-12 text-center">
-                  <div className="w-16 h-16 bg-drystore-orange/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Package className="h-8 w-8 text-drystore-orange" />
+                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Package className="h-8 w-8 text-primary" />
                   </div>
-                  <h3 className="text-lg font-semibold text-drystore-dark-gray mb-2">
+                  <h3 className="text-lg font-semibold mb-2">
                     Nenhum produto encontrado
                   </h3>
-                  <p className="text-drystore-medium-gray">
+                  <p className="text-muted-foreground">
                     {category.key === 'all' ? 'Adicione produtos para começar' : `Nenhum produto na categoria ${category.label}`}
                   </p>
                 </CardContent>
