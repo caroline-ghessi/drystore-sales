@@ -17,6 +17,7 @@ import { BatteryBackupCalculator } from '../calculator/BatteryBackupCalculator';
 import { ShingleCalculator } from '../calculator/ShingleCalculator';
 import { DrywallCalculator } from '../calculator/DrywallCalculator';
 import { ForroDrywallCalculator } from '../calculator/ForroDrywallCalculator';
+import { AcousticMineralCeilingWrapper } from '../calculator/AcousticMineralCeilingWrapper';
 import { useNavigate } from 'react-router-dom';
 
 interface ProposalGeneratorProps {
@@ -124,6 +125,8 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
         return <DrywallCalculator onCalculate={calculator.calculate} />;
       case 'forro_drywall':
         return <ForroDrywallCalculator onCalculate={calculator.calculate} />;
+      case 'acoustic_mineral_ceiling':
+        return <AcousticMineralCeilingWrapper />;
       default:
         return (
           <Card>
@@ -215,9 +218,8 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                     { value: 'battery_backup', label: 'Sistema de Backup', description: 'Baterias + inversor híbrido' },
                     { value: 'shingle', label: 'Telha Shingle', description: 'Telhados e coberturas' },
                     { value: 'drywall', label: 'Drywall', description: 'Divisórias e paredes' },
-                    { value: 'steel_frame', label: 'Steel Frame', description: 'Estruturas metálicas' },
-                    { value: 'ceiling', label: 'Forros', description: 'Forros tradicionais' },
-                    { value: 'forro_drywall', label: 'Forro Drywall', description: 'Sistema completo de forro drywall' }
+                    { value: 'forro_drywall', label: 'Forro Drywall', description: 'Sistema completo de forro drywall' },
+                    { value: 'acoustic_mineral_ceiling', label: 'Forro Mineral Acústico', description: 'Forros minerais com isolamento acústico' }
                   ].map((product) => (
                     <Card 
                       key={product.value}
