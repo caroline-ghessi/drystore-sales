@@ -319,6 +319,18 @@ export interface DrywallCalculationInput extends BaseCalculationInput {
   profileType: 'M48' | 'M70' | 'M90';
   finishType: 'level_3' | 'level_4' | 'level_5';
   
+  // Produtos específicos selecionados
+  selectedProducts?: {
+    placas?: string;
+    massaJuntas?: string;
+    massaAcabamento?: string;
+    perfisMetalicos?: string;
+    parafusosDrywall?: string;
+    parafusosMetal?: string;
+    fita?: string;
+    isolamento?: string;
+  };
+  
   openings: {
     doors: number;
     windows: number;
@@ -359,9 +371,13 @@ export interface DrywallCalculationResult {
   screwWoodQuantity?: number; // Para OSB
   screwCementQuantity?: number; // Para cimentícia
   
-  // Materiais de acabamento
+  // Materiais de acabamento separados
+  jointMassQuantity: number; // Massa para juntas (kg)
+  finishMassQuantity: number; // Massa de acabamento (kg)
+  tapeQuantity: number; // Fita para juntas (metros)
+  
+  // Campo legado para compatibilidade
   massQuantity: number;
-  tapeQuantity: number;
   
   // Materiais especiais
   insulationQuantity?: number;

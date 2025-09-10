@@ -55,7 +55,11 @@ export function calculateDrywallInstallation(input: DrywallCalculationInput): Dr
     guiaQuantity,
     screw25mmQuantity,
     screw13mmQuantity,
-    massQuantity,
+    
+    // Massas separadas e campo legado
+    jointMassQuantity: massQuantity * 0.4, // 40% para juntas
+    finishMassQuantity: massQuantity * 0.6, // 60% para acabamento
+    massQuantity, // Campo legado
     tapeQuantity,
     insulationQuantity,
     acousticBandQuantity: features.acousticBand ? wallArea * 0.6 : undefined,

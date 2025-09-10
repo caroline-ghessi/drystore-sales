@@ -165,13 +165,21 @@ export function DrywallCalculatorResults({ result }: DrywallCalculatorResultsPro
               icon={Package}
             />
             
-            <MaterialCard
-              title="Massa para Juntas"
-              quantity={result.massQuantity.toFixed(1)}
-              unit="kg"
-              cost={result.itemizedCosts.materials.mass}
-              icon={Package}
-            />
+             <MaterialCard
+               title="Massa para Juntas"
+               quantity={result.jointMassQuantity ? result.jointMassQuantity.toFixed(1) : (result.massQuantity * 0.4).toFixed(1)}
+               unit="kg"
+               cost={result.itemizedCosts.materials.mass ? result.itemizedCosts.materials.mass * 0.4 : 0}
+               icon={Package}
+             />
+
+             <MaterialCard
+               title="Massa de Acabamento"
+               quantity={result.finishMassQuantity ? result.finishMassQuantity.toFixed(1) : (result.massQuantity * 0.6).toFixed(1)}
+               unit="kg"
+               cost={result.itemizedCosts.materials.mass ? result.itemizedCosts.materials.mass * 0.6 : 0}
+               icon={Package}
+             />
             
             <MaterialCard
               title="Fita para Juntas"

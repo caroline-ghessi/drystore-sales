@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calculator, Layers, Info, Wrench } from 'lucide-react';
 import { DrywallCalculationInput } from '../../types/calculation.types';
+import { ProductSelection, SelectedProducts } from './ProductSelection';
 
 interface AdvancedDrywallCalculatorProps {
   onCalculate: (input: DrywallCalculationInput) => void;
@@ -42,8 +43,12 @@ export function AdvancedDrywallCalculator({ onCalculate }: AdvancedDrywallCalcul
       installation: true,
       finishing: true,
       insulation: false
-    }
+    },
+    selectedProducts: {}
   });
+
+  const [selectedProducts, setSelectedProducts] = useState<SelectedProducts>({});
+  const [productSelectionMode, setProductSelectionMode] = useState<'manual' | 'automatic'>('automatic');
 
   const configurations = {
     W111: {
@@ -82,8 +87,19 @@ export function AdvancedDrywallCalculator({ onCalculate }: AdvancedDrywallCalcul
     M90: { name: 'M90 - 90mm', use: 'Paredes reforçadas' }
   };
 
+  const handleProductSelect = (productType: string, productId: string) => {
+    setSelectedProducts(prev => ({
+      ...prev,
+      [productType]: productId
+    }));
+  };
+
   const handleCalculate = () => {
-    onCalculate(input);
+    const finalInput = {
+      ...input,
+      selectedProducts: productSelectionMode === 'manual' ? selectedProducts : undefined
+    };
+    onCalculate(finalInput);
   };
 
   return (
@@ -99,10 +115,11 @@ export function AdvancedDrywallCalculator({ onCalculate }: AdvancedDrywallCalcul
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="basic" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="basic">Básico</TabsTrigger>
             <TabsTrigger value="configuration">Configuração</TabsTrigger>
             <TabsTrigger value="materials">Materiais</TabsTrigger>
+            <TabsTrigger value="products">Produtos</TabsTrigger>
             <TabsTrigger value="labor">Mão de Obra</TabsTrigger>
           </TabsList>
 
@@ -336,6 +353,16 @@ export function AdvancedDrywallCalculator({ onCalculate }: AdvancedDrywallCalcul
                 </div>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="products" className="space-y-4">
+            <ProductSelection
+              category="drywall_divisorias"
+              selectedProducts={selectedProducts}
+              onProductSelect={handleProductSelect}
+              mode={productSelectionMode}
+              onModeChange={setProductSelectionMode}
+            />
           </TabsContent>
 
           <TabsContent value="labor" className="space-y-4">

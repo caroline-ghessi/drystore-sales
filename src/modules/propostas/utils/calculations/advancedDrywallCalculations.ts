@@ -341,7 +341,11 @@ export function calculateAdvancedDrywall(input: DrywallCalculationInput): Drywal
     screw13mmQuantity,
     screwWoodQuantity: screwWoodQuantity || undefined,
     screwCementQuantity: screwCementQuantity || undefined,
-    massQuantity,
+    
+    // Massas separadas e campo legado
+    jointMassQuantity: massQuantity * 0.4, // 40% para juntas  
+    finishMassQuantity: massQuantity * 0.6, // 60% para acabamento
+    massQuantity, // Campo legado
     tapeQuantity,
     insulationQuantity: insulationQuantity || undefined,
     acousticBandQuantity: acousticBandQuantity || undefined,
