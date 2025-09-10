@@ -111,6 +111,8 @@ async function handleIncomingMessage(message: any, contact: any) {
   const { from, id: whatsappMessageId, type, timestamp } = message;
   
   try {
+    console.log(`📱 Processing incoming message: ${whatsappMessageId} from ${from} (type: ${type})`);
+    
     // Find or create conversation
     let { data: conversation } = await supabase
       .from('conversations')
@@ -190,40 +192,79 @@ async function handleIncomingMessage(message: any, contact: any) {
       content = `[TIPO DE MENSAGEM NÃO SUPORTADO: ${type}]`;
     }
 
-    // Save message
-    const { data: savedMessage, error: messageError } = await supabase.from('messages').insert({
-      conversation_id: conversation.id,
-      whatsapp_message_id: whatsappMessageId,
-      sender_type: 'customer',
-      content,
-      media_type: mediaType,
-      media_url: mediaUrl,
-      status: 'delivered',
-      transcription_status: (type === 'audio' || type === 'voice') ? 'pending' : 'not_applicable',
-      created_at: new Date(parseInt(timestamp) * 1000).toISOString()
-    }).select().single();
+    // Save message with duplicate protection
+    const { data: savedMessage, error: messageError } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversation.id,
+        whatsapp_message_id: whatsappMessageId,
+        sender_type: 'customer',
+        content,
+        media_type: mediaType,
+        media_url: mediaUrl,
+        status: 'delivered',
+        transcription_status: (type === 'audio' || type === 'voice') ? 'pending' : 'not_applicable',
+        created_at: new Date(parseInt(timestamp) * 1000).toISOString()
+      })
+      .select()
+      .single();
+
+    // Check if message was actually inserted (new) or was duplicate
+    let isNewMessage = true;
+    let messageToProcess = savedMessage;
 
     if (messageError) {
-      throw new Error(`Failed to save message: ${messageError.message}`);
+      // If error is due to duplicate key, handle gracefully
+      if (messageError.code === '23505' && messageError.message.includes('whatsapp_message_id')) {
+        console.log(`📱 Duplicate message detected: ${whatsappMessageId} - checking if already processed`);
+        
+        // Get existing message
+        const { data: existingMessage } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('whatsapp_message_id', whatsappMessageId)
+          .single();
+        
+        isNewMessage = false;
+        messageToProcess = existingMessage;
+        
+        // Log duplicate for monitoring
+        await supabase.from('system_logs').insert({
+          level: 'info',
+          source: 'whatsapp-webhook-duplicate',
+          message: 'Duplicate message handled gracefully',
+          data: { 
+            whatsappMessageId,
+            from,
+            content: content.substring(0, 100),
+            existingMessageId: existingMessage?.id
+          }
+        });
+      } else {
+        // Different error, throw it
+        throw new Error(`Failed to save message: ${messageError.message}`);
+      }
     }
 
-    // Update conversation
-    await supabase
-      .from('conversations')
-      .update({
-        last_message_at: new Date().toISOString(),
-        status: 'in_bot'
-      })
-      .eq('id', conversation.id);
+    // Update conversation only for new messages
+    if (isNewMessage) {
+      await supabase
+        .from('conversations')
+        .update({
+          last_message_at: new Date().toISOString(),
+          status: 'in_bot'
+        })
+        .eq('id', conversation.id);
+    }
 
-    // Chamar transcrição para mensagens de áudio de forma assíncrona
-    if ((type === 'audio' || type === 'voice') && mediaUrl && savedMessage?.id) {
-      console.log(`🎵 Starting audio transcription for message ${savedMessage.id}`);
+    // Chamar transcrição para mensagens de áudio de forma assíncrona (apenas mensagens novas)
+    if (isNewMessage && (type === 'audio' || type === 'voice') && mediaUrl && messageToProcess?.id) {
+      console.log(`🎵 Starting audio transcription for NEW message ${messageToProcess.id}`);
       
       // Chamar função de transcrição assíncrona sem bloquear
       supabase.functions.invoke('transcribe-audio', {
         body: {
-          message_id: savedMessage.id,
+          message_id: messageToProcess.id,
           media_url: mediaUrl
         }
       }).then(result => {
@@ -237,19 +278,32 @@ async function handleIncomingMessage(message: any, contact: any) {
       });
     }
 
-    // PROCESSAR MENSAGEM COM AGENTES DE IA (SKIP PARA ÁUDIO ATÉ TRANSCRIÇÃO COMPLETAR)
-    if (type !== 'audio' && type !== 'voice') {
-      await processMessageWithAI(conversation.id, content);
+    // PROCESSAR MENSAGEM COM AGENTES DE IA
+    // Para mensagens novas: processar normalmente (skip áudio até transcrição)
+    // Para duplicatas: verificar se já foi processada pela IA
+    if (isNewMessage) {
+      if (type !== 'audio' && type !== 'voice') {
+        await processMessageWithAI(conversation.id, content);
+        console.log('✅ NEW message processed with AI agents:', {
+          conversationId: conversation.id,
+          messageId: whatsappMessageId,
+          content: content.substring(0, 50)
+        });
+      } else {
+        console.log(`🎵 NEW audio message - waiting for transcription before AI processing`);
+      }
     } else {
-      console.log(`🎵 Audio message - waiting for transcription before AI processing`);
+      // Para duplicatas, verificar se já tem resposta da IA
+      const existingAgent = messageToProcess?.agent_id;
+      if (!existingAgent) {
+        console.log(`🔄 Duplicate message but no AI processing found - processing now`);
+        if (type !== 'audio' && type !== 'voice') {
+          await processMessageWithAI(conversation.id, content);
+        }
+      } else {
+        console.log(`✅ Duplicate message already processed by AI agent: ${existingAgent}`);
+      }
     }
-
-    // Log para debug
-    console.log('Message processed with AI agents:', {
-      conversationId: conversation.id,
-      messageId: whatsappMessageId,
-      content: content.substring(0, 50)
-    });
 
     return conversation.id;
 
