@@ -7,7 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, Zap, Calculator, FileText, Download, Save, Trash2 } from 'lucide-react';
+import { Loader2, Zap, Calculator, FileText, Download, Save, Trash2, Sun } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ProductType, ClientData } from '../../types/proposal.types';
 import { BatteryBackupResult } from '../../types/calculation.types';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
@@ -31,6 +33,10 @@ interface ProposalGeneratorProps {
 export function ProposalGenerator({ projectContextId, onProposalGenerated }: ProposalGeneratorProps) {
   const [step, setStep] = useState(1);
   const [productType, setProductType] = useState<ProductType>('solar');
+  
+  // Installation cost management
+  const [includeInstallation, setIncludeInstallation] = useState(false);
+  const [installationCost, setInstallationCost] = useState(0);
   const [clientData, setClientData] = useState<ClientData>({
     name: '',
     phone: '',
@@ -321,33 +327,277 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
               {renderCalculator()}
               
               {calculator.calculationResult && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Resumo dos Cálculos</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {calculator.calculationSummary?.keyMetrics.map((metric, index) => (
-                        <div key={index} className="text-center">
-                          <p className="text-2xl font-bold text-primary">
-                            {metric.value}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {metric.label}
+                <>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Resumo dos Cálculos</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {calculator.calculationSummary?.keyMetrics.map((metric, index) => (
+                          <div key={index} className="text-center">
+                            <p className="text-2xl font-bold text-primary">
+                              {metric.value}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {metric.label}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Equipment List for Solar Calculations */}
+                  {(productType === 'solar' || productType === 'solar_advanced') && calculator.calculationSummary?.proposalItems && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center">
+                          <Sun className="mr-2 h-5 w-5 text-yellow-500" />
+                          Lista de Equipamentos
+                        </CardTitle>
+                        <CardDescription>
+                          Equipamentos quantificados para o sistema solar fotovoltaico
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Painéis Solares */}
+                        {calculator.calculationSummary.proposalItems.filter(item => 
+                          item.description.toLowerCase().includes('painel')).map((item, index) => (
+                          <div key={`panel-${index}`}>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-semibold text-blue-700">Painéis Solares Fotovoltaicos</h4>
+                              <Badge variant="secondary">Geração de Energia</Badge>
+                            </div>
+                            <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-200">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <p className="font-medium">
+                                    {item.quantity}x {item.description}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    Potência: {item.specifications.power || 'N/A'} | 
+                                    Eficiência: {item.specifications.efficiency || 'N/A'}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Modelo: {item.specifications.model || 'N/A'} | 
+                                    Marca: {item.specifications.brand || 'N/A'}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold text-lg">
+                                    R$ {item.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Inversores */}
+                        {calculator.calculationSummary.proposalItems.filter(item => 
+                          item.description.toLowerCase().includes('inversor')).map((item, index) => (
+                          <div key={`inverter-${index}`}>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-semibold text-orange-700">Inversor Solar</h4>
+                              <Badge variant="secondary">Conversão DC/AC</Badge>
+                            </div>
+                            <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-200">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <p className="font-medium">
+                                    {item.quantity}x {item.description}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    Potência: {item.specifications.power || 'N/A'} | 
+                                    Eficiência: {item.specifications.efficiency || 'N/A'}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Modelo: {item.specifications.model || 'N/A'} | 
+                                    Marca: {item.specifications.brand || 'N/A'}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold text-lg">
+                                    R$ {item.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Estrutura de Fixação */}
+                        {calculator.calculationSummary.proposalItems.filter(item => 
+                          item.description.toLowerCase().includes('estrutura')).map((item, index) => (
+                          <div key={`structure-${index}`}>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-semibold text-green-700">Estrutura de Fixação</h4>
+                              <Badge variant="secondary">Suporte</Badge>
+                            </div>
+                            <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-200">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <p className="font-medium">
+                                    {item.quantity}x {item.description}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    Material: {item.specifications.material || 'N/A'} | 
+                                    Tipo: {item.specifications.type || 'N/A'}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Para {item.specifications.panels || item.quantity} painéis
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold text-lg">
+                                    R$ {item.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Material Elétrico */}
+                        {calculator.calculationSummary.proposalItems.filter(item => 
+                          item.description.toLowerCase().includes('material') || 
+                          item.description.toLowerCase().includes('elétrico')).map((item, index) => (
+                          <div key={`electrical-${index}`}>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-semibold text-purple-700">Material Elétrico</h4>
+                              <Badge variant="secondary">Proteção & Cabeamento</Badge>
+                            </div>
+                            <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-200">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <p className="font-medium">
+                                    {item.quantity}x {item.description}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    Cabos, Conectores MC4, Disjuntores
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Sistema de Proteção e Aterramento
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold text-lg">
+                                    R$ {item.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Documentação */}
+                        {calculator.calculationSummary.proposalItems.filter(item => 
+                          item.description.toLowerCase().includes('documentação') ||
+                          item.description.toLowerCase().includes('homologação')).map((item, index) => (
+                          <div key={`documentation-${index}`}>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-semibold text-teal-700">Documentação e Homologação</h4>
+                              <Badge variant="secondary">Regulamentação</Badge>
+                            </div>
+                            <div className="bg-teal-50 p-4 rounded-lg border-l-4 border-teal-200">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <p className="font-medium">
+                                    {item.quantity}x {item.description}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    Projeto Executivo, ART/RRT
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Aprovação junto à concessionária
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold text-lg">
+                                    R$ {item.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        <Separator />
+
+                        {/* Subtotal Products */}
+                        <div className="bg-slate-50 p-4 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <p className="font-semibold text-lg">SUBTOTAL PRODUTOS:</p>
+                            <p className="font-bold text-2xl text-slate-700">
+                              R$ {calculator.calculationSummary.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Optional Installation */}
+                        <div className="border-2 border-dashed border-slate-300 p-4 rounded-lg">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <Checkbox
+                              id="includeInstallation"
+                              checked={includeInstallation}
+                              onCheckedChange={(checked) => setIncludeInstallation(checked as boolean)}
+                            />
+                            <Label htmlFor="includeInstallation" className="font-medium">
+                              ⚠️ Incluir instalação/mão de obra (Opcional)
+                            </Label>
+                          </div>
+                          {includeInstallation && (
+                            <div className="ml-6">
+                              <Label htmlFor="installationCost">Valor da Instalação (R$):</Label>
+                              <Input
+                                id="installationCost"
+                                type="number"
+                                value={installationCost}
+                                onChange={(e) => setInstallationCost(Number(e.target.value) || 0)}
+                                placeholder="Digite o valor da mão de obra"
+                                className="mt-1"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Final Total */}
+                        <div className="bg-primary/10 p-6 rounded-lg border-2 border-primary/20">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="font-semibold text-lg">VALOR TOTAL DO SISTEMA:</p>
+                              <p className="text-sm text-muted-foreground">
+                                {includeInstallation ? 'Produtos + Instalação' : 'Apenas Produtos'}
+                              </p>
+                            </div>
+                            <p className="font-bold text-3xl text-primary">
+                              R$ {(calculator.calculationSummary.totalCost + (includeInstallation ? installationCost : 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Original Summary Card for non-solar or when no proposalItems */}
+                  {((productType !== 'solar' && productType !== 'solar_advanced') || !calculator.calculationSummary?.proposalItems) && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Resumo dos Cálculos</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                          <p className="text-lg font-semibold">
+                            Valor Total: R$ {calculator.calculationSummary?.totalCost.toLocaleString('pt-BR', {
+                              minimumFractionDigits: 2
+                            })}
                           </p>
                         </div>
-                      ))}
-                    </div>
-                    
-                    <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                      <p className="text-lg font-semibold">
-                        Valor Total: R$ {calculator.calculationSummary?.totalCost.toLocaleString('pt-BR', {
-                          minimumFractionDigits: 2
-                        })}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
               )}
               
               <div className="flex space-x-2">

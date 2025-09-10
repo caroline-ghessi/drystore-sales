@@ -413,7 +413,8 @@ export function useProposalCalculator(productType: ProductType) {
             { label: 'Geração Mensal', value: `${solar.monthlyGeneration.toFixed(0)} kWh` },
             { label: 'Economia Mensal', value: `R$ ${solar.monthlySavings.toFixed(2)}` },
             { label: 'Payback', value: `${(solar.paybackPeriod / 12).toFixed(1)} anos` }
-          ]
+          ],
+          proposalItems: generateProposalItems()
         };
         
       case 'battery_backup':
