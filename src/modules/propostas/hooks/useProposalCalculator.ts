@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { ProductType, ProposalItem } from '../types/proposal.types';
-import { CalculationInput, CalculationResult } from '../types/calculation.types';
+import { CalculationInput, CalculationResult, SimpleSolarCalculationInput, SolarCalculationInput } from '../types/calculation.types';
 import { calculateSimpleSolarSystem } from '../utils/calculations/simpleSolarCalculations';
 import { calculateBatteryBackup } from '../utils/calculations/batteryBackupCalculations';
 import { calculateSolarWithProducts } from '../utils/calculations/productBasedSolarCalculations';
@@ -10,6 +10,23 @@ import { calculateShingleInstallation } from '../utils/calculations/shingleCalcu
 import { calculateDrywallInstallation } from '../utils/calculations/drywallCalculations';
 import { calculateForroDrywall } from '../utils/calculations/forroDrywallCalculations';
 import { calculateAcousticMineralCeiling } from '../utils/calculations/acousticMineralCeilingCalculations';
+
+// Função para detectar se o input é do tipo SimpleSolarCalculationInput
+function isSimpleSolarInput(input: any): input is SimpleSolarCalculationInput {
+  return input && typeof input.currentTariff === 'number' && !input.roofOrientation;
+}
+
+// Função para converter SimpleSolarCalculationInput para SolarCalculationInput
+function convertSimpleToAdvancedSolarInput(input: SimpleSolarCalculationInput): SolarCalculationInput {
+  return {
+    monthlyConsumption: input.monthlyConsumption,
+    roofType: 'ceramic' as const,
+    roofOrientation: 'north' as const, // Melhor orientação para o Brasil
+    shadowing: 'none' as const, // Cenário otimista
+    installationType: input.installationType,
+    region: 'southeast' as const // Região padrão
+  };
+}
 
 export function useProposalCalculator(productType: ProductType) {
   const [calculationInput, setCalculationInput] = useState<CalculationInput | null>(null);
@@ -34,11 +51,26 @@ export function useProposalCalculator(productType: ProductType) {
       
       switch (productType) {
         case 'solar':
-          // Usar cálculo baseado em produtos se disponível
-          if (products && products.length > 0) {
-            result = calculateSolarWithProducts(input as any, products);
+          // Detectar tipo de input e usar calculadora apropriada
+          if (isSimpleSolarInput(input)) {
+            // Input simples: usar calculadora baseada em produtos se disponível
+            if (products && products.length > 0) {
+              const advancedInput = convertSimpleToAdvancedSolarInput(input);
+              result = calculateSolarWithProducts(advancedInput, products);
+            } else {
+              result = calculateSimpleSolarSystem(input);
+            }
           } else {
-            result = calculateSimpleSolarSystem(input as any);
+            // Input avançado: usar calculadora baseada em produtos se disponível
+            if (products && products.length > 0) {
+              result = calculateSolarWithProducts(input as SolarCalculationInput, products);
+            } else {
+              result = calculateSimpleSolarSystem({
+                monthlyConsumption: (input as SolarCalculationInput).monthlyConsumption,
+                currentTariff: 0.70, // Tarifa padrão quando não informada
+                installationType: (input as SolarCalculationInput).installationType
+              });
+            }
           }
           break;
         case 'battery_backup':
