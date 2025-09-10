@@ -200,10 +200,12 @@ export function AcousticMineralCeilingResults({ result }: AcousticMineralCeiling
             <span>Acessórios:</span>
             <span className="font-mono">{formatCurrency(result.itemizedCosts.accessories)}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Mão de obra:</span>
-            <span className="font-mono">{formatCurrency(result.itemizedCosts.labor)}</span>
-          </div>
+          {result.itemizedCosts.labor > 0 && (
+            <div className="flex justify-between">
+              <span>Mão de obra:</span>
+              <span className="font-mono">{formatCurrency(result.itemizedCosts.labor)}</span>
+            </div>
+          )}
           <Separator />
           <div className="flex justify-between font-semibold text-lg">
             <span>Total:</span>

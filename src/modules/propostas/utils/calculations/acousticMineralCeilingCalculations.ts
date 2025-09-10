@@ -239,10 +239,70 @@ export function calculateLossPercentage(format: AcousticMineralCeilingInput['roo
 
 // Função principal de cálculo (nova versão com produtos dinâmicos)
 export async function calculateAcousticMineralCeiling(input: AcousticMineralCeilingInput): Promise<AcousticMineralCeilingResult> {
-  // 1. Seleção do produto da base de dados
-  const selectedProduct = await selectOptimalProduct(input);
-  if (!selectedProduct) {
+  // 1. Buscar produtos da base de dados
+  const products = await getAcousticMineralProducts();
+  
+  if (!products || products.length === 0) {
     throw new Error('Nenhum produto de forro mineral acústico encontrado na base de dados');
+  }
+  
+  // 2. Seleção do produto adequado baseado nas necessidades
+  let selectedProduct;
+  
+  // Preferência 1: Se seleção manual foi feita
+  if (input.manualModel && typeof input.manualModel === 'string') {
+    selectedProduct = products.find(p => 
+      p.name.toLowerCase().includes(input.manualModel!.toLowerCase()) ||
+      p.code.toLowerCase().includes(input.manualModel!.toLowerCase())
+    );
+  }
+  
+  if (!selectedProduct) {
+    // Preferência 2: Filtrar por necessidade específica
+    let filteredProducts = [...products];
+
+    switch (input.primaryNeed) {
+      case 'humidity':
+        filteredProducts = products.filter(p => {
+          const specs = p.specifications as any;
+          return specs?.humidity_resistance === true;
+        });
+        break;
+      
+      case 'acoustic':
+        if (input.nrcRequired) {
+          filteredProducts = products.filter(p => {
+            const specs = p.specifications as any;
+            return (specs?.nrc || 0) >= input.nrcRequired!;
+          });
+        }
+        // Ordenar por melhor performance acústica
+        filteredProducts.sort((a, b) => {
+          const aNrc = (a.specifications as any)?.nrc || 0;
+          const bNrc = (b.specifications as any)?.nrc || 0;
+          return bNrc - aNrc;
+        });
+        break;
+      
+      case 'economy':
+        filteredProducts.sort((a, b) => a.base_price - b.base_price);
+        break;
+      
+      case 'premium':
+        filteredProducts.sort((a, b) => b.base_price - a.base_price);
+        break;
+    }
+
+    // Se não encontrou produtos após filtro, usar todos
+    if (filteredProducts.length === 0) {
+      filteredProducts = products;
+    }
+
+    selectedProduct = filteredProducts[0];
+  }
+  
+  if (!selectedProduct) {
+    throw new Error('Não foi possível selecionar um produto adequado para os requisitos informados.');
   }
   
   const selectedModulation = selectOptimalModulation(input, selectedProduct);
@@ -343,8 +403,9 @@ export async function calculateAcousticMineralCeiling(input: AcousticMineralCeil
     specialAnchors: Math.ceil(hangers * 0.1) // 10% de buchas especiais
   };
 
-  // 6. Custos baseados no produto da base de dados (sem variação regional)
+// 6. Custos baseados no produto da base de dados (sem variação regional)
   const regionMultiplier = 1.0; // Fixado para uniformidade nacional
+  // Usar preços base fixos (poderia ser expandido para buscar produtos específicos)
   const baseProfilePrice = 25; // R$ por metro
   const baseLaborPrice = 35; // R$ por m²
 
@@ -355,7 +416,10 @@ export async function calculateAcousticMineralCeiling(input: AcousticMineralCeil
     perimeterEdge: perimeterEdgeMeters * baseProfilePrice * 0.8 * regionMultiplier,
     suspension: hangers * 15 * regionMultiplier, // R$ 15 por kit
     accessories: (accessories.tegularClips * 2) + (accessories.lightSupports * 8) + (accessories.specialAnchors * 25),
-    labor: usefulArea * baseLaborPrice * regionMultiplier
+    labor: input.laborConfig?.includeLabor 
+      ? (input.laborConfig.customLaborCost || 
+         (input.laborConfig.laborCostPerM2 ? input.laborConfig.laborCostPerM2 * usefulArea : usefulArea * baseLaborPrice))
+      : 0
   };
 
   const totalCost = Object.values(itemizedCosts).reduce((sum, cost) => sum + cost, 0);
@@ -438,16 +502,7 @@ export async function calculateAcousticMineralCeiling(input: AcousticMineralCeil
 }
 
 // Funções auxiliares
-function getRegionMultiplier(region: string): number {
-  const multipliers = {
-    'north': 1.15,
-    'northeast': 1.10, 
-    'center_west': 1.05,
-    'southeast': 1.00,
-    'south': 1.08
-  };
-  return multipliers[region as keyof typeof multipliers] || 1.00;
-}
+// Função de multiplicador regional removida - mantendo uniformidade de preços
 
 function checkProductSuitability(product: any, input: AcousticMineralCeilingInput): boolean {
   const suitabilitySpecs = product.specifications as any;

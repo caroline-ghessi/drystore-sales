@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calculator, Info, CheckCircle, AlertTriangle, Plus, Minus } from 'lucide-react';
 import { AcousticMineralCeilingInput, RoomFormat, RoomNeed, AcousticMineralCeilingModel, CeilingModulation, EdgeType } from '../../types/calculation.types';
 import { CEILING_MODELS } from '../../utils/calculations/acousticMineralCeilingCalculations';
+import { LaborCostSelector, LaborCostConfig } from '../../components/shared/LaborCostSelector';
 
 interface AcousticMineralCeilingCalculatorProps {
   onCalculate: (input: AcousticMineralCeilingInput) => void;
@@ -16,7 +17,6 @@ interface AcousticMineralCeilingCalculatorProps {
 
 export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMineralCeilingCalculatorProps) {
   const [input, setInput] = useState<AcousticMineralCeilingInput>({
-    region: 'southeast',
     roomLength: 0,
     roomWidth: 0,
     roomPerimeter: undefined,
@@ -45,6 +45,9 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
 
   const [selectedModel, setSelectedModel] = useState<AcousticMineralCeilingModel | ''>('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [laborConfig, setLaborConfig] = useState<LaborCostConfig>({
+    includeLabor: false
+  });
 
   const handleInputChange = (field: keyof AcousticMineralCeilingInput, value: any) => {
     setInput(prev => ({ ...prev, [field]: value }));
@@ -119,9 +122,11 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
   };
 
   const handleCalculate = () => {
+    const usefulArea = totalArea - totalObstacleArea - (input.cutoutArea || 0);
     const calculationInput: AcousticMineralCeilingInput = {
       ...input,
-      manualModel: selectedModel || undefined
+      manualModel: selectedModel || undefined,
+      laborConfig: laborConfig
     };
     onCalculate(calculationInput);
   };
@@ -271,24 +276,6 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
                     <SelectItem value="l_shape">Formato em "L"</SelectItem>
                     <SelectItem value="irregular">Formato Irregular</SelectItem>
                     <SelectItem value="multiple_rooms">Múltiplos Ambientes</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="region">Região</Label>
-                <Select 
-                  value={input.region} 
-                  onValueChange={(value) => handleInputChange('region', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="north">Norte</SelectItem>
-                    <SelectItem value="northeast">Nordeste</SelectItem>
-                    <SelectItem value="center_west">Centro-Oeste</SelectItem>
-                    <SelectItem value="southeast">Sudeste</SelectItem>
-                    <SelectItem value="south">Sul</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -705,6 +692,14 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
               </div>
             )}
           </div>
+          
+          {/* 7. MÃO DE OBRA OPCIONAL */}
+          <LaborCostSelector
+            config={laborConfig}
+            onChange={setLaborConfig}
+            totalArea={usefulArea}
+            productType="acoustic"
+          />
 
           {/* Botão Calcular */}
           <div className="flex gap-2">

@@ -621,7 +621,14 @@ export type RoomFormat = 'rectangular' | 'l_shape' | 'irregular' | 'multiple_roo
 // Necessidades do ambiente
 export type RoomNeed = 'acoustic' | 'humidity' | 'premium' | 'economy';
 
-export interface AcousticMineralCeilingInput extends BaseCalculationInput {
+export interface LaborCostConfig {
+  includeLabor: boolean;
+  laborCostPerM2?: number;
+  customLaborCost?: number;
+  laborDescription?: string;
+}
+
+export interface AcousticMineralCeilingInput {
   // Dimensões básicas
   roomLength: number; // m
   roomWidth: number; // m
@@ -671,6 +678,9 @@ export interface AcousticMineralCeilingInput extends BaseCalculationInput {
   manualModel?: AcousticMineralCeilingModel;
   manualModulation?: CeilingModulation;
   manualEdgeType?: EdgeType;
+  
+  // Configuração de mão de obra
+  laborConfig?: LaborCostConfig;
 }
 
 export interface AcousticMineralCeilingResult {
