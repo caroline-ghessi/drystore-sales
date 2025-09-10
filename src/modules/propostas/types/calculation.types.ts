@@ -134,12 +134,18 @@ export interface SimpleSolarCalculationResult {
 export interface BatteryBackupInput extends BaseCalculationInput {
   // Essential loads that need backup power
   essentialLoads: {
-    lighting: number; // kW
-    refrigeration: number; // kW
-    communications: number; // kW (internet, phones)
-    security: number; // kW (cameras, alarms)
-    medical: number; // kW (medical equipment)
-    other: number; // kW
+    lighting: number; // W (200-500W)
+    refrigerator: number; // W (120-180W)
+    freezer: number; // W (100-200W)
+    internet: number; // W (30-80W) - modem/router
+    tv: number; // W (50-200W) - TV/entertainment
+    microwave: number; // W (800-1200W) - microwave/kitchen
+    ventilation: number; // W (60-150W per fan)
+    waterPump: number; // W (500-1500W)
+    security: number; // W (20-100W) - cameras/alarms
+    medical: number; // W (50-150W) - CPAP/nebulizer
+    phones: number; // W (10-30W) - phones
+    other: number; // W - custom loads
   };
   
   // Desired autonomy in hours

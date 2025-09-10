@@ -18,10 +18,16 @@ export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculator
   const [input, setInput] = useState<BatteryBackupInput>({
     essentialLoads: {
       lighting: 300,
-      refrigeration: 150,
-      communications: 80,
-      security: 50,
+      refrigerator: 150,
+      freezer: 0,
+      internet: 50,
+      tv: 100,
+      microwave: 0,
+      ventilation: 120,
+      waterPump: 0,
+      security: 30,
       medical: 0,
+      phones: 20,
       other: 0
     },
     desiredAutonomy: 12,
@@ -71,75 +77,170 @@ export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculator
         {/* Cargas Essenciais */}
         <div>
           <Label className="text-base font-semibold">Cargas Essenciais (Watts)</Label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-3">
-            <div>
-              <Label htmlFor="lighting">Iluminação</Label>
-              <Input
-                id="lighting"
-                type="number"
-                value={input.essentialLoads.lighting}
-                onChange={(e) => handleLoadChange('lighting', Number(e.target.value))}
-                placeholder="300"
-              />
+          
+          {/* Grupo: Cargas Críticas */}
+          <div className="mt-4">
+            <Label className="text-sm font-medium text-muted-foreground">CARGAS CRÍTICAS</Label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+              <div>
+                <Label htmlFor="lighting">Iluminação</Label>
+                <Input
+                  id="lighting"
+                  type="number"
+                  value={input.essentialLoads.lighting}
+                  onChange={(e) => handleLoadChange('lighting', Number(e.target.value))}
+                  placeholder="300"
+                />
+                <p className="text-xs text-muted-foreground">200-500W típico</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="refrigerator">Geladeira</Label>
+                <Input
+                  id="refrigerator"
+                  type="number"
+                  value={input.essentialLoads.refrigerator}
+                  onChange={(e) => handleLoadChange('refrigerator', Number(e.target.value))}
+                  placeholder="150"
+                />
+                <p className="text-xs text-muted-foreground">120-180W típico</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="freezer">Freezer</Label>
+                <Input
+                  id="freezer"
+                  type="number"
+                  value={input.essentialLoads.freezer}
+                  onChange={(e) => handleLoadChange('freezer', Number(e.target.value))}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">100-200W típico</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="internet">Internet</Label>
+                <Input
+                  id="internet"
+                  type="number"
+                  value={input.essentialLoads.internet}
+                  onChange={(e) => handleLoadChange('internet', Number(e.target.value))}
+                  placeholder="50"
+                />
+                <p className="text-xs text-muted-foreground">Modem/Router 30-80W</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="waterPump">Bomba D'água</Label>
+                <Input
+                  id="waterPump"
+                  type="number"
+                  value={input.essentialLoads.waterPump}
+                  onChange={(e) => handleLoadChange('waterPump', Number(e.target.value))}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">500-1500W típico</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="security">Segurança</Label>
+                <Input
+                  id="security"
+                  type="number"
+                  value={input.essentialLoads.security}
+                  onChange={(e) => handleLoadChange('security', Number(e.target.value))}
+                  placeholder="30"
+                />
+                <p className="text-xs text-muted-foreground">Câmeras/Alarmes 20-100W</p>
+              </div>
             </div>
-            
-            <div>
-              <Label htmlFor="refrigeration">Geladeira/Freezer</Label>
-              <Input
-                id="refrigeration"
-                type="number"
-                value={input.essentialLoads.refrigeration}
-                onChange={(e) => handleLoadChange('refrigeration', Number(e.target.value))}
-                placeholder="150"
-              />
-              <p className="text-xs text-muted-foreground">Inclui geladeira e freezer</p>
+          </div>
+
+          <Separator className="my-4" />
+
+          {/* Grupo: Cargas de Conforto */}
+          <div>
+            <Label className="text-sm font-medium text-muted-foreground">CARGAS DE CONFORTO</Label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+              <div>
+                <Label htmlFor="tv">TV/Entretenimento</Label>
+                <Input
+                  id="tv"
+                  type="number"
+                  value={input.essentialLoads.tv}
+                  onChange={(e) => handleLoadChange('tv', Number(e.target.value))}
+                  placeholder="100"
+                />
+                <p className="text-xs text-muted-foreground">50-200W típico</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="ventilation">Ventilação</Label>
+                <Input
+                  id="ventilation"
+                  type="number"
+                  value={input.essentialLoads.ventilation}
+                  onChange={(e) => handleLoadChange('ventilation', Number(e.target.value))}
+                  placeholder="120"
+                />
+                <p className="text-xs text-muted-foreground">60-150W por ventilador</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="microwave">Microondas</Label>
+                <Input
+                  id="microwave"
+                  type="number"
+                  value={input.essentialLoads.microwave}
+                  onChange={(e) => handleLoadChange('microwave', Number(e.target.value))}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">800-1200W típico</p>
+              </div>
             </div>
-            
-            <div>
-              <Label htmlFor="communications">Comunicação</Label>
-              <Input
-                id="communications"
-                type="number"
-                value={input.essentialLoads.communications}
-                onChange={(e) => handleLoadChange('communications', Number(e.target.value))}
-                placeholder="80"
-              />
-              <p className="text-xs text-muted-foreground">Router, telefone</p>
-            </div>
-            
-            <div>
-              <Label htmlFor="security">Segurança</Label>
-              <Input
-                id="security"
-                type="number"
-                value={input.essentialLoads.security}
-                onChange={(e) => handleLoadChange('security', Number(e.target.value))}
-                placeholder="50"
-              />
-              <p className="text-xs text-muted-foreground">Alarmes, câmeras</p>
-            </div>
-            
-            <div>
-              <Label htmlFor="medical">Médico</Label>
-              <Input
-                id="medical"
-                type="number"
-                value={input.essentialLoads.medical || 0}
-                onChange={(e) => handleLoadChange('medical', Number(e.target.value))}
-                placeholder="0"
-              />
-              <p className="text-xs text-muted-foreground">CPAP, nebulizador</p>
-            </div>
-            
-            <div className="md:col-span-3">
-              <Label htmlFor="other">Outras Cargas</Label>
-              <Input
-                id="other"
-                type="number"
-                value={input.essentialLoads.other}
-                onChange={(e) => handleLoadChange('other', Number(e.target.value))}
-                placeholder="0"
-              />
+          </div>
+
+          <Separator className="my-4" />
+
+          {/* Grupo: Cargas Específicas */}
+          <div>
+            <Label className="text-sm font-medium text-muted-foreground">CARGAS ESPECÍFICAS</Label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+              <div>
+                <Label htmlFor="medical">Equipamento Médico</Label>
+                <Input
+                  id="medical"
+                  type="number"
+                  value={input.essentialLoads.medical}
+                  onChange={(e) => handleLoadChange('medical', Number(e.target.value))}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">CPAP/Nebulizador 50-150W</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="phones">Telefones</Label>
+                <Input
+                  id="phones"
+                  type="number"
+                  value={input.essentialLoads.phones}
+                  onChange={(e) => handleLoadChange('phones', Number(e.target.value))}
+                  placeholder="20"
+                />
+                <p className="text-xs text-muted-foreground">10-30W típico</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="other">Outras Cargas</Label>
+                <Input
+                  id="other"
+                  type="number"
+                  value={input.essentialLoads.other}
+                  onChange={(e) => handleLoadChange('other', Number(e.target.value))}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">Equipamentos específicos</p>
+              </div>
             </div>
           </div>
           

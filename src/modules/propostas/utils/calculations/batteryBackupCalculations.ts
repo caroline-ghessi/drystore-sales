@@ -192,17 +192,31 @@ export function validateEssentialLoads(loads: BatteryBackupInput['essentialLoads
     warnings.push('Potência muito alta para sistema residencial. Considere reduzir cargas.');
   }
   
-  // Recomendações por categoria
+  // Recomendações específicas por categoria
   if (loads.lighting < 200) {
     recommendations.push('Considere aumentar a potência de iluminação para pelo menos 200W');
   }
   
-  if (loads.refrigeration === 0) {
-    recommendations.push('Geladeira é uma carga essencial. Considere incluí-la (150-300W)');
+  if (loads.refrigerator === 0 && loads.freezer === 0) {
+    recommendations.push('Geladeira é uma carga essencial. Considere incluí-la (120-180W)');
   }
   
-  if (loads.communications === 0) {
-    recommendations.push('Comunicação é essencial. Inclua router e celular (50-100W)');
+  if (loads.internet === 0 && loads.phones === 0) {
+    recommendations.push('Comunicação é essencial. Inclua internet/telefones (30-80W)');
+  }
+  
+  if (loads.microwave > 0 && totalPower > 3000) {
+    recommendations.push('Microondas consome muita energia. Considere se é realmente essencial durante backup');
+  }
+  
+  if (loads.waterPump > 1500) {
+    warnings.push('Bomba d\'água muito potente. Verifique especificações (típico 500-1500W)');
+  }
+  
+  // Validação de cargas críticas
+  const criticalLoads = loads.lighting + loads.refrigerator + loads.internet + loads.security;
+  if (criticalLoads < 200) {
+    recommendations.push('Cargas críticas muito baixas. Revise iluminação, geladeira e comunicação');
   }
   
   const isValid = warnings.length === 0;
