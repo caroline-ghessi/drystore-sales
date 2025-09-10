@@ -2,17 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { 
-  CheckCircle, 
-  AlertTriangle, 
-  Info, 
-  Calculator, 
-  Package, 
-  Wrench,
-  DollarSign,
-  Award,
-  Zap
-} from 'lucide-react';
+import { CheckCircle, AlertTriangle, Info, Calculator } from 'lucide-react';
 import { AcousticMineralCeilingResult } from '../../types/calculation.types';
 
 interface AcousticMineralCeilingResultsProps {
@@ -20,381 +10,257 @@ interface AcousticMineralCeilingResultsProps {
 }
 
 export function AcousticMineralCeilingResults({ result }: AcousticMineralCeilingResultsProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
+  const formatCurrency = (value: number) => 
+    new Intl.NumberFormat('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL' 
     }).format(value);
-  };
 
+  const formatArea = (value: number) => `${value.toFixed(1)} m²`;
+  const formatPerimeter = (value: number) => `${value.toFixed(1)} m`;
+  
   return (
     <div className="space-y-6">
-      
-      {/* Validações e Alertas */}
-      {result.validations.warnings.length > 0 && (
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-yellow-800">
-              <AlertTriangle className="h-5 w-5" />
-              Atenção
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-1">
-              {result.validations.warnings.map((warning, index) => (
-                <li key={index} className="text-sm text-yellow-700 flex items-center gap-2">
-                  <AlertTriangle className="h-3 w-3" />
-                  {warning}
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Modelo Selecionado */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Award className="h-5 w-5" />
-            Modelo Selecionado
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Modelo</p>
-              <p className="font-bold text-lg">{result.selectedModel.name}</p>
-              <p className="text-sm text-muted-foreground">{result.selectedModel.manufacturer}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Modulação</p>
-              <p className="font-semibold">{result.selectedModel.modulation}</p>
-              <Badge variant={result.selectedModel.edgeType === 'tegular' ? 'default' : 'secondary'}>
-                {result.selectedModel.edgeType === 'tegular' ? 'Tegular' : 'Lay-in'}
-              </Badge>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Performance</p>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">NRC: {result.selectedModel.nrc}</Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">RH: {result.selectedModel.rh}%</Badge>
-                </div>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Técnico</p>
-              <p className="font-semibold">{result.selectedModel.weight} kg/m²</p>
-              <p className="text-sm text-muted-foreground">
-                {result.selectedModel.platesPerBox} placas/caixa
-              </p>
-            </div>
-          </div>
-          
-          <Separator className="my-4" />
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="p-3 bg-muted rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="h-4 w-4" />
-                <span className="font-medium">Performance Acústica</span>
-              </div>
-              <Badge 
-                variant={
-                  result.acousticPerformance.classification === 'premium' ? 'default' :
-                  result.acousticPerformance.classification === 'alta' ? 'secondary' : 'outline'
-                }
-              >
-                {result.acousticPerformance.classification.toUpperCase()}
-              </Badge>
-              <p className="text-sm text-muted-foreground mt-1">
-                NRC {result.acousticPerformance.nrc}
-              </p>
-            </div>
-            
-            <div className="p-3 bg-muted rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="h-4 w-4" />
-                <span className="font-medium">Validações</span>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm">
-                  {result.validations.minSpaceOk ? 
-                    <CheckCircle className="h-3 w-3 text-green-600" /> : 
-                    <AlertTriangle className="h-3 w-3 text-red-600" />
-                  }
-                  Espaço mínimo
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  {result.validations.modelSuitable ? 
-                    <CheckCircle className="h-3 w-3 text-green-600" /> : 
-                    <AlertTriangle className="h-3 w-3 text-red-600" />
-                  }
-                  Modelo adequado
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-3 bg-muted rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <Info className="h-4 w-4" />
-                <span className="font-medium">Recomendado para</span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {result.acousticPerformance.suitableFor.slice(0, 2).map((use, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {use.replace('_', ' ')}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Áreas de Cálculo */}
+      {/* Header com modelo selecionado */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5" />
-            Áreas de Cálculo
+            Resultado do Cálculo - Forro Mineral Acústico
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Área Total</p>
-              <p className="font-bold text-lg">{result.areas.total.toFixed(1)} m²</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-primary/5 rounded-lg">
+              <h3 className="font-semibold text-lg">{result.selectedModel.name}</h3>
+              <p className="text-sm text-muted-foreground">{result.selectedModel.manufacturer}</p>
+              <Badge className="mt-2">{result.selectedModel.modulation} {result.selectedModel.edgeType}</Badge>
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Obstáculos</p>
-              <p className="font-semibold text-red-600">- {result.areas.obstacles.toFixed(1)} m²</p>
+            
+            <div className="text-center p-4 bg-accent/10 rounded-lg">
+              <h3 className="font-semibold text-lg">Performance Acústica</h3>
+              <p className="text-xl font-bold text-primary">NRC {result.selectedModel.nrc}</p>
+              <Badge variant="outline">{result.acousticPerformance.classification}</Badge>
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Área Útil</p>
-              <p className="font-bold text-lg text-green-600">{result.areas.useful.toFixed(1)} m²</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Perímetro</p>
-              <p className="font-semibold">{result.areas.perimeter.toFixed(1)} m</p>
+            
+            <div className="text-center p-4 bg-success/10 rounded-lg">
+              <h3 className="font-semibold text-lg">Custo Total</h3>
+              <p className="text-xl font-bold">{formatCurrency(result.totalCost)}</p>
+              <p className="text-sm text-muted-foreground">
+                {formatCurrency(result.totalCost / result.areas.useful)}/m²
+              </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Quantidades de Material */}
+      {/* Áreas e quantidades */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Áreas de Cálculo</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span>Área Total:</span>
+              <span className="font-mono">{formatArea(result.areas.total)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Obstáculos:</span>
+              <span className="font-mono">-{formatArea(result.areas.obstacles)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Recortes/Aberturas:</span>
+              <span className="font-mono">-{formatArea(result.areas.cutouts)}</span>
+            </div>
+            <Separator />
+            <div className="flex justify-between font-semibold">
+              <span>Área Útil:</span>
+              <span className="font-mono">{formatArea(result.areas.useful)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Perímetro:</span>
+              <span className="font-mono">{formatPerimeter(result.areas.perimeter)}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Quantidades de Material</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span>Placas necessárias:</span>
+              <span className="font-mono">{result.plates.baseQuantity} un</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Percentual de perda:</span>
+              <span className="font-mono">{result.plates.lossPercentage}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Total com perdas:</span>
+              <span className="font-mono font-semibold">{result.plates.totalPlates} un</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Caixas necessárias:</span>
+              <span className="font-mono">{result.plates.boxesNeeded} cx</span>
+            </div>
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Após descontar luminárias:</span>
+              <span className="font-mono">{result.plates.platesDiscountedLights} un</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Sistema de sustentação */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Quantidades de Material
-          </CardTitle>
+          <CardTitle>Sistema de Sustentação</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-3 bg-muted/50 rounded">
+              <h4 className="font-semibold text-sm">Perfil Principal</h4>
+              <p className="text-lg font-mono">{result.structure.mainProfile.meters.toFixed(1)} m</p>
+              <p className="text-xs text-muted-foreground">{result.structure.mainProfile.bars} barras</p>
+            </div>
             
-            {/* Placas */}
-            <div>
-              <h4 className="font-semibold mb-3 flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                Placas de Forro
-              </h4>
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 text-sm">
-                <div className="p-3 bg-muted rounded">
-                  <p className="text-muted-foreground">Base</p>
-                  <p className="font-bold">{result.plates.baseQuantity}</p>
-                </div>
-                <div className="p-3 bg-muted rounded">
-                  <p className="text-muted-foreground">Perda ({result.plates.lossPercentage}%)</p>
-                  <p className="font-bold text-orange-600">
-                    +{result.plates.totalPlates - result.plates.baseQuantity}
-                  </p>
-                </div>
-                <div className="p-3 bg-muted rounded">
-                  <p className="text-muted-foreground">Total</p>
-                  <p className="font-bold text-blue-600">{result.plates.totalPlates}</p>
-                </div>
-                <div className="p-3 bg-muted rounded">
-                  <p className="text-muted-foreground">Caixas</p>
-                  <p className="font-bold text-purple-600">{result.plates.boxesNeeded}</p>
-                </div>
-                <div className="p-3 bg-muted rounded">
-                  <p className="text-muted-foreground">Final (c/ lumin.)</p>
-                  <p className="font-bold text-green-600">{result.plates.platesDiscountedLights}</p>
-                </div>
+            {result.structure.secondaryProfile1250 && (
+              <div className="p-3 bg-muted/50 rounded">
+                <h4 className="font-semibold text-sm">Perfil Sec. 1250mm</h4>
+                <p className="text-lg font-mono">{result.structure.secondaryProfile1250.meters.toFixed(1)} m</p>
+                <p className="text-xs text-muted-foreground">{result.structure.secondaryProfile1250.pieces} peças</p>
               </div>
-            </div>
-
-            <Separator />
-
-            {/* Estrutura */}
-            <div>
-              <h4 className="font-semibold mb-3 flex items-center gap-2">
-                <Wrench className="h-4 w-4" />
-                Estrutura de Sustentação
-              </h4>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                
-                {/* Perfil Principal */}
-                <div className="p-3 border rounded-lg">
-                  <p className="font-medium mb-2">Perfil Principal</p>
-                  <div className="space-y-1 text-sm">
-                    <p>Metros: <span className="font-bold">{result.structure.mainProfile.meters.toFixed(1)}m</span></p>
-                    <p>Barras 3,66m: <span className="font-bold">{result.structure.mainProfile.bars}</span></p>
-                  </div>
-                </div>
-
-                {/* Perfis Secundários */}
-                <div className="p-3 border rounded-lg">
-                  <p className="font-medium mb-2">Perfis Secundários</p>
-                  <div className="space-y-1 text-sm">
-                    {result.structure.secondaryProfile1250 && (
-                      <p>1250mm: <span className="font-bold">{result.structure.secondaryProfile1250.pieces} pçs</span></p>
-                    )}
-                    {result.structure.secondaryProfile625 && (
-                      <p>625mm: <span className="font-bold">{result.structure.secondaryProfile625.pieces} pçs</span></p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Cantoneira e Suspensão */}
-                <div className="p-3 border rounded-lg">
-                  <p className="font-medium mb-2">Cantoneira & Suspensão</p>
-                  <div className="space-y-1 text-sm">
-                    <p>Cantoneira: <span className="font-bold">{result.structure.perimeterEdge.bars} barras</span></p>
-                    <p>Tirantes: <span className="font-bold">{result.structure.suspension.hangers} kits</span></p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Acessórios */}
-            {(result.accessories.tegularClips || result.accessories.lightSupports || result.accessories.specialAnchors) && (
-              <>
-                <Separator />
-                <div>
-                  <h4 className="font-semibold mb-3">Acessórios Especiais</h4>
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-                    {result.accessories.tegularClips > 0 && (
-                      <div className="p-3 bg-muted rounded">
-                        <p className="text-muted-foreground">Clips Tegular</p>
-                        <p className="font-bold">{result.accessories.tegularClips}</p>
-                      </div>
-                    )}
-                    {result.accessories.lightSupports > 0 && (
-                      <div className="p-3 bg-muted rounded">
-                        <p className="text-muted-foreground">Suportes Luminária</p>
-                        <p className="font-bold">{result.accessories.lightSupports}</p>
-                      </div>
-                    )}
-                    {result.accessories.specialAnchors > 0 && (
-                      <div className="p-3 bg-muted rounded">
-                        <p className="text-muted-foreground">Buchas Especiais</p>
-                        <p className="font-bold">{result.accessories.specialAnchors}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
             )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Custos */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Detalhamento de Custos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
             
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="p-3 border rounded">
-                <p className="text-sm text-muted-foreground">Placas</p>
-                <p className="font-bold">{formatCurrency(result.itemizedCosts.plates)}</p>
+            {result.structure.secondaryProfile625 && (
+              <div className="p-3 bg-muted/50 rounded">
+                <h4 className="font-semibold text-sm">Perfil Sec. 625mm</h4>
+                <p className="text-lg font-mono">{result.structure.secondaryProfile625.meters.toFixed(1)} m</p>
+                <p className="text-xs text-muted-foreground">{result.structure.secondaryProfile625.pieces} peças</p>
               </div>
-              <div className="p-3 border rounded">
-                <p className="text-sm text-muted-foreground">Estrutura</p>
-                <p className="font-bold">
-                  {formatCurrency(
-                    result.itemizedCosts.mainProfile + 
-                    result.itemizedCosts.secondaryProfiles + 
-                    result.itemizedCosts.perimeterEdge
-                  )}
-                </p>
-              </div>
-              <div className="p-3 border rounded">
-                <p className="text-sm text-muted-foreground">Suspensão</p>
-                <p className="font-bold">{formatCurrency(result.itemizedCosts.suspension)}</p>
-              </div>
-              <div className="p-3 border rounded">
-                <p className="text-sm text-muted-foreground">Mão de Obra</p>
-                <p className="font-bold">{formatCurrency(result.itemizedCosts.labor)}</p>
-              </div>
+            )}
+            
+            <div className="p-3 bg-muted/50 rounded">
+              <h4 className="font-semibold text-sm">Cantoneira Perimetral</h4>
+              <p className="text-lg font-mono">{result.structure.perimeterEdge.meters.toFixed(1)} m</p>
+              <p className="text-xs text-muted-foreground">{result.structure.perimeterEdge.bars} barras</p>
             </div>
-
-            <Separator />
-
-            <div className="flex justify-between items-center p-4 bg-primary/5 rounded-lg">
-              <span className="font-bold text-lg">Total do Projeto:</span>
-              <span className="font-bold text-2xl text-primary">
-                {formatCurrency(result.totalCost)}
-              </span>
-            </div>
-
-            <div className="text-center text-sm text-muted-foreground">
-              Preços base para região {result.technicalSpecs.configuration} | 
-              Complexidade: {result.technicalSpecs.installationComplexity}
+          </div>
+          
+          <div className="mt-4 p-3 bg-primary/5 rounded">
+            <h4 className="font-semibold text-sm mb-2">Sistema de Suspensão</h4>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-lg font-mono">{result.structure.suspension.hangers}</p>
+                <p className="text-xs text-muted-foreground">Tirantes</p>
+              </div>
+              <div>
+                <p className="text-lg font-mono">{result.structure.suspension.regulators}</p>
+                <p className="text-xs text-muted-foreground">Reguladores</p>
+              </div>
+              <div>
+                <p className="text-lg font-mono">{result.structure.suspension.anchors}</p>
+                <p className="text-xs text-muted-foreground">Buchas/Chumbadores</p>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Especificações Técnicas */}
+      {/* Custos detalhados */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Info className="h-5 w-5" />
-            Especificações Técnicas
-          </CardTitle>
+          <CardTitle>Custos Detalhados</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">Configuração</p>
-              <p className="font-bold">{result.technicalSpecs.configuration}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Espessura Final</p>
-              <p className="font-bold">{result.technicalSpecs.finalThickness}mm</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Peso</p>
-              <p className="font-bold">{result.technicalSpecs.weight} kg/m²</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Resistência Umidade</p>
-              <p className="font-bold">{result.technicalSpecs.moistureResistance}% RH</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Instalação</p>
-              <p className="font-bold capitalize">{result.technicalSpecs.installationComplexity}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Performance Acústica</p>
-              <p className="font-bold capitalize">{result.acousticPerformance.classification}</p>
-            </div>
+        <CardContent className="space-y-3">
+          <div className="flex justify-between">
+            <span>Placas minerais:</span>
+            <span className="font-mono">{formatCurrency(result.itemizedCosts.plates)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Perfis principais:</span>
+            <span className="font-mono">{formatCurrency(result.itemizedCosts.mainProfile)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Perfis secundários:</span>
+            <span className="font-mono">{formatCurrency(result.itemizedCosts.secondaryProfiles)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Cantoneira perimetral:</span>
+            <span className="font-mono">{formatCurrency(result.itemizedCosts.perimeterEdge)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Sistema suspensão:</span>
+            <span className="font-mono">{formatCurrency(result.itemizedCosts.suspension)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Acessórios:</span>
+            <span className="font-mono">{formatCurrency(result.itemizedCosts.accessories)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Mão de obra:</span>
+            <span className="font-mono">{formatCurrency(result.itemizedCosts.labor)}</span>
+          </div>
+          <Separator />
+          <div className="flex justify-between font-semibold text-lg">
+            <span>Total:</span>
+            <span className="font-mono">{formatCurrency(result.totalCost)}</span>
           </div>
         </CardContent>
       </Card>
+
+      {/* Validações e avisos */}
+      {(result.validations.warnings.length > 0 || !result.validations.minSpaceOk || !result.validations.modelSuitable) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Validações Técnicas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className={`flex items-center gap-2 p-3 rounded ${
+                result.validations.minSpaceOk ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+              }`}>
+                {result.validations.minSpaceOk ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                <span className="text-sm">Espaço Mínimo</span>
+              </div>
+              
+              <div className={`flex items-center gap-2 p-3 rounded ${
+                result.validations.structureCompatible ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+              }`}>
+                {result.validations.structureCompatible ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                <span className="text-sm">Estrutura Compatível</span>
+              </div>
+              
+              <div className={`flex items-center gap-2 p-3 rounded ${
+                result.validations.modelSuitable ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+              }`}>
+                {result.validations.modelSuitable ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                <span className="text-sm">Modelo Adequado</span>
+              </div>
+            </div>
+
+            {result.validations.warnings.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-semibold text-sm flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Avisos Importantes:
+                </h4>
+                <ul className="space-y-1">
+                  {result.validations.warnings.map((warning, index) => (
+                    <li key={index} className="flex items-start gap-2 text-sm text-orange-700">
+                      <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                      {warning}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

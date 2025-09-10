@@ -161,8 +161,30 @@ export function useProposalCalculator(productType: ProductType) {
             unitPrice: forroDrywallResult.plateArea > 0 ? forroDrywallResult.totalCost / forroDrywallResult.plateArea : 0,
             totalPrice: forroDrywallResult.totalCost,
             materialCost: forroDrywallResult.totalCost
-          });
-          break;
+        });
+        break;
+        
+      case 'acoustic_mineral_ceiling':
+        const acousticResult = calculationResult as any;
+        items.push({
+          id: '1',
+          product: 'acoustic_mineral_ceiling',
+          description: `Forro Mineral Acústico ${acousticResult.areas.useful.toFixed(0)} m² - ${acousticResult.selectedModel.name}`,
+          specifications: {
+            area: acousticResult.areas.useful,
+            plates: acousticResult.plates.totalPlates,
+            boxes: acousticResult.plates.boxesNeeded,
+            model: acousticResult.selectedModel.name,
+            modulation: acousticResult.selectedModel.modulation,
+            nrc: acousticResult.selectedModel.nrc,
+            edgeType: acousticResult.selectedModel.edgeType
+          },
+          quantity: acousticResult.areas.useful,
+          unitPrice: acousticResult.areas.useful > 0 ? acousticResult.totalCost / acousticResult.areas.useful : 0,
+          totalPrice: acousticResult.totalCost,
+          materialCost: acousticResult.totalCost
+        });
+        break;
     }
     
     return items;
@@ -244,6 +266,19 @@ export function useProposalCalculator(productType: ProductType) {
               { label: 'Placas Drywall', value: `${forroDrywall.plateQuantity} unidades` },
               { label: 'Perfis Metálicos', value: `${forroDrywall.profileBars} barras` },
               { label: 'Sistema de Suspensão', value: `${forroDrywall.suspensionBars} barras` }
+            ]
+          };
+          
+        case 'acoustic_mineral_ceiling':
+          const acoustic = calculationResult as any;
+          return {
+            totalCost: acoustic.totalCost,
+            keyMetrics: [
+              { label: 'Área Útil', value: `${acoustic.areas.useful.toFixed(0)} m²` },
+              { label: 'Modelo Selecionado', value: `${acoustic.selectedModel.name} (${acoustic.selectedModel.manufacturer})` },
+              { label: 'Placas Minerais', value: `${acoustic.plates.totalPlates} un (${acoustic.plates.boxesNeeded} caixas)` },
+              { label: 'Performance Acústica', value: `NRC ${acoustic.selectedModel.nrc} (${acoustic.acousticPerformance.classification})` },
+              { label: 'Modulação', value: `${acoustic.selectedModel.modulation} ${acoustic.selectedModel.edgeType}` }
             ]
           };
         

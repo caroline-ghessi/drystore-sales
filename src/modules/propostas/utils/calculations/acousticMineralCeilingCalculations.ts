@@ -202,13 +202,26 @@ export function calculateAcousticMineralCeiling(input: AcousticMineralCeilingInp
   const selectedModelName = selectOptimalModel(input);
   const modelData = CEILING_MODELS[selectedModelName];
   const selectedModulation = selectOptimalModulation(input, selectedModelName);
-  const selectedEdgeType = input.manualEdgeType || modelData.edgeType;
+  const selectedEdgeType = input.manualEdgeType || input.edgeType || modelData.edgeType;
 
   // 2. Cálculos de área
   const totalArea = input.roomLength * input.roomWidth;
-  const obstacleArea = input.obstacles.columns * 1; // 1m² por coluna estimado
-  const usefulArea = totalArea - obstacleArea;
-  const perimeter = 2 * (input.roomLength + input.roomWidth);
+  
+  // Área de obstáculos mais precisa
+  let obstacleArea = 0;
+  if (input.obstacles.columnDimensions?.length) {
+    obstacleArea = input.obstacles.columnDimensions.reduce((sum, col) => sum + (col.width * col.depth), 0);
+  } else {
+    obstacleArea = input.obstacles.columns * 1; // 1m² por coluna estimado
+  }
+  
+  // Adicionar área de recortes/aberturas
+  const cutoutArea = input.cutoutArea || 0;
+  
+  const usefulArea = totalArea - obstacleArea - cutoutArea;
+  
+  // Perímetro: usar valor manual ou calculado
+  const perimeter = input.roomPerimeter || (2 * (input.roomLength + input.roomWidth));
 
   // 3. Cálculo de placas
   const plateArea = MODULATION_AREAS[selectedModulation];
@@ -306,6 +319,7 @@ export function calculateAcousticMineralCeiling(input: AcousticMineralCeilingInp
     areas: {
       total: totalArea,
       obstacles: obstacleArea,
+      cutouts: cutoutArea,
       useful: usefulArea,
       perimeter: perimeter
     },

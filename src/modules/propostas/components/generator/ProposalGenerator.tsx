@@ -126,7 +126,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
       case 'forro_drywall':
         return <ForroDrywallCalculator onCalculate={calculator.calculate} />;
       case 'acoustic_mineral_ceiling':
-        return <AcousticMineralCeilingWrapper />;
+        return <AcousticMineralCeilingWrapper onCalculate={calculator.calculate} />;
       default:
         return (
           <Card>

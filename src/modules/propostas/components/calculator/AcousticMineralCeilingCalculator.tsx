@@ -19,6 +19,7 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
     region: 'southeast',
     roomLength: 0,
     roomWidth: 0,
+    roomPerimeter: undefined,
     roomFormat: 'rectangular',
     ceilingHeight: 2.6,
     availableSpace: 20,
@@ -36,7 +37,9 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
       smokeDetectors: false,
       cameras: false
     },
-    slabType: 'massive'
+    slabType: 'massive',
+    edgeType: 'lay_in',
+    cutoutArea: 0
   });
 
   const [selectedModel, setSelectedModel] = useState<AcousticMineralCeilingModel | ''>('');
@@ -70,6 +73,15 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
 
   const isValid = input.roomLength > 0 && input.roomWidth > 0 && input.ceilingHeight > 0;
   const totalArea = input.roomLength * input.roomWidth;
+  
+  // Calcular perímetro automaticamente para ambientes retangulares
+  const calculatedPerimeter = input.roomFormat === 'rectangular' 
+    ? 2 * (input.roomLength + input.roomWidth)
+    : input.roomPerimeter || 0;
+  
+  // Validar se perímetro é obrigatório para formatos não retangulares
+  const perimeterRequired = input.roomFormat !== 'rectangular' && !input.roomPerimeter;
+  const isFormValid = isValid && !perimeterRequired;
 
   return (
     <div className="space-y-6">
@@ -117,6 +129,44 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
                   onChange={(e) => handleInputChange('roomWidth', parseFloat(e.target.value) || 0)}
                   placeholder="Ex: 8.0"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="roomPerimeter">
+                  Perímetro do Forro (m) {input.roomFormat !== 'rectangular' ? '*' : ''}
+                </Label>
+                <Input
+                  id="roomPerimeter"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={input.roomFormat === 'rectangular' ? calculatedPerimeter.toFixed(1) : (input.roomPerimeter || '')}
+                  onChange={(e) => handleInputChange('roomPerimeter', parseFloat(e.target.value) || 0)}
+                  placeholder={input.roomFormat === 'rectangular' ? 'Calculado automaticamente' : 'Ex: 45.5'}
+                  disabled={input.roomFormat === 'rectangular'}
+                />
+                {input.roomFormat === 'rectangular' && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Calculado automaticamente: 2 × (comprimento + largura)
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="cutoutArea">Área de Recortes/Aberturas (m²)</Label>
+                <Input
+                  id="cutoutArea"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={input.cutoutArea || ''}
+                  onChange={(e) => handleInputChange('cutoutArea', parseFloat(e.target.value) || 0)}
+                  placeholder="Ex: 2.5 (portas, janelas, etc.)"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Além das luminárias embutidas
+                </p>
               </div>
             </div>
 
@@ -190,9 +240,36 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
             </div>
           </div>
 
+          {/* Tipo de Borda */}
+          <div className="grid gap-4">
+            <Badge variant="outline">2. TIPO DE BORDA</Badge>
+            
+            <div>
+              <Label>Tipo de Borda das Placas</Label>
+              <Select 
+                value={input.edgeType} 
+                onValueChange={(value: EdgeType) => handleInputChange('edgeType', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lay_in">Lay-in (Reta) - Mais simples</SelectItem>
+                  <SelectItem value="tegular">Tegular (Rebaixada) - Premium</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {input.edgeType === 'lay_in' 
+                  ? 'Borda reta, assentamento simples sobre perfis'
+                  : 'Borda rebaixada, encaixe sofisticado, efeito visual superior'
+                }
+              </p>
+            </div>
+          </div>
+
           {/* Necessidade Principal */}
           <div className="grid gap-4">
-            <Badge variant="outline">2. NECESSIDADE PRINCIPAL</Badge>
+            <Badge variant="outline">3. NECESSIDADE PRINCIPAL</Badge>
             
             <div>
               <Label>Qual a necessidade principal?</Label>
@@ -246,7 +323,7 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
 
           {/* Obstáculos */}
           <div className="grid gap-4">
-            <Badge variant="outline">3. OBSTÁCULOS NO AMBIENTE</Badge>
+            <Badge variant="outline">4. OBSTÁCULOS NO AMBIENTE</Badge>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -290,7 +367,7 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
 
           {/* Instalações */}
           <div className="grid gap-4">
-            <Badge variant="outline">4. INSTALAÇÕES INTEGRADAS</Badge>
+            <Badge variant="outline">5. INSTALAÇÕES INTEGRADAS</Badge>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -336,7 +413,7 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
           {/* Seleção Manual (Avançado) */}
           <div className="grid gap-4">
             <div className="flex items-center justify-between">
-              <Badge variant="outline">5. CONFIGURAÇÕES AVANÇADAS (OPCIONAL)</Badge>
+              <Badge variant="outline">6. CONFIGURAÇÕES AVANÇADAS (OPCIONAL)</Badge>
               <Button
                 type="button"
                 variant="ghost"
@@ -406,13 +483,13 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
           <div className="flex gap-2">
             <Button 
               onClick={handleCalculate} 
-              disabled={!isValid}
+              disabled={!isFormValid}
               className="flex-1"
             >
               <Calculator className="h-4 w-4 mr-2" />
               Calcular Quantitativos
             </Button>
-            {isValid && (
+            {isFormValid && (
               <Badge variant="secondary" className="px-3">
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Pronto
@@ -420,11 +497,14 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
             )}
           </div>
 
-          {!isValid && (
+          {!isFormValid && (
             <div className="p-3 bg-muted rounded-lg">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Info className="h-4 w-4" />
-                Preencha as dimensões básicas para continuar
+                {perimeterRequired 
+                  ? 'Preencha o perímetro para ambientes não retangulares'
+                  : 'Preencha as dimensões básicas para continuar'
+                }
               </div>
             </div>
           )}

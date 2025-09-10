@@ -577,6 +577,7 @@ export interface AcousticMineralCeilingInput extends BaseCalculationInput {
   // Dimensões básicas
   roomLength: number; // m
   roomWidth: number; // m
+  roomPerimeter?: number; // m - calculado automaticamente para retangulares
   roomFormat: RoomFormat;
   ceilingHeight: number; // m desejada do forro
   availableSpace: number; // cm espaço disponível acima (mín 15cm)
@@ -584,6 +585,7 @@ export interface AcousticMineralCeilingInput extends BaseCalculationInput {
   // Obstáculos
   obstacles: {
     columns: number;
+    columnDimensions?: { width: number; depth: number }[]; // Dimensões específicas das colunas
     beams: boolean;
     ducts: boolean;
     pipes: boolean;
@@ -605,6 +607,12 @@ export interface AcousticMineralCeilingInput extends BaseCalculationInput {
   
   // Tipo de laje/cobertura
   slabType: 'massive' | 'ribbed' | 'steel_deck' | 'metallic' | 'wood';
+  
+  // Tipo de borda preferencial
+  edgeType?: EdgeType;
+  
+  // Área de recortes/aberturas
+  cutoutArea?: number; // m²
   
   // Seleção manual (opcional)
   manualModel?: AcousticMineralCeilingModel;
@@ -628,7 +636,8 @@ export interface AcousticMineralCeilingResult {
   // Áreas de cálculo
   areas: {
     total: number; // m²
-    obstacles: number; // m² descontada
+    obstacles: number; // m² descontada por obstáculos
+    cutouts: number; // m² descontada por recortes/aberturas
     useful: number; // m² útil
     perimeter: number; // m linear
   };
