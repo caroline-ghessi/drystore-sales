@@ -44,6 +44,23 @@ interface ProposalGenerationRequest {
   };
 }
 
+// Função para mapear ProductType do frontend para product_category do banco
+function mapProductTypeToDbCategory(productType: string): string {
+  const mapping: Record<string, string> = {
+    'acoustic_mineral_ceiling': 'forro_mineral_acustico',
+    'solar': 'energia_solar',
+    'solar_advanced': 'energia_solar',
+    'shingle': 'telha_shingle', 
+    'drywall': 'drywall_divisorias',
+    'steel_frame': 'steel_frame',
+    'ceiling': 'forros',
+    'forro_drywall': 'forro_drywall',
+    'battery_backup': 'battery_backup'
+  };
+  
+  return mapping[productType] || productType;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -102,14 +119,22 @@ const handler = async (req: Request): Promise<Response> => {
     const uniqueId = crypto.randomUUID();
     const acceptanceLink = `https://a8d68d6e-4efd-4093-966f-bddf0a89dc45.lovableproject.com/proposta/${uniqueId}`;
 
+    // Mapear o tipo de produto para o enum do banco
+    const mappedProductType = mapProductTypeToDbCategory(calculation.product_type || requestData.productType || 'solar');
+    
+    console.log('Mapping product type:', {
+      original: calculation.product_type || requestData.productType,
+      mapped: mappedProductType
+    });
+
     // Create proposal record
     const { data: proposal, error: proposalError } = await supabase
       .from('proposals')
       .insert({
         proposal_number: proposalNumber,
         title: `Proposta - ${requestData.clientData.name}`,
-        description: `Proposta para ${calculation.product_type} - ${requestData.clientData.name}`,
-        project_type: calculation.product_type,
+        description: `Proposta para ${mappedProductType} - ${requestData.clientData.name}`,
+        project_type: mappedProductType,
         status: 'generated',
         total_value: requestData.pricing?.total || 0,
         discount_value: requestData.pricing?.discount || 0,

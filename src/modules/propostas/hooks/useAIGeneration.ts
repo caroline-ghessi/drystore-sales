@@ -57,7 +57,8 @@ export function useAIGeneration() {
       });
 
       if (error) {
-        throw error;
+        console.error('Erro na geração de proposta:', error);
+        throw new Error(error.message || 'Falha na geração da proposta');
       }
 
       const result: AIGenerationResult = {

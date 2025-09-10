@@ -24,6 +24,8 @@ import { ForroDrywallCalculator } from '../calculator/ForroDrywallCalculator';
 import { AcousticMineralCeilingWrapper } from '../calculator/AcousticMineralCeilingWrapper';
 import { ProposalResult } from './ProposalResult';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
 
 interface ProposalGeneratorProps {
   projectContextId?: string;
@@ -44,8 +46,10 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   });
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [calculationName, setCalculationName] = useState('');
+  const [isGeneratingProposal, setIsGeneratingProposal] = useState(false);
   
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { isGenerating, generatedProposal, generateFromContext, generateProposal } = useAIGeneration();
   const calculator = useProposalCalculator(productType);  
   const savedCalculations = useSavedCalculations();
@@ -66,12 +70,22 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   };
 
   const handleManualGeneration = async () => {
+    console.log('=== INICIANDO GERAÇÃO MANUAL ===');
+    console.log('Calculator result disponível:', !!calculator.calculationResult);
+    console.log('Calculator result:', calculator.calculationResult);
+    
     if (!calculator.calculationResult) {
-      alert('Por favor, complete os cálculos primeiro');
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Por favor, complete os cálculos primeiro."
+      });
       return;
     }
 
     try {
+      setIsGeneratingProposal(true);
+      
       // Simplificar - usar a edge function diretamente sem salvar primeiro
       const request = {
         calculationId: undefined, // Edge function precisará ser ajustada para lidar com isso
@@ -83,16 +97,43 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
           includeWarranty: true,
           includeTestimonials: false,
           includeTechnicalSpecs: true
-        }
+        },
+        pricing: calculator.calculationResult
       };
 
-      const proposal = await generateProposal(request);
-      if (proposal && onProposalGenerated) {
-        onProposalGenerated(proposal);
+      console.log('Enviando request para edge function:', request);
+
+      const { data, error } = await supabase.functions.invoke('generate-proposal', {
+        body: request
+      });
+
+      console.log('Resposta da edge function:', { data, error });
+
+      if (error) {
+        console.error('Erro da edge function:', error);
+        throw new Error(error.message || 'Falha na geração da proposta');
       }
-    } catch (error) {
-      console.error('Erro ao gerar proposta:', error);
-      alert('Erro ao gerar proposta. Tente novamente.');
+
+      if (data && data.success) {
+        toast({
+          title: "Sucesso",
+          description: "Proposta gerada com sucesso!"
+        });
+        if (data.acceptanceLink) {
+          window.open(data.acceptanceLink, '_blank');
+        }
+      } else {
+        throw new Error(data?.error || 'Falha na geração da proposta');
+      }
+    } catch (error: any) {
+      console.error('Erro na geração manual:', error);
+      toast({
+        variant: "destructive", 
+        title: "Erro",
+        description: error.message || 'Erro inesperado na geração da proposta'
+      });
+    } finally {
+      setIsGeneratingProposal(false);
     }
   };
 
