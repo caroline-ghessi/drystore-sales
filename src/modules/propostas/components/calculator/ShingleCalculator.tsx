@@ -5,8 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calculator, Home, Shield } from 'lucide-react';
 import { ShingleCalculationInput } from '../../types/calculation.types';
+import { LaborCostSelector, LaborCostConfig } from '../shared/LaborCostSelector';
 
 interface ShingleCalculatorProps {
   onCalculate: (input: ShingleCalculationInput) => void;
@@ -30,7 +32,9 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
       ventilation: false,
       insulation: false,
     },
-    
+    laborConfig: {
+      includeLabor: false, // Padrão desmarcado
+    }
   });
 
   const handleCalculate = () => {
@@ -57,6 +61,13 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
     }));
   };
 
+  const updateLaborConfig = (laborConfig: any) => {
+    setInput(prev => ({
+      ...prev,
+      laborConfig
+    }));
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -65,211 +76,199 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
           Calculadora Telha Shingle
         </CardTitle>
         <CardDescription>
-          Configure os parâmetros para calcular o telhado shingle ideal
+          Configure os parâmetros para calcular o telhado shingle ideal usando apenas produtos cadastrados
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Seção Principal */}
-        <div>
-          <Label className="text-base font-semibold">Dados Básicos do Telhado</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-            {/* Roof Area */}
+      <CardContent>
+        <Tabs defaultValue="basic" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="basic">Dados Básicos</TabsTrigger>
+            <TabsTrigger value="details">Detalhes</TabsTrigger>
+            <TabsTrigger value="labor">Mão de Obra</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="basic" className="space-y-6">
+            {/* Seção Principal */}
             <div>
-              <Label htmlFor="roofArea">Área do Telhado (m²) *</Label>
-              <Input
-                id="roofArea"
-                type="number"
-                value={input.roofArea}
-                onChange={(e) => setInput(prev => ({
-                  ...prev,
-                  roofArea: Number(e.target.value)
-                }))}
-                placeholder="100"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Área total a ser coberta
-              </p>
-            </div>
+              <Label className="text-base font-semibold">Dados Básicos do Telhado</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                {/* Roof Area */}
+                <div>
+                  <Label htmlFor="roofArea">Área do Telhado (m²) *</Label>
+                  <Input
+                    id="roofArea"
+                    type="number"
+                    value={input.roofArea}
+                    onChange={(e) => setInput(prev => ({
+                      ...prev,
+                      roofArea: Number(e.target.value)
+                    }))}
+                    placeholder="100"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Área total a ser coberta
+                  </p>
+                </div>
 
-            {/* Roof Slope */}
+                {/* Roof Slope */}
+                <div>
+                  <Label htmlFor="roofSlope">Inclinação do Telhado (graus) *</Label>
+                  <Input
+                    id="roofSlope"
+                    type="number"
+                    value={input.roofSlope}
+                    onChange={(e) => setInput(prev => ({
+                      ...prev,
+                      roofSlope: Number(e.target.value)
+                    }))}
+                    placeholder="25"
+                    min="17"
+                    max="80"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Ângulo de inclinação em graus
+                  </p>
+                </div>
+
+                {/* Shingle Type */}
+                <div>
+                  <Label>Tipo de Telha Shingle *</Label>
+                  <Select
+                    value={input.shingleType}
+                    onValueChange={(value: any) => setInput(prev => ({ ...prev, shingleType: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="oakridge">Linha Oakridge - 30 anos garantia</SelectItem>
+                      <SelectItem value="supreme">Linha Supreme - 25 anos garantia</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Tipo de Subcobertura</Label>
+                  <Select
+                    value={input.features.underlayment}
+                    onValueChange={(value: any) => updateFeatures('underlayment', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="rhinoroof">RhinoRoof - Manta Asfáltica (86 m²/rolo)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Manta asfáltica de alta performance - Rolo 1,1x87m
+                  </p>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="details" className="space-y-6">
+            {/* Seção Elementos Lineares */}
             <div>
-              <Label htmlFor="roofSlope">Inclinação do Telhado (graus) *</Label>
-              <Input
-                id="roofSlope"
-                type="number"
-                value={input.roofSlope}
-                onChange={(e) => setInput(prev => ({
-                  ...prev,
-                  roofSlope: Number(e.target.value)
-                }))}
-                placeholder="25"
-                min="17"
-                max="80"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Ângulo de inclinação em graus
-              </p>
+              <Label className="text-base font-semibold">Elementos Lineares do Telhado</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                {/* ... keep existing code (perimeter, ridge, valley inputs) ... */}
+                <div>
+                  <Label htmlFor="perimeterLength">Perímetro dos Beirais (m) *</Label>
+                  <Input
+                    id="perimeterLength"
+                    type="number"
+                    value={input.roofDetails.perimeterLength}
+                    onChange={(e) => updateRoofDetails('perimeterLength', Number(e.target.value))}
+                    placeholder="40"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="ridgeLength">Comprimento das Cumeeiras (m) *</Label>
+                  <Input
+                    id="ridgeLength"
+                    type="number"
+                    value={input.roofDetails.ridgeLength}
+                    onChange={(e) => updateRoofDetails('ridgeLength', Number(e.target.value))}
+                    placeholder="10"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="valleyLength">Comprimento das Águas Furtadas (m)</Label>
+                  <Input
+                    id="valleyLength"
+                    type="number"
+                    value={input.roofDetails.valleyLength}
+                    onChange={(e) => updateRoofDetails('valleyLength', Number(e.target.value))}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="numberOfPenetrations">Número de Penetrações</Label>
+                  <Input
+                    id="numberOfPenetrations"
+                    type="number"
+                    value={input.roofDetails.numberOfPenetrations}
+                    onChange={(e) => updateRoofDetails('numberOfPenetrations', Number(e.target.value))}
+                    placeholder="2"
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Shingle Type */}
+            {/* Optional Features */}
             <div>
-              <Label>Tipo de Telha Shingle *</Label>
-              <Select
-                value={input.shingleType}
-                onValueChange={(value: any) => setInput(prev => ({ ...prev, shingleType: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="oakridge">Linha Oakridge - 30 anos garantia</SelectItem>
-                  <SelectItem value="supreme">Linha Supreme - 25 anos garantia</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label className="text-base font-semibold">Características Adicionais</Label>
+              <div className="space-y-3 mt-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="gutters"
+                    checked={input.features.gutters}
+                    onCheckedChange={(checked) => updateFeatures('gutters', !!checked)}
+                  />
+                  <Label htmlFor="gutters" className="text-sm">
+                    Incluir calhas
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="ventilation"
+                    checked={input.features.ventilation}
+                    onCheckedChange={(checked) => updateFeatures('ventilation', !!checked)}
+                  />
+                  <Label htmlFor="ventilation" className="text-sm">
+                    Sistema de ventilação
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="insulation"
+                    checked={input.features.insulation}
+                    onCheckedChange={(checked) => updateFeatures('insulation', !!checked)}
+                  />
+                  <Label htmlFor="insulation" className="text-sm">
+                    Isolamento térmico
+                  </Label>
+                </div>
+              </div>
             </div>
+          </TabsContent>
 
-          </div>
-        </div>
-
-        {/* Seção Elementos Lineares */}
-        <div>
-          <Label className="text-base font-semibold">Elementos Lineares do Telhado</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-            {/* Perimeter Length */}
-            <div>
-              <Label htmlFor="perimeterLength">Perímetro dos Beirais (m) *</Label>
-              <Input
-                id="perimeterLength"
-                type="number"
-                value={input.roofDetails.perimeterLength}
-                onChange={(e) => updateRoofDetails('perimeterLength', Number(e.target.value))}
-                placeholder="40"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Perímetro total das bordas do telhado
-              </p>
-            </div>
-
-            {/* Ridge Length */}
-            <div>
-              <Label htmlFor="ridgeLength">Comprimento das Cumeeiras (m) *</Label>
-              <Input
-                id="ridgeLength"
-                type="number"
-                value={input.roofDetails.ridgeLength}
-                onChange={(e) => updateRoofDetails('ridgeLength', Number(e.target.value))}
-                placeholder="10"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Metros lineares de cumeeiras
-              </p>
-            </div>
-
-            {/* Valley Length */}
-            <div>
-              <Label htmlFor="valleyLength">Comprimento das Águas Furtadas (m)</Label>
-              <Input
-                id="valleyLength"
-                type="number"
-                value={input.roofDetails.valleyLength}
-                onChange={(e) => updateRoofDetails('valleyLength', Number(e.target.value))}
-                placeholder="0"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Metros lineares de encontro entre águas (valleys)
-              </p>
-            </div>
-
-            {/* Hip Length */}
-            <div>
-              <Label htmlFor="hipLength">Comprimento dos Espigões (m)</Label>
-              <Input
-                id="hipLength"
-                type="number"
-                value={input.roofDetails.hipLength}
-                onChange={(e) => updateRoofDetails('hipLength', Number(e.target.value))}
-                placeholder="0"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Metros lineares de espigões
-              </p>
-            </div>
-
-            {/* Number of Penetrations */}
-            <div>
-              <Label htmlFor="numberOfPenetrations">Número de Penetrações</Label>
-              <Input
-                id="numberOfPenetrations"
-                type="number"
-                value={input.roofDetails.numberOfPenetrations}
-                onChange={(e) => updateRoofDetails('numberOfPenetrations', Number(e.target.value))}
-                placeholder="2"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Chaminés, ventilações, etc.
-              </p>
-            </div>
-
-
-          </div>
-        </div>
-
-        {/* Optional Features */}
-        <div>
-          <Label className="text-base font-semibold">Características Adicionais</Label>
-          <div className="space-y-3 mt-3">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="gutters"
-                checked={input.features.gutters}
-                onCheckedChange={(checked) => updateFeatures('gutters', !!checked)}
-              />
-              <Label htmlFor="gutters" className="text-sm">
-                Incluir calhas
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="ventilation"
-                checked={input.features.ventilation}
-                onCheckedChange={(checked) => updateFeatures('ventilation', !!checked)}
-              />
-              <Label htmlFor="ventilation" className="text-sm">
-                Sistema de ventilação
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="insulation"
-                checked={input.features.insulation}
-                onCheckedChange={(checked) => updateFeatures('insulation', !!checked)}
-              />
-              <Label htmlFor="insulation" className="text-sm">
-                Isolamento térmico
-              </Label>
-            </div>
-
-            <div>
-              <Label>Tipo de Subcobertura</Label>
-              <Select
-                value={input.features.underlayment}
-                onValueChange={(value: any) => updateFeatures('underlayment', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="rhinoroof">RhinoRoof - Manta Asfáltica (86 m²/rolo)</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Manta asfáltica de alta performance - Rolo 1,1x87m
-              </p>
-            </div>
-          </div>
-        </div>
+          <TabsContent value="labor" className="space-y-6">
+            <LaborCostSelector
+              config={input.laborConfig || { includeLabor: false }}
+              onChange={updateLaborConfig}
+              totalArea={input.roofArea}
+              productType="shingle"
+            />
+          </TabsContent>
+        </Tabs>
 
         {/* Information Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
@@ -310,7 +309,7 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
           </Card>
         </div>
 
-        <Button onClick={handleCalculate} className="w-full">
+        <Button onClick={handleCalculate} className="w-full mt-6">
           <Calculator className="mr-2 h-4 w-4" />
           Calcular Telhado Shingle
         </Button>

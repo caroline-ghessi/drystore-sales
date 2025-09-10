@@ -245,6 +245,13 @@ export interface ShingleCalculationInput extends BaseCalculationInput {
     ventilation: boolean;
     insulation: boolean;
   };
+  
+  // Labor configuration
+  laborConfig?: {
+    includeLabor: boolean;
+    laborCostPerM2?: number;
+    customLaborCost?: number;
+  };
 }
 
 export interface ShingleCalculationResult {
