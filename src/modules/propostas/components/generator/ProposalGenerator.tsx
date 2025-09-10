@@ -15,7 +15,7 @@ import { useSavedCalculations } from '../../hooks/useSavedCalculations';
 import { SimpleSolarCalculator } from '../calculator/SimpleSolarCalculator';
 import { BatteryBackupCalculator } from '../calculator/BatteryBackupCalculator';
 import { ShingleCalculator } from '../calculator/ShingleCalculator';
-import { DrywallCalculator } from '../calculator/DrywallCalculator';
+import { DrywallCalculatorWrapper } from '../calculator/DrywallCalculatorWrapper';
 import { ForroDrywallCalculator } from '../calculator/ForroDrywallCalculator';
 import { AcousticMineralCeilingWrapper } from '../calculator/AcousticMineralCeilingWrapper';
 import { useNavigate } from 'react-router-dom';
@@ -122,7 +122,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
       case 'shingle':
         return <ShingleCalculator onCalculate={calculator.calculate} />;
       case 'drywall':
-        return <DrywallCalculator onCalculate={calculator.calculate} />;
+        return <DrywallCalculatorWrapper onCalculate={calculator.calculate} />;
       case 'forro_drywall':
         return <ForroDrywallCalculator onCalculate={calculator.calculate} />;
       case 'acoustic_mineral_ceiling':
