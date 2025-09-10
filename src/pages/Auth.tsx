@@ -93,8 +93,13 @@ export default function AuthPage() {
     setResetMessage('');
 
     try {
+      // Garantir que usa a URL correta do Lovable em produção
+      const baseUrl = window.location.hostname === 'localhost' 
+        ? 'https://a8d68d6e-4efd-4093-966f-bddf0a89dc45.lovableproject.com'
+        : window.location.origin;
+      
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/reset-password`
+        redirectTo: `${baseUrl}/reset-password`
       });
 
       if (error) {
