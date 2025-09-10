@@ -7,13 +7,15 @@ const corsHeaders = {
 };
 
 interface ProposalGenerationRequest {
-  calculationId: string;
+  calculationId?: string; // Opcional agora
   clientData: {
     name: string;
     phone: string;
     email?: string;
     address?: any;
   };
+  productType?: string;
+  calculationInput?: any;
   templatePreferences: {
     tone: 'professional' | 'friendly' | 'technical';
     includeWarranty: boolean;
@@ -22,7 +24,7 @@ interface ProposalGenerationRequest {
     logoUrl?: string;
     primaryColor?: string;
   };
-  pricing: {
+  pricing?: {
     items: Array<{
       id: string;
       name: string;
@@ -61,21 +63,38 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const requestData: ProposalGenerationRequest = await req.json();
-    console.log('Generating proposal for calculation:', requestData.calculationId);
+    console.log('Generating proposal for calculation:', requestData.calculationId || 'direct calculation');
 
-    // Get the saved calculation
-    const { data: calculation, error: calcError } = await supabase
-      .from('saved_calculations')
-      .select('*')
-      .eq('id', requestData.calculationId)
-      .single();
+    let calculation: any = null;
+    
+    // Se há calculationId, buscar o cálculo salvo
+    if (requestData.calculationId) {
+      const { data: savedCalc, error: calcError } = await supabase
+        .from('saved_calculations')
+        .select('*')
+        .eq('id', requestData.calculationId)
+        .single();
 
-    if (calcError) {
-      throw new Error(`Failed to fetch calculation: ${calcError.message}`);
+      if (calcError) {
+        console.error('Failed to fetch calculation:', calcError);
+        // Continuar sem cálculo salvo se houver dados diretos
+      } else {
+        calculation = savedCalc;
+      }
+    }
+
+    // Se não há cálculo salvo, usar dados diretos do request
+    if (!calculation && requestData.calculationInput) {
+      calculation = {
+        product_type: requestData.productType || 'solar',
+        calculation_input: requestData.calculationInput,
+        calculation_result: requestData.calculationInput, // Usar input como fallback
+        user_id: null // Será definido pelo contexto de auth se necessário
+      };
     }
 
     if (!calculation) {
-      throw new Error('Calculation not found');
+      throw new Error('No calculation data provided');
     }
 
     // Generate proposal number and unique link
@@ -92,11 +111,11 @@ const handler = async (req: Request): Promise<Response> => {
         description: `Proposta para ${calculation.product_type} - ${requestData.clientData.name}`,
         project_type: calculation.product_type,
         status: 'generated',
-        total_value: requestData.pricing.total,
-        discount_value: requestData.pricing.discount || 0,
-        discount_percentage: requestData.pricing.discountPercentage || 0,
-        final_value: requestData.pricing.total - (requestData.pricing.discount || 0),
-        valid_until: new Date(Date.now() + (requestData.pricing.validityDays * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
+        total_value: requestData.pricing?.total || 0,
+        discount_value: requestData.pricing?.discount || 0,
+        discount_percentage: requestData.pricing?.discountPercentage || 0,
+        final_value: (requestData.pricing?.total || 0) - (requestData.pricing?.discount || 0),
+        valid_until: new Date(Date.now() + ((requestData.pricing?.validityDays || 30) * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
         acceptance_link: acceptanceLink,
         created_by: calculation.user_id
       })
@@ -107,8 +126,9 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Failed to create proposal: ${proposalError.message}`);
     }
 
-    // Create proposal items
-    const proposalItems = requestData.pricing.items.map((item, index) => ({
+    // Create proposal items apenas se há pricing definido
+    if (requestData.pricing?.items) {
+      const proposalItems = requestData.pricing.items.map((item, index) => ({
       proposal_id: proposal.id,
       custom_name: item.name,
       description: `${item.name} - ${item.category}`,
@@ -130,14 +150,22 @@ const handler = async (req: Request): Promise<Response> => {
     if (itemsError) {
       throw new Error(`Failed to create proposal items: ${itemsError.message}`);
     }
+    }
 
     // Generate HTML content for the proposal
     const htmlContent = generateProposalHTML({
       proposal,
-      items: requestData.pricing.items,
+      items: requestData.pricing?.items || [],
       clientData: requestData.clientData,
       templatePreferences: requestData.templatePreferences,
-      pricing: requestData.pricing,
+      pricing: requestData.pricing || { 
+        items: [], 
+        subtotal: 0, 
+        total: 0, 
+        validityDays: 30, 
+        paymentTerms: 'À vista', 
+        deliveryTime: '30 dias' 
+      },
       calculationData: calculation
     });
 
@@ -148,7 +176,7 @@ const handler = async (req: Request): Promise<Response> => {
         id: proposal.id,
         number: proposalNumber,
         title: proposal.title,
-        total: requestData.pricing.total,
+        total: requestData.pricing?.total || 0,
         validUntil: proposal.valid_until,
         status: proposal.status,
         acceptanceLink: acceptanceLink,

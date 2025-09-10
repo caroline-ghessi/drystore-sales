@@ -5,7 +5,7 @@ import { calculateAcousticMineralCeiling, calculateAcousticMineralCeilingSyncLeg
 import { AcousticMineralCeilingInput, AcousticMineralCeilingResult } from '../../types/calculation.types';
 
 interface AcousticMineralCeilingWrapperProps {
-  onCalculate?: (input: AcousticMineralCeilingInput) => void;
+  onCalculate?: (data: { input: AcousticMineralCeilingInput; result: AcousticMineralCeilingResult }) => void;
 }
 
 export function AcousticMineralCeilingWrapper({ onCalculate }: AcousticMineralCeilingWrapperProps) {
@@ -18,7 +18,7 @@ export function AcousticMineralCeilingWrapper({ onCalculate }: AcousticMineralCe
       
       // Se tem callback externo, chama também (para integração com gerador de propostas)
       if (onCalculate) {
-        onCalculate(input);
+        onCalculate({ input, result: calculationResult });
       }
     } catch (error) {
       console.error('Erro ao calcular forro mineral acústico:', error);
@@ -26,7 +26,7 @@ export function AcousticMineralCeilingWrapper({ onCalculate }: AcousticMineralCe
       const legacyResult = calculateAcousticMineralCeilingSyncLegacy(input);
       setResult(legacyResult);
       if (onCalculate) {
-        onCalculate(input);
+        onCalculate({ input, result: legacyResult });
       }
     }
   };

@@ -47,8 +47,8 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   
   const navigate = useNavigate();
   const { isGenerating, generatedProposal, generateFromContext, generateProposal } = useAIGeneration();
-  const calculator = useProposalCalculator(productType);
-  const { saveCalculation, isSaving: isSavingCalculation } = useSavedCalculations();
+  const calculator = useProposalCalculator(productType);  
+  const savedCalculations = useSavedCalculations();
 
   useEffect(() => {
     if (projectContextId) {
@@ -71,21 +71,28 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
       return;
     }
 
-    const request = {
-      clientData,
-      productType,
-      calculationInput: calculator.calculationInput!,
-      templatePreferences: {
-        tone: 'friendly' as const,
-        includeWarranty: true,
-        includeTestimonials: false,
-        includeTechnicalSpecs: true
-      }
-    };
+    try {
+      // Simplificar - usar a edge function diretamente sem salvar primeiro
+      const request = {
+        calculationId: undefined, // Edge function precisará ser ajustada para lidar com isso
+        clientData,
+        productType,
+        calculationInput: calculator.calculationInput!,
+        templatePreferences: {
+          tone: 'friendly' as const,
+          includeWarranty: true,
+          includeTestimonials: false,
+          includeTechnicalSpecs: true
+        }
+      };
 
-    const proposal = await generateProposal(request);
-    if (proposal && onProposalGenerated) {
-      onProposalGenerated(proposal);
+      const proposal = await generateProposal(request);
+      if (proposal && onProposalGenerated) {
+        onProposalGenerated(proposal);
+      }
+    } catch (error) {
+      console.error('Erro ao gerar proposta:', error);
+      alert('Erro ao gerar proposta. Tente novamente.');
     }
   };
 
@@ -99,7 +106,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
       return;
     }
 
-    saveCalculation({
+    savedCalculations.saveCalculation({
       name: calculationName,
       product_type: productType,
       client_data: clientData,
@@ -142,7 +149,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
       case 'forro_drywall':
         return <ForroDrywallCalculator onCalculate={calculator.calculate} />;
       case 'acoustic_mineral_ceiling':
-        return <AcousticMineralCeilingWrapper onCalculate={calculator.calculate} />;
+        return <AcousticMineralCeilingWrapper onCalculate={(data) => calculator.calculate(data.input)} />;
       default:
         return (
           <Card>
@@ -636,9 +643,9 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                   <Button 
                     variant="outline"
                     onClick={handleSaveCalculation}
-                    disabled={isSavingCalculation}
+                    disabled={savedCalculations.isSaving}
                   >
-                    {isSavingCalculation ? (
+                    {savedCalculations.isSaving ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Save className="mr-2 h-4 w-4" />
@@ -720,9 +727,9 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
             </Button>
             <Button 
               onClick={confirmSaveCalculation}
-              disabled={!calculationName.trim() || isSavingCalculation}
+              disabled={!calculationName.trim() || savedCalculations.isSaving}
             >
-              {isSavingCalculation && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {savedCalculations.isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Salvar
             </Button>
           </DialogFooter>

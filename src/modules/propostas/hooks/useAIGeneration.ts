@@ -110,6 +110,9 @@ export function useAIGeneration() {
         proposalId: data.proposal.id,
         uniqueId: data.proposal.uniqueId
       };
+      
+      setGeneratedProposal(result);
+      return result;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro na geração da proposta');
       return null;
