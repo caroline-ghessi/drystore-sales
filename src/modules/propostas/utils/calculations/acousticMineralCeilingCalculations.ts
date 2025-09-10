@@ -201,8 +201,8 @@ export function selectOptimalModulation(input: AcousticMineralCeilingInput, prod
   }
 
   const area = input.roomLength * input.roomWidth;
-  const specs = product.specifications as any;
-  const availableModulations = specs?.modulations || ['625x625'];
+  const productSpecs = product.specifications as any;
+  const availableModulations = productSpecs?.modulations || ['625x625'];
 
   // Ambiente pequeno (<30m²): usar modulações pequenas
   if (area < 30) {
@@ -424,16 +424,16 @@ function getRegionMultiplier(region: string): number {
 }
 
 function checkProductSuitability(product: any, input: AcousticMineralCeilingInput): boolean {
-  const specs = product.specifications as any;
+  const suitabilitySpecs = product.specifications as any;
   
   // Verificar umidade se necessário
   if (input.primaryNeed === 'humidity' && input.humidityLevel) {
-    return specs?.humidity_resistance || false;
+    return suitabilitySpecs?.humidity_resistance || false;
   }
   
   // Verificar acústica se necessário  
   if (input.primaryNeed === 'acoustic' && input.nrcRequired) {
-    return (specs?.nrc || 0) >= input.nrcRequired;
+    return (suitabilitySpecs?.nrc || 0) >= input.nrcRequired;
   }
   
   return true;
@@ -446,13 +446,13 @@ function checkModelSuitability(model: AcousticMineralCeilingModel, input: Acoust
 
 function generateProductWarnings(input: AcousticMineralCeilingInput, product: any): string[] {
   const warnings: string[] = [];
-  const specs = product.specifications as any;
+  const warningSpecs = product.specifications as any;
   
   if (input.availableSpace < 15) {
     warnings.push('Espaço disponível insuficiente. Mínimo 15cm necessário.');
   }
   
-  if (input.primaryNeed === 'humidity' && !specs?.humidity_resistance) {
+  if (input.primaryNeed === 'humidity' && !warningSpecs?.humidity_resistance) {
     warnings.push('Produto selecionado pode não ser adequado para alta umidade.');
   }
   
