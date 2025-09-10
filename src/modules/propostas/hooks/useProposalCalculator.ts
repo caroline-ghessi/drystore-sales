@@ -115,88 +115,111 @@ export function useProposalCalculator(productType: ProductType) {
       case 'solar':
         const solarResult = calculationResult as any;
         
-        // Painéis Solares
+        // Buscar produtos reais cadastrados
+        const availableProducts = products || [];
+        const panelProducts = availableProducts.filter(p => p.subcategory === 'painel' || p.solar_category === 'panel');
+        const inverterProducts = availableProducts.filter(p => p.subcategory === 'inversor' || p.solar_category === 'inverter');
+        const structureProducts = availableProducts.filter(p => p.subcategory === 'estrutura');
+        const electricalProducts = availableProducts.filter(p => p.subcategory === 'eletrico' || p.subcategory === 'material_eletrico');
+
+        // Selecionar produtos (primeiro disponível ou usar dados do resultado)
+        const selectedPanel = panelProducts[0];
+        const selectedInverter = inverterProducts[0];
+        const selectedStructure = structureProducts[0];
+        const selectedElectrical = electricalProducts[0];
+
+        const panelQuantity = solarResult.panelQuantity || Math.ceil((solarResult.systemPower || 0) / 0.55);
+        const inverterQuantity = solarResult.inverterQuantity || 1;
+
+        // Painéis Solares - APENAS preço do produto cadastrado
         items.push({
           id: '1',
           product: 'solar',
-          description: `Painéis Solares Fotovoltaicos`,
+          description: selectedPanel?.name || `Painéis Solares Fotovoltaicos`,
           specifications: {
-            power: solarResult.panelSpecs?.power || '550W',
-            model: solarResult.panelSpecs?.model || 'Painel Solar Monocristalino',
-            brand: solarResult.panelSpecs?.brand || 'Marca Premium',
-            efficiency: solarResult.panelSpecs?.efficiency || '>21%'
+            power: selectedPanel?.specifications?.power || solarResult.panelSpecs?.power || '550W',
+            model: selectedPanel?.model || solarResult.panelSpecs?.model || 'Painel Solar',
+            brand: selectedPanel?.brand || solarResult.panelSpecs?.brand || 'N/A',
+            efficiency: selectedPanel?.specifications?.efficiency || solarResult.panelSpecs?.efficiency || 'N/A'
           },
-          quantity: solarResult.panelQuantity || Math.ceil((solarResult.systemPower || 0) / 0.55),
-          unitPrice: (solarResult.costs?.panels || solarResult.systemPower * 1200) / (solarResult.panelQuantity || 1),
-          totalPrice: solarResult.costs?.panels || solarResult.systemPower * 1200,
-          materialCost: solarResult.costs?.panels || solarResult.systemPower * 1200
+          quantity: panelQuantity,
+          unitPrice: selectedPanel?.base_price || 0,
+          totalPrice: (selectedPanel?.base_price || 0) * panelQuantity,
+          materialCost: (selectedPanel?.base_price || 0) * panelQuantity
         });
 
-        // Inversor
+        // Inversor - APENAS preço do produto cadastrado
         items.push({
           id: '2',
           product: 'solar',
-          description: `Inversor Solar`,
+          description: selectedInverter?.name || `Inversor Solar`,
           specifications: {
-            power: `${solarResult.systemPower?.toFixed(1) || '0.0'} kW`,
-            model: solarResult.inverterSpecs?.model || 'Inversor String',
-            brand: solarResult.inverterSpecs?.brand || 'Marca Premium',
-            efficiency: solarResult.inverterSpecs?.efficiency || '>97%'
+            power: selectedInverter?.specifications?.power || `${solarResult.systemPower?.toFixed(1) || '0.0'} kW`,
+            model: selectedInverter?.model || solarResult.inverterSpecs?.model || 'Inversor String',
+            brand: selectedInverter?.brand || solarResult.inverterSpecs?.brand || 'N/A',
+            efficiency: selectedInverter?.specifications?.efficiency || solarResult.inverterSpecs?.efficiency || 'N/A'
           },
-          quantity: solarResult.inverterQuantity || 1,
-          unitPrice: solarResult.costs?.inverter || solarResult.systemPower * 800,
-          totalPrice: solarResult.costs?.inverter || solarResult.systemPower * 800,
-          materialCost: solarResult.costs?.inverter || solarResult.systemPower * 800
+          quantity: inverterQuantity,
+          unitPrice: selectedInverter?.base_price || 0,
+          totalPrice: (selectedInverter?.base_price || 0) * inverterQuantity,
+          materialCost: (selectedInverter?.base_price || 0) * inverterQuantity
         });
 
-        // Estrutura de Fixação
+        // Estrutura de Fixação - APENAS preço do produto cadastrado
         items.push({
           id: '3',
           product: 'solar',
-          description: `Estrutura de Fixação`,
+          description: selectedStructure?.name || `Estrutura de Fixação`,
           specifications: {
-            material: 'Alumínio Anodizado',
-            type: 'Estrutura para Telhado Cerâmico',
-            panels: solarResult.panelQuantity || Math.ceil((solarResult.systemPower || 0) / 0.55)
+            material: selectedStructure?.specifications?.material || 'Alumínio Anodizado',
+            type: selectedStructure?.description || 'Estrutura para Telhado',
+            panels: panelQuantity
           },
-          quantity: solarResult.panelQuantity || Math.ceil((solarResult.systemPower || 0) / 0.55),
-          unitPrice: solarResult.costs?.structure ? solarResult.costs.structure / (solarResult.panelQuantity || 1) : 150,
-          totalPrice: solarResult.costs?.structure || (solarResult.panelQuantity || 1) * 150,
-          materialCost: solarResult.costs?.structure || (solarResult.panelQuantity || 1) * 150
+          quantity: panelQuantity,
+          unitPrice: selectedStructure?.base_price || 0,
+          totalPrice: (selectedStructure?.base_price || 0) * panelQuantity,
+          materialCost: (selectedStructure?.base_price || 0) * panelQuantity
         });
 
-        // Material Elétrico
+        // Material Elétrico - APENAS preço do produto cadastrado
         items.push({
           id: '4',
           product: 'solar',
-          description: `Material Elétrico`,
+          description: selectedElectrical?.name || `Material Elétrico`,
           specifications: {
-            includes: 'String Box, Cabos, Conectores MC4, DPS',
-            stringBox: '1x String Box CC/CA',
-            cables: 'Cabos solares 4mm²',
-            protection: 'Dispositivos de Proteção'
+            includes: selectedElectrical?.description || 'String Box, Cabos, Conectores MC4, DPS',
+            type: 'Kit Completo',
+            system: `${solarResult.systemPower?.toFixed(1) || '0.0'} kWp`
           },
           quantity: 1,
-          unitPrice: solarResult.costs?.electrical || solarResult.systemPower * 300,
-          totalPrice: solarResult.costs?.electrical || solarResult.systemPower * 300,
-          materialCost: solarResult.costs?.electrical || solarResult.systemPower * 300
+          unitPrice: selectedElectrical?.base_price || 0,
+          totalPrice: selectedElectrical?.base_price || 0,
+          materialCost: selectedElectrical?.base_price || 0
         });
 
-        // Documentação e Homologação
+        // Documentação e Homologação - sempre com preço zero se não houver produto específico
+        const documentationProducts = availableProducts.filter(p => 
+          p.subcategory === 'documentacao' || 
+          p.subcategory === 'homologacao' || 
+          p.description?.toLowerCase().includes('projeto') ||
+          p.description?.toLowerCase().includes('homolog')
+        );
+        const selectedDocumentation = documentationProducts[0];
+
         items.push({
           id: '5',
           product: 'solar',
-          description: `Projeto e Homologação`,
+          description: selectedDocumentation?.name || `Projeto e Homologação`,
           specifications: {
-            includes: 'Projeto Executivo, ART, Homologação na Concessionária',
+            includes: selectedDocumentation?.description || 'Projeto Executivo, ART, Homologação na Concessionária',
             project: 'Projeto Elétrico Executivo com ART',
             approval: 'Processo de Homologação na Distribuidora',
             documentation: 'Documentação Técnica Completa'
           },
           quantity: 1,
-          unitPrice: solarResult.costs?.documentation || 800,
-          totalPrice: solarResult.costs?.documentation || 800,
-          materialCost: solarResult.costs?.documentation || 800
+          unitPrice: selectedDocumentation?.base_price || 0,
+          totalPrice: selectedDocumentation?.base_price || 0,
+          materialCost: selectedDocumentation?.base_price || 0
         });
 
         break;
