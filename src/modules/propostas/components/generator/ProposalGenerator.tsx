@@ -119,7 +119,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   const renderCalculator = () => {
     switch (productType) {
       case 'solar':
-        return <SimpleSolarCalculator onCalculate={calculator.calculate} />;
+        return <SimpleSolarCalculator onCalculate={calculator.calculate} clientData={clientData} />;
       case 'solar_advanced':
         return <SolarCalculator onCalculate={calculator.calculate} />;
       case 'battery_backup':

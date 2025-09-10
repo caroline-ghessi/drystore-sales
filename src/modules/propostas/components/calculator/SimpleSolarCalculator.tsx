@@ -12,9 +12,13 @@ import { useNavigate } from 'react-router-dom';
 
 interface SimpleSolarCalculatorProps {
   onCalculate: (input: SimpleSolarCalculationInput) => void;
+  clientData?: {
+    name: string;
+    phone: string;
+  };
 }
 
-export function SimpleSolarCalculator({ onCalculate }: SimpleSolarCalculatorProps) {
+export function SimpleSolarCalculator({ onCalculate, clientData }: SimpleSolarCalculatorProps) {
   const navigate = useNavigate();
   const { hasProducts, getAvailableProducts } = useSolarProductCalculator();
   
@@ -22,7 +26,7 @@ export function SimpleSolarCalculator({ onCalculate }: SimpleSolarCalculatorProp
     monthlyConsumption: 300,
     currentTariff: 0.75,
     installationType: 'grid_tie',
-    clientData: {
+    clientData: clientData || {
       name: '',
       phone: ''
     }
@@ -70,33 +74,52 @@ export function SimpleSolarCalculator({ onCalculate }: SimpleSolarCalculatorProp
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Cliente Info */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
-          <div>
-            <Label htmlFor="clientName">Nome do Cliente</Label>
-            <Input
-              id="clientName"
-              value={input.clientData?.name || ''}
-              onChange={(e) => setInput({
-                ...input,
-                clientData: { ...input.clientData, name: e.target.value }
-              })}
-              placeholder="Nome completo"
-            />
+        {/* Cliente Info - Apenas informativo se dados já fornecidos */}
+        {clientData ? (
+          <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center text-green-800 mb-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+              <span className="font-medium">Cliente Identificado</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+              <div>
+                <span className="text-green-700">Nome: </span>
+                <span className="font-medium">{clientData.name}</span>
+              </div>
+              <div>
+                <span className="text-green-700">WhatsApp: </span>
+                <span className="font-medium">{clientData.phone}</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <Label htmlFor="clientPhone">WhatsApp</Label>
-            <Input
-              id="clientPhone"
-              value={input.clientData?.phone || ''}
-              onChange={(e) => setInput({
-                ...input,
-                clientData: { ...input.clientData, phone: e.target.value }
-              })}
-              placeholder="(11) 99999-9999 - WhatsApp"
-            />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
+            <div>
+              <Label htmlFor="clientName">Nome do Cliente</Label>
+              <Input
+                id="clientName"
+                value={input.clientData?.name || ''}
+                onChange={(e) => setInput({
+                  ...input,
+                  clientData: { ...input.clientData, name: e.target.value }
+                })}
+                placeholder="Nome completo"
+              />
+            </div>
+            <div>
+              <Label htmlFor="clientPhone">WhatsApp</Label>
+              <Input
+                id="clientPhone"
+                value={input.clientData?.phone || ''}
+                onChange={(e) => setInput({
+                  ...input,
+                  clientData: { ...input.clientData, phone: e.target.value }
+                })}
+                placeholder="(11) 99999-9999 - WhatsApp"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Main Calculation Fields */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

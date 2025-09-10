@@ -114,21 +114,91 @@ export function useProposalCalculator(productType: ProductType) {
     switch (productType) {
       case 'solar':
         const solarResult = calculationResult as any;
+        
+        // Painéis Solares
         items.push({
           id: '1',
           product: 'solar',
-          description: `Sistema Fotovoltaico ${solarResult.systemPower.toFixed(2)} kWp`,
+          description: `Painéis Solares Fotovoltaicos`,
           specifications: {
-            power: solarResult.systemPower,
-            panels: solarResult.panelQuantity,
-            inverters: solarResult.inverterQuantity,
-            monthlyGeneration: solarResult.monthlyGeneration
+            power: solarResult.panelSpecs?.power || '550W',
+            model: solarResult.panelSpecs?.model || 'Painel Solar Monocristalino',
+            brand: solarResult.panelSpecs?.brand || 'Marca Premium',
+            efficiency: solarResult.panelSpecs?.efficiency || '>21%'
+          },
+          quantity: solarResult.panelQuantity || Math.ceil((solarResult.systemPower || 0) / 0.55),
+          unitPrice: (solarResult.costs?.panels || solarResult.systemPower * 1200) / (solarResult.panelQuantity || 1),
+          totalPrice: solarResult.costs?.panels || solarResult.systemPower * 1200,
+          materialCost: solarResult.costs?.panels || solarResult.systemPower * 1200
+        });
+
+        // Inversor
+        items.push({
+          id: '2',
+          product: 'solar',
+          description: `Inversor Solar`,
+          specifications: {
+            power: `${solarResult.systemPower?.toFixed(1) || '0.0'} kW`,
+            model: solarResult.inverterSpecs?.model || 'Inversor String',
+            brand: solarResult.inverterSpecs?.brand || 'Marca Premium',
+            efficiency: solarResult.inverterSpecs?.efficiency || '>97%'
+          },
+          quantity: solarResult.inverterQuantity || 1,
+          unitPrice: solarResult.costs?.inverter || solarResult.systemPower * 800,
+          totalPrice: solarResult.costs?.inverter || solarResult.systemPower * 800,
+          materialCost: solarResult.costs?.inverter || solarResult.systemPower * 800
+        });
+
+        // Estrutura de Fixação
+        items.push({
+          id: '3',
+          product: 'solar',
+          description: `Estrutura de Fixação`,
+          specifications: {
+            material: 'Alumínio Anodizado',
+            type: 'Estrutura para Telhado Cerâmico',
+            panels: solarResult.panelQuantity || Math.ceil((solarResult.systemPower || 0) / 0.55)
+          },
+          quantity: solarResult.panelQuantity || Math.ceil((solarResult.systemPower || 0) / 0.55),
+          unitPrice: solarResult.costs?.structure ? solarResult.costs.structure / (solarResult.panelQuantity || 1) : 150,
+          totalPrice: solarResult.costs?.structure || (solarResult.panelQuantity || 1) * 150,
+          materialCost: solarResult.costs?.structure || (solarResult.panelQuantity || 1) * 150
+        });
+
+        // Material Elétrico
+        items.push({
+          id: '4',
+          product: 'solar',
+          description: `Material Elétrico`,
+          specifications: {
+            includes: 'String Box, Cabos, Conectores MC4, DPS',
+            stringBox: '1x String Box CC/CA',
+            cables: 'Cabos solares 4mm²',
+            protection: 'Dispositivos de Proteção'
           },
           quantity: 1,
-          unitPrice: solarResult.totalCost,
-          totalPrice: solarResult.totalCost,
-          materialCost: solarResult.totalCost
+          unitPrice: solarResult.costs?.electrical || solarResult.systemPower * 300,
+          totalPrice: solarResult.costs?.electrical || solarResult.systemPower * 300,
+          materialCost: solarResult.costs?.electrical || solarResult.systemPower * 300
         });
+
+        // Documentação e Homologação
+        items.push({
+          id: '5',
+          product: 'solar',
+          description: `Projeto e Homologação`,
+          specifications: {
+            includes: 'Projeto Executivo, ART, Homologação na Concessionária',
+            project: 'Projeto Elétrico Executivo com ART',
+            approval: 'Processo de Homologação na Distribuidora',
+            documentation: 'Documentação Técnica Completa'
+          },
+          quantity: 1,
+          unitPrice: solarResult.costs?.documentation || 800,
+          totalPrice: solarResult.costs?.documentation || 800,
+          materialCost: solarResult.costs?.documentation || 800
+        });
+
         break;
         
       case 'battery_backup':
