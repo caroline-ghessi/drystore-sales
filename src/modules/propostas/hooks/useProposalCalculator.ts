@@ -60,13 +60,12 @@ export function useProposalCalculator(productType: ProductType) {
             solarInput = input as SolarCalculationInput;
           }
           
-          // Se não há produtos cadastrados, criar produtos "vazios" com preço zero
-          let solarProducts = products || [];
-          if (solarProducts.length === 0) {
-            solarProducts = createEmptySolarProducts();
+          // Usar APENAS produtos cadastrados no banco de dados
+          if (!products || products.length === 0) {
+            throw new Error('Nenhum produto solar encontrado. Configure produtos na página de produtos.');
           }
           
-          result = calculateSolarWithProducts(solarInput, solarProducts);
+          result = calculateSolarWithProducts(solarInput, products);
           break;
         case 'battery_backup':
           // Usar cálculo baseado em produtos se disponível
@@ -101,74 +100,6 @@ export function useProposalCalculator(productType: ProductType) {
     }
   }, [productType, products]);
 
-  // Criar produtos "vazios" com preço zero se não há produtos cadastrados
-  const createEmptySolarProducts = useCallback(() => {
-    const now = new Date().toISOString();
-    return [
-      {
-        id: 'empty-panel',
-        name: 'Painel Solar',
-        category: 'energia_solar' as const,
-        subcategory: 'painel',
-        unit: 'un',
-        base_price: 0,
-        specifications: { power_rating: 550, efficiency: 0.21 },
-        is_active: true,
-        created_at: now,
-        source: 'products' as const,
-        solar_category: 'panel' as const
-      },
-      {
-        id: 'empty-inverter', 
-        name: 'Inversor Solar',
-        category: 'energia_solar' as const,
-        subcategory: 'inversor',
-        unit: 'un',
-        base_price: 0,
-        specifications: { power_rating: 3000, efficiency: 0.97 },
-        is_active: true,
-        created_at: now,
-        source: 'products' as const,
-        solar_category: 'inverter' as const
-      },
-      {
-        id: 'empty-structure',
-        name: 'Estrutura de Fixação',
-        category: 'energia_solar' as const,
-        subcategory: 'estrutura',
-        unit: 'un',
-        base_price: 0,
-        specifications: {},
-        is_active: true,
-        created_at: now,
-        source: 'products' as const
-      },
-      {
-        id: 'empty-electrical',
-        name: 'Material Elétrico',
-        category: 'energia_solar' as const,
-        subcategory: 'eletrico',
-        unit: 'kit',
-        base_price: 0,
-        specifications: {},
-        is_active: true,
-        created_at: now,
-        source: 'products' as const
-      },
-      {
-        id: 'empty-documentation',
-        name: 'Projeto e Homologação',
-        category: 'energia_solar' as const,
-        subcategory: 'documentacao',
-        unit: 'serv',
-        base_price: 0, 
-        specifications: {},
-        is_active: true,
-        created_at: now,
-        source: 'products' as const
-      }
-    ];
-  }, []);
 
   const generateProposalItems = useCallback((): ProposalItem[] => {
     if (!calculationResult) return [];
@@ -179,11 +110,8 @@ export function useProposalCalculator(productType: ProductType) {
       case 'solar':
         const solarResult = calculationResult as any;
         
-        // Buscar produtos reais cadastrados ou usar produtos vazios como fallback
-        let availableProducts = products || [];
-        if (availableProducts.length === 0) {
-          availableProducts = createEmptySolarProducts();
-        }
+        // Usar APENAS produtos reais cadastrados
+        const availableProducts = products || [];
         
         const panelProducts = availableProducts.filter(p => p.subcategory === 'painel' || p.solar_category === 'panel');
         const inverterProducts = availableProducts.filter(p => p.subcategory === 'inversor' || p.solar_category === 'inverter');
