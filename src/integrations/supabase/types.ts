@@ -3006,6 +3006,7 @@ export type Database = {
         | "geral"
         | "forro_drywall"
         | "battery_backup"
+        | "forro_mineral_acustico"
       product_unit:
         | "m2"
         | "ml"
@@ -3213,6 +3214,7 @@ export const Constants = {
         "geral",
         "forro_drywall",
         "battery_backup",
+        "forro_mineral_acustico",
       ],
       product_unit: [
         "m2",
