@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { ProductType, ProposalItem } from '../types/proposal.types';
 import { CalculationInput, CalculationResult, SimpleSolarCalculationInput, SolarCalculationInput } from '../types/calculation.types';
-import { calculateSimpleSolarSystem } from '../utils/calculations/simpleSolarCalculations';
+// import { calculateSimpleSolarSystem } from '../utils/calculations/simpleSolarCalculations'; // REMOVIDO - não usar mais valores hardcoded
 import { calculateBatteryBackup } from '../utils/calculations/batteryBackupCalculations';
 import { calculateSolarWithProducts } from '../utils/calculations/productBasedSolarCalculations';
 import { calculateBatteryBackupWithProducts } from '../utils/calculations/productBasedBatteryBackupCalculations';
@@ -51,27 +51,22 @@ export function useProposalCalculator(productType: ProductType) {
       
       switch (productType) {
         case 'solar':
-          // Detectar tipo de input e usar calculadora apropriada
+          // SEMPRE usar calculadora baseada em produtos
+          let solarInput: SolarCalculationInput;
+          
           if (isSimpleSolarInput(input)) {
-            // Input simples: usar calculadora baseada em produtos se disponível
-            if (products && products.length > 0) {
-              const advancedInput = convertSimpleToAdvancedSolarInput(input);
-              result = calculateSolarWithProducts(advancedInput, products);
-            } else {
-              result = calculateSimpleSolarSystem(input);
-            }
+            solarInput = convertSimpleToAdvancedSolarInput(input);
           } else {
-            // Input avançado: usar calculadora baseada em produtos se disponível
-            if (products && products.length > 0) {
-              result = calculateSolarWithProducts(input as SolarCalculationInput, products);
-            } else {
-              result = calculateSimpleSolarSystem({
-                monthlyConsumption: (input as SolarCalculationInput).monthlyConsumption,
-                currentTariff: 0.70, // Tarifa padrão quando não informada
-                installationType: (input as SolarCalculationInput).installationType
-              });
-            }
+            solarInput = input as SolarCalculationInput;
           }
+          
+          // Se não há produtos cadastrados, criar produtos "vazios" com preço zero
+          let solarProducts = products || [];
+          if (solarProducts.length === 0) {
+            solarProducts = createEmptySolarProducts();
+          }
+          
+          result = calculateSolarWithProducts(solarInput, solarProducts);
           break;
         case 'battery_backup':
           // Usar cálculo baseado em produtos se disponível
@@ -105,6 +100,75 @@ export function useProposalCalculator(productType: ProductType) {
       setIsCalculating(false);
     }
   }, [productType, products]);
+
+  // Criar produtos "vazios" com preço zero se não há produtos cadastrados
+  const createEmptySolarProducts = useCallback(() => {
+    const now = new Date().toISOString();
+    return [
+      {
+        id: 'empty-panel',
+        name: 'Painel Solar',
+        category: 'energia_solar' as const,
+        subcategory: 'painel',
+        unit: 'un',
+        base_price: 0,
+        specifications: { power_rating: 550, efficiency: 0.21 },
+        is_active: true,
+        created_at: now,
+        source: 'products' as const,
+        solar_category: 'panel' as const
+      },
+      {
+        id: 'empty-inverter', 
+        name: 'Inversor Solar',
+        category: 'energia_solar' as const,
+        subcategory: 'inversor',
+        unit: 'un',
+        base_price: 0,
+        specifications: { power_rating: 3000, efficiency: 0.97 },
+        is_active: true,
+        created_at: now,
+        source: 'products' as const,
+        solar_category: 'inverter' as const
+      },
+      {
+        id: 'empty-structure',
+        name: 'Estrutura de Fixação',
+        category: 'energia_solar' as const,
+        subcategory: 'estrutura',
+        unit: 'un',
+        base_price: 0,
+        specifications: {},
+        is_active: true,
+        created_at: now,
+        source: 'products' as const
+      },
+      {
+        id: 'empty-electrical',
+        name: 'Material Elétrico',
+        category: 'energia_solar' as const,
+        subcategory: 'eletrico',
+        unit: 'kit',
+        base_price: 0,
+        specifications: {},
+        is_active: true,
+        created_at: now,
+        source: 'products' as const
+      },
+      {
+        id: 'empty-documentation',
+        name: 'Projeto e Homologação',
+        category: 'energia_solar' as const,
+        subcategory: 'documentacao',
+        unit: 'serv',
+        base_price: 0, 
+        specifications: {},
+        is_active: true,
+        created_at: now,
+        source: 'products' as const
+      }
+    ];
+  }, []);
 
   const generateProposalItems = useCallback((): ProposalItem[] => {
     if (!calculationResult) return [];

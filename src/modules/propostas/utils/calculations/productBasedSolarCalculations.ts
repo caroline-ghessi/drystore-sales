@@ -51,10 +51,10 @@ export function calculateSolarWithProducts(
   // BUSCAR PRODUTOS REAIS DO CADASTRO
   const solarProducts = ProductCalculationService.getSolarProducts(products);
   
-  // Selecionar painel solar (preferir primeiro encontrado ou usar especificações padrão)
+  // Selecionar painel solar - SEMPRE usar produto cadastrado (mesmo se preço = 0)
   const selectedPanel = solarProducts.panels[0];
   let panelSpecs = FALLBACK_SPECS.panel;
-  let panelPrice = 1800; // Fallback price apenas se produto não existir
+  let panelPrice = 0; // Sempre começar com zero
   
   if (selectedPanel) {
     const specs = ProductCalculationService.getProductSpecs(selectedPanel);
@@ -67,7 +67,8 @@ export function calculateSolarWithProducts(
       voltage: specs.voltage || FALLBACK_SPECS.panel.voltage,
       current: specs.voltage ? (specs.power_rating || FALLBACK_SPECS.panel.power_rating) / specs.voltage : FALLBACK_SPECS.panel.current
     };
-    panelPrice = selectedPanel.base_price;
+    // SEMPRE usar o preço do produto cadastrado (pode ser zero)
+    panelPrice = selectedPanel.base_price || 0;
   }
   
   // Quantidade de módulos
@@ -77,9 +78,9 @@ export function calculateSolarWithProducts(
   // Configuração de strings
   const stringConfig = calculateStringConfiguration(panelQuantity, panelSpecs);
   
-  // Selecionar inversor baseado na potência
+  // Selecionar inversor baseado na potência - SEMPRE usar produto cadastrado
   const selectedInverter = selectInverterFromProducts(actualSystemPower, solarProducts.inverters);
-  let inverterPrice = actualSystemPower <= 3.3 ? 4500 : 7200; // Fallback
+  let inverterPrice = 0; // Sempre começar com zero
   let inverterSpecs = { efficiency: FALLBACK_SPECS.inverter.efficiency };
   
   if (selectedInverter) {
@@ -87,7 +88,8 @@ export function calculateSolarWithProducts(
     inverterSpecs = {
       efficiency: specs.efficiency || FALLBACK_SPECS.inverter.efficiency
     };
-    inverterPrice = selectedInverter.base_price;
+    // SEMPRE usar o preço do produto cadastrado (pode ser zero)
+    inverterPrice = selectedInverter.base_price || 0;
   }
   
   // Configuração de baterias (se aplicável)
@@ -240,10 +242,10 @@ function calculateBatteryConfigurationWithProducts(
     energyNeeded = nocturnalConsumption * 1.1;
   }
   
-  // Selecionar bateria (preferir primeira disponível)
+  // Selecionar bateria (preferir primeira disponível) - SEMPRE usar produto cadastrado
   const selectedBattery = batteries[0];
   let batterySpecs = FALLBACK_SPECS.battery;
-  let batteryPrice = 12800;
+  let batteryPrice = 0; // Sempre começar com zero
   let capacityKwh = 5.12;
   
   if (selectedBattery) {
@@ -254,7 +256,8 @@ function calculateBatteryConfigurationWithProducts(
       cycles: specs.capacity || FALLBACK_SPECS.battery.cycles
     };
     capacityKwh = specs.capacity || capacityKwh;
-    batteryPrice = selectedBattery.base_price;
+    // SEMPRE usar o preço do produto cadastrado (pode ser zero)
+    batteryPrice = selectedBattery.base_price || 0;
   }
   
   const totalCapacityNeeded = energyNeeded / batterySpecs.dod;
@@ -298,17 +301,17 @@ function calculateItemizedCostsWithProducts(
   const panelsCost = panelQuantity * panelPrice;
   const invertersCost = inverterPrice;
   
-  // Estrutura - usar produto se disponível
-  let structureCostPerKwp = 600; // Fallback
+  // Estrutura - SEMPRE usar produto cadastrado (pode ser zero)
+  let structureCostPerKwp = 0; // Sempre começar com zero
   if (structureProducts && structureProducts[0]) {
     const structureProduct = structureProducts[0];
     const specs = ProductCalculationService.getProductSpecs(structureProduct);
-    structureCostPerKwp = specs.yield_per_unit || structureProduct.base_price;
+    structureCostPerKwp = specs.yield_per_unit || structureProduct.base_price || 0;
   }
   
   const structureCost = systemPower * structureCostPerKwp;
-  const installationCost = systemPower * 800; // Mão de obra
-  const documentationCost = systemPower * 300; // Documentação
+  const installationCost = 0; // Mão de obra removida por padrão
+  const documentationCost = 0; // Documentação será item separado com preço próprio
   
   // Custos de bateria usando preço real
   let batteriesCost = 0;
