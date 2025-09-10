@@ -6,9 +6,10 @@ const LABOR_COSTS = {
   installation: 20.00,   // Instalação 1ª face (R$/m²)
   secondFace: 18.00,     // Instalação 2ª face (R$/m²)
   finishing: {
-    level_3: 25.00,      // Tratamento nível 3 (R$/m²)
-    level_4: 35.00,      // Tratamento nível 4 (R$/m²)
-    level_5: 45.00       // Tratamento nível 5 (R$/m²)
+    no_finish: 0.00,       // Sem acabamento - apenas materiais (R$/m²)
+    level_3: 25.00,        // Tratamento nível 3 (R$/m²)
+    level_4: 35.00,        // Tratamento nível 4 (R$/m²)
+    level_5: 45.00         // Tratamento nível 5 (R$/m²)
   },
   insulation: 8.00       // Aplicação isolamento (R$/m²)
 };
@@ -234,6 +235,7 @@ export function calculateAdvancedDrywall(input: DrywallCalculationInput): Drywal
   
   // 5. MASSAS E FITA (Sistema Inteligente por Nível)
   const finishLevelMultipliers = {
+    no_finish: { joint: 0.15, finish: 0.0, laborMultiplier: 0.0 },
     level_3: { joint: 0.4, finish: 0.45, laborMultiplier: 1.0 },
     level_4: { joint: 0.5, finish: 0.65, laborMultiplier: 1.25 },  
     level_5: { joint: 0.6, finish: 0.9, laborMultiplier: 1.67 }
@@ -283,7 +285,15 @@ export function calculateAdvancedDrywall(input: DrywallCalculationInput): Drywal
   
   const totalFaces = (face1Type !== 'none' ? 1 : 0) + (face2Type !== 'none' ? 1 : 0);
   
-  const laborHours = {
+  // ZERO mão de obra para "Sem Acabamento"
+  const laborHours = finishType === 'no_finish' ? {
+    structure: 0,
+    installation: 0,
+    finishing: 0,
+    insulation: 0,
+    waterproofing: 0,
+    osbFinishing: 0
+  } : {
     structure: laborIncluded.structure ? netWallArea / 15 : 0,
     installation: laborIncluded.installation ? (netWallArea * totalFaces) / 18 : 0, // Ajustado para materiais diversos
     finishing: laborIncluded.finishing ? (netWallArea * drywallFaces) / 12 : 0, // Apenas faces de gesso
@@ -313,7 +323,15 @@ export function calculateAdvancedDrywall(input: DrywallCalculationInput): Drywal
   };
   
   // Custos de mão de obra
-  const laborCosts = {
+  // ZERO custos para "Sem Acabamento"
+  const laborCosts = finishType === 'no_finish' ? {
+    structure: 0,
+    installation: 0,
+    finishing: 0,
+    insulation: 0,
+    waterproofing: 0,
+    osbFinishing: 0
+  } : {
     structure: laborHours.structure * LABOR_COSTS.structure * regionalMultiplier,
     installation: laborHours.installation * LABOR_COSTS.installation * regionalMultiplier,
     finishing: laborHours.finishing * LABOR_COSTS.finishing[finishType] * regionalMultiplier,
@@ -428,8 +446,16 @@ function getRecommendedUse(face1: string, face2: string, features: any): string[
 }
 
 // Sistema de materiais extras por nível de acabamento  
-function getExtraMaterialsByFinishLevel(finishType: 'level_3' | 'level_4' | 'level_5', area: number) {
+function getExtraMaterialsByFinishLevel(finishType: 'level_3' | 'level_4' | 'level_5' | 'no_finish', area: number) {
   switch (finishType) {
+    case 'no_finish':
+      return {
+        primer: 0,
+        sandpaper: 0,
+        extraCoats: 0,
+        specialTools: 0,
+        description: 'Sem acabamento - Apenas materiais estruturais'
+      };
     case 'level_5':
       return {
         primer: area * 0.15,
@@ -459,8 +485,9 @@ function getExtraMaterialsByFinishLevel(finishType: 'level_3' | 'level_4' | 'lev
 }
 
 // Descrições técnicas dos níveis de acabamento
-function getFinishDescription(finishType: 'level_3' | 'level_4' | 'level_5'): string {
+function getFinishDescription(finishType: 'level_3' | 'level_4' | 'level_5' | 'no_finish'): string {
   const descriptions = {
+    no_finish: 'Sem Acabamento - Apenas Materiais: Fornecimento de materiais para construção da estrutura. Não inclui mão de obra de instalação ou acabamento.',
     level_3: 'Acabamento Nível 3 - Texturizado: Superfície preparada para texturas decorativas e tintas que escondem pequenas imperfeições. Ideal para áreas residenciais com acabamento texturizado.',
     level_4: 'Acabamento Nível 4 - Tinta Fosca/Acetinada: Superfície lisa preparada para tintas foscas e acetinadas. Padrão comercial com excelente relação custo-benefício.',
     level_5: 'Acabamento Nível 5 - Tinta Brilhante/Semibrilho: Superfície perfeitamente lisa para tintas brilhantes e semibrillhantes. Máxima qualidade para ambientes sofisticados.'

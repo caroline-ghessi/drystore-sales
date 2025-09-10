@@ -76,6 +76,12 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
   
   // 5. SISTEMA INTELIGENTE DE ACABAMENTO POR NÍVEL
   const finishLevelMultipliers = {
+    no_finish: {
+      joint: 0.15,      // kg/m linear - Apenas rejunte básico mínimo
+      finish: 0.0,      // kg/m² - Sem massa de acabamento
+      laborMultiplier: 0.0,     // Zero mão de obra
+      timeline: 0.4     // Apenas logística de materiais
+    },
     level_3: { 
       joint: 0.3,       // kg/m linear - Texturizado (menor consumo)
       finish: 0.45,     // kg/m² - Superfície para textura
@@ -150,7 +156,13 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
     finishing: 35       // R$/m² base para acabamento Level 4
   };
   
-  const laborCosts = {
+  // ZERO mão de obra para "Sem Acabamento"
+  const laborCosts = finishType === 'no_finish' ? {
+    structure: 0,
+    installation: 0,
+    finishing: 0,
+    insulation: 0
+  } : {
     structure: netArea * baseLaborCosts.structure * regionalMultiplier,
     installation: netArea * baseLaborCosts.installation * regionalMultiplier,
     finishing: netArea * baseLaborCosts.finishing * levelConfig.laborMultiplier * regionalMultiplier,
@@ -160,12 +172,19 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
   // Horas de mão de obra com Sistema Inteligente
   // Produtividade por nível: Level 3: 8.33 m²/h, Level 4: 6.67 m²/h, Level 5: 5 m²/h
   const finishProductivity = {
-    level_3: 8.33, // 12h para 100m²
-    level_4: 6.67, // 15h para 100m²  
-    level_5: 5.0   // 20h para 100m²
+    no_finish: 0,       // Zero horas para sem acabamento
+    level_3: 8.33,      // 12h para 100m²
+    level_4: 6.67,      // 15h para 100m²  
+    level_5: 5.0        // 20h para 100m²
   };
   
-  const laborHours = {
+  // ZERO horas para "Sem Acabamento"
+  const laborHours = finishType === 'no_finish' ? {
+    structure: 0,
+    installation: 0,
+    finishing: 0,
+    insulation: 0
+  } : {
     structure: netArea / 15,        // 15 m²/hora para estrutura (constante)
     installation: netArea / 20,     // 20 m²/hora para instalação (constante)
     finishing: netArea / finishProductivity[finishType],
@@ -276,8 +295,16 @@ async function getSelectedProductPrices(selectedProducts?: any) {
 }
 
 // Sistema de materiais extras por nível de acabamento
-function getExtraMaterialsByFinishLevel(finishType: 'level_3' | 'level_4' | 'level_5', area: number) {
+function getExtraMaterialsByFinishLevel(finishType: 'level_3' | 'level_4' | 'level_5' | 'no_finish', area: number) {
   switch (finishType) {
+    case 'no_finish':
+      return {
+        primer: 0,
+        sandpaper: 0,
+        extraCoats: 0,
+        specialTools: 0,
+        description: 'Sem acabamento - Apenas materiais estruturais'
+      };
     case 'level_5':
       return {
         primer: area * 0.15, // L/m² - Primer específico para nível 5
@@ -307,8 +334,9 @@ function getExtraMaterialsByFinishLevel(finishType: 'level_3' | 'level_4' | 'lev
 }
 
 // Descrições técnicas dos níveis de acabamento
-function getFinishDescription(finishType: 'level_3' | 'level_4' | 'level_5'): string {
+function getFinishDescription(finishType: 'level_3' | 'level_4' | 'level_5' | 'no_finish'): string {
   const descriptions = {
+    no_finish: 'Sem Acabamento - Apenas Materiais: Fornecimento de materiais para construção da estrutura. Não inclui mão de obra de instalação ou acabamento.',
     level_3: 'Acabamento Nível 3 - Texturizado: Superfície preparada para texturas decorativas e tintas que escondem pequenas imperfeições. Ideal para áreas residenciais com acabamento texturizado.',
     level_4: 'Acabamento Nível 4 - Tinta Fosca/Acetinada: Superfície lisa preparada para tintas foscas e acetinadas. Padrão comercial com excelente relação custo-benefício.',
     level_5: 'Acabamento Nível 5 - Tinta Brilhante/Semibrilho: Superfície perfeitamente lisa para tintas brilhantes e semibrillhantes. Máxima qualidade para ambientes sofisticados.'

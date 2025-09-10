@@ -317,7 +317,7 @@ export interface DrywallCalculationInput extends BaseCalculationInput {
   // Materiais tradicionais (mantidos para compatibilidade)
   plateType?: 'knauf_st' | 'knauf_ru' | 'knauf_rf' | 'placo_performa' | 'placo_performa_ru';
   profileType: 'M48' | 'M70' | 'M90';
-  finishType: 'level_3' | 'level_4' | 'level_5';
+  finishType: 'level_3' | 'level_4' | 'level_5' | 'no_finish';
   
   // Produtos específicos selecionados
   selectedProducts?: {
@@ -446,7 +446,7 @@ export interface DrywallCalculationResult {
     recommendedUse: string[];
     
     // Sistema Inteligente de Acabamento
-    finishLevel?: 'level_3' | 'level_4' | 'level_5';
+    finishLevel?: 'level_3' | 'level_4' | 'level_5' | 'no_finish';
     finishDescription?: string;
     extraMaterials?: {
       primer: number;

@@ -28,7 +28,7 @@ export function AdvancedDrywallCalculator({ onCalculate }: AdvancedDrywallCalcul
     face1Type: 'knauf_st',
     face2Type: 'knauf_st',
     profileType: 'M70',
-    finishType: 'level_4',
+    finishType: 'no_finish',
     openings: {
       doors: 0,
       windows: 0
@@ -282,6 +282,7 @@ export function AdvancedDrywallCalculator({ onCalculate }: AdvancedDrywallCalcul
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="no_finish">Sem Acabamento - Apenas Materiais</SelectItem>
                     <SelectItem value="level_3">Nível 3 - Texturizado</SelectItem>
                     <SelectItem value="level_4">Nível 4 - Tinta fosca</SelectItem>
                     <SelectItem value="level_5">Nível 5 - Tinta brilhante</SelectItem>
