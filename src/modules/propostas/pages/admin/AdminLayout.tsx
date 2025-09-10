@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import MetasPage from './MetasPage';
 import ApprovacoesPage from './ApprovacoesPage';
+import ConfiguracoesPage from './ConfiguracoesPage';
 import VendorMappingModal from '../../components/admin/VendorMappingModal';
 import { VendorEmailSetupModal } from '../../components/admin/VendorEmailSetupModal';
 import { VendorAccountCreationModal } from '../../components/admin/VendorAccountCreationModal';
@@ -59,6 +60,11 @@ export default function AdminLayout() {
       path: '/propostas/administracao/aprovacoes',
       icon: CheckCircle,
       badge: `${pendingApprovals.length} pendentes`
+    },
+    {
+      title: 'Configurações',
+      path: '/propostas/administracao/configuracoes',
+      icon: Settings
     }
   ];
 
@@ -153,6 +159,7 @@ export default function AdminLayout() {
           />} />
           <Route path="metas" element={<MetasPage />} />
           <Route path="aprovacoes" element={<ApprovacoesPage />} />
+          <Route path="configuracoes" element={<ConfiguracoesPage />} />
         </Routes>
 
         <VendorMappingModal 

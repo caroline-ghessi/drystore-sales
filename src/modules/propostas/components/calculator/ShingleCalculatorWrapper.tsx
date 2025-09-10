@@ -1,60 +1,98 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ShingleCalculator } from './ShingleCalculator';
-import { useProductPricing } from '../../hooks/useProductPricing';
-import { calculateShingleInstallation } from '../../utils/calculations/shingleCalculations';
-import { ShingleCalculationInput } from '../../types/calculation.types';
+import { calculateShingleWithProducts } from '../../utils/calculations/productBasedShingleCalculations';
+import { ShingleCalculationInput, ShingleCalculationResult } from '../../types/calculation.types';
+import { useCalculatorValidation } from '../../hooks/useCalculatorValidation';
+import { ValidationService } from '../../services/validationService';
+import { useUnifiedProducts } from '../../hooks/useUnifiedProducts';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle, Shield, Info } from 'lucide-react';
 
 interface ShingleCalculatorWrapperProps {
-  onCalculate: (result: any) => void;
+  onCalculate?: (input: ShingleCalculationInput) => void;
 }
 
 export function ShingleCalculatorWrapper({ onCalculate }: ShingleCalculatorWrapperProps) {
-  const { products, calculatePricing } = useProductPricing('shingle');
+  const [result, setResult] = useState<ShingleCalculationResult | null>(null);
+  const { config: validationConfig, isLoading: configLoading } = useCalculatorValidation();
+  const { products, isLoading: productsLoading } = useUnifiedProducts();
 
-  const handleCalculate = (input: ShingleCalculationInput) => {
-    // Encontrar produtos específicos na tabela
-    const oakridgeProduct = products.find(p => 
-      p.name.toLowerCase().includes('oakridge')
-    );
-    const supremeProduct = products.find(p => 
-      p.name.toLowerCase().includes('supreme')
-    );
-    const osbProduct = products.find(p => 
-      p.name.toLowerCase().includes('osb') || p.name.toLowerCase().includes('compensado')
-    );
-    const underlaymentProduct = products.find(p => 
-      p.name.toLowerCase().includes('manta') || p.name.toLowerCase().includes('subcobertura')
-    );
-
-    // Selecionar preço baseado no tipo escolhido
-    const selectedShingleProduct = input.shingleType === 'oakridge' ? oakridgeProduct : supremeProduct;
-    
-    // Montar preços para passar para o cálculo
-    const productPrices = {
-      shinglePrice: selectedShingleProduct?.base_price || 40,
-      osbPrice: osbProduct?.base_price || 35,
-      underlaymentPrice: underlaymentProduct?.base_price || 180,
-      laborCostPerM2: 25, // Pode vir de configuração
-      equipmentCostPerM2: 5, // Pode vir de configuração
-      accessoryPrices: {
-        ridgeCapPrice: 45,
-        valleyPrice: 25,
-        flashingPrice: 15,
-        sealantPrice: 12
+  const handleCalculate = async (input: ShingleCalculationInput) => {
+    // Validar produtos antes do cálculo
+    if (products && !configLoading) {
+      const requiredCategories = ['telha-shingle', 'osb', 'rhinoroof', 'cumeeira', 'pregos'];
+      const validation = ValidationService.validateProducts(products, requiredCategories, validationConfig);
+      
+      if (!validation.canProceed) {
+        console.error('Validação falhou:', validation.errors);
+        return;
       }
-    };
+    }
 
-    // Calcular com preços dinâmicos
-    const result = calculateShingleInstallation(input, productPrices);
-    
-    // Aplicar sistema de precificação se necessário
-    const pricingResult = calculatePricing(result);
-    
-    onCalculate({
-      ...result,
-      pricing: pricingResult
-    });
+    try {
+      const calculationResult = calculateShingleWithProducts(input, products);
+      setResult(calculationResult);
+      
+      // Call external onCalculate if provided (for ProposalGenerator integration)
+      if (onCalculate) {
+        onCalculate(input);
+      }
+    } catch (error) {
+      console.error('Erro no cálculo de shingle:', error);
+    }
   };
 
-  return <ShingleCalculator onCalculate={handleCalculate} />;
+  // Validação dos produtos
+  const validation = products && !configLoading ? 
+    ValidationService.validateProducts(
+      products, 
+      ['telha-shingle', 'osb', 'rhinoroof', 'cumeeira', 'pregos'], 
+      validationConfig
+    ) : null;
+
+  return (
+    <div className="space-y-6">
+      {/* Status da Validação */}
+      {!configLoading && validationConfig.strictValidation && (
+        <Alert variant={validation?.canProceed ? "default" : "destructive"}>
+          <Shield className="h-4 w-4" />
+          <AlertDescription>
+            Modo de validação rigorosa ativo. 
+            {validation?.canProceed 
+              ? "Todos os produtos necessários estão válidos."
+              : "Alguns produtos precisam ser configurados antes de calcular."
+            }
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!configLoading && !validationConfig.strictValidation && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Modo de teste ativo. Cálculos permitidos mesmo com produtos incompletos.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Erros de Validação */}
+      {validation && validation.errors.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="space-y-1">
+              <p className="font-medium">Problemas encontrados:</p>
+              <ul className="list-disc list-inside text-sm space-y-1">
+                {validation.errors.map((error, idx) => (
+                  <li key={idx}>{error.message}</li>
+                ))}
+              </ul>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <ShingleCalculator onCalculate={handleCalculate} />
+    </div>
+  );
 }
