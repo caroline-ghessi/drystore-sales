@@ -252,12 +252,31 @@ export async function calculateAcousticMineralCeiling(input: AcousticMineralCeil
   // 2. Cálculos de área
   const totalArea = input.roomLength * input.roomWidth;
   
-  // Área de obstáculos mais precisa
+  // Calcular área de obstáculos considerando formato das colunas
   let obstacleArea = 0;
-  if (input.obstacles.columnDimensions?.length) {
-    obstacleArea = input.obstacles.columnDimensions.reduce((sum, col) => sum + (col.width * col.depth), 0);
+  let columnPerimeter = 0;
+  
+  if (input.obstacles.columnDimensions) {
+    obstacleArea = input.obstacles.columnDimensions.reduce((total, col) => {
+      if (col.type === 'circular') {
+        const radius = (col.diameter || 0) / 2;
+        return total + (Math.PI * radius * radius);
+      } else {
+        return total + ((col.width || 0) * (col.depth || 0));
+      }
+    }, 0);
+
+    columnPerimeter = input.obstacles.columnDimensions.reduce((total, col) => {
+      if (col.type === 'circular') {
+        return total + (Math.PI * (col.diameter || 0));
+      } else {
+        return total + (2 * ((col.width || 0) + (col.depth || 0)));
+      }
+    }, 0);
   } else {
-    obstacleArea = input.obstacles.columns * 1; // 1m² por coluna estimado
+    // Fallback para cálculo legado (assumir colunas retangulares de 1m²)
+    obstacleArea = input.obstacles.columns * 1.0;
+    columnPerimeter = input.obstacles.columns * 4.0; // perímetro de 1m x 1m
   }
   
   // Adicionar área de recortes/aberturas
@@ -317,6 +336,10 @@ export async function calculateAcousticMineralCeiling(input: AcousticMineralCeil
   const accessories = {
     tegularClips: selectedEdgeType === 'tegular' ? Math.ceil((usefulArea / 100) * 20) : 0,
     lightSupports: input.installations.lightFixtures * 4,
+    columnEdgeProfiles: columnPerimeter > 0 ? {
+      meters: columnPerimeter * 1.05, // 5% de perda
+      pieces: Math.ceil((columnPerimeter * 1.05) / 3) // barras de 3m
+    } : undefined,
     specialAnchors: Math.ceil(hangers * 0.1) // 10% de buchas especiais
   };
 
@@ -397,7 +420,10 @@ export async function calculateAcousticMineralCeiling(input: AcousticMineralCeil
       }
     },
     accessories,
-    itemizedCosts,
+    itemizedCosts: {
+      ...itemizedCosts,
+      columnEdgeProfiles: (accessories.columnEdgeProfiles?.meters || 0) * 35 * regionMultiplier
+    },
     totalCost,
     acousticPerformance,
     technicalSpecs: {
@@ -531,6 +557,7 @@ export function calculateAcousticMineralCeilingSyncLegacy(input: AcousticMineral
       perimeterEdge: 0,
       suspension: 0,
       accessories: 0,
+      columnEdgeProfiles: 0,
       labor: usefulArea * 35
     },
     totalCost: totalPlates * plateArea * 45 * modelData.costMultiplier + usefulArea * 35,

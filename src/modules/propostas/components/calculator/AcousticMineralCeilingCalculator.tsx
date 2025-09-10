@@ -59,7 +59,7 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
 
   const handleColumnsChange = (count: number) => {
     const newDimensions = Array.from({ length: count }, (_, index) => 
-      input.obstacles.columnDimensions?.[index] || { width: 0.4, depth: 0.4 }
+      input.obstacles.columnDimensions?.[index] || { type: 'rectangular' as const, width: 0.4, depth: 0.4 }
     );
     
     setInput(prev => ({
@@ -72,13 +72,27 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
     }));
   };
 
-  const handleColumnDimensionChange = (index: number, field: 'width' | 'depth', value: number) => {
+  const handleColumnDimensionChange = (index: number, field: 'width' | 'depth' | 'diameter', value: number) => {
     setInput(prev => ({
       ...prev,
       obstacles: {
         ...prev.obstacles,
         columnDimensions: prev.obstacles.columnDimensions?.map((col, i) => 
           i === index ? { ...col, [field]: value } : col
+        ) || []
+      }
+    }));
+  };
+
+  const handleColumnTypeChange = (index: number, type: 'rectangular' | 'circular') => {
+    setInput(prev => ({
+      ...prev,
+      obstacles: {
+        ...prev.obstacles,
+        columnDimensions: prev.obstacles.columnDimensions?.map((col, i) => 
+          i === index 
+            ? { type, ...(type === 'rectangular' ? { width: 0.4, depth: 0.4 } : { diameter: 0.4 }) }
+            : col
         ) || []
       }
     }));
@@ -116,8 +130,23 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
   const totalArea = input.roomLength * input.roomWidth;
   
   // Calcular área total de obstáculos (colunas)
-  const totalObstacleArea = input.obstacles.columnDimensions?.reduce((total, col) => 
-    total + (col.width * col.depth), 0) || 0;
+  const totalObstacleArea = input.obstacles.columnDimensions?.reduce((total, col) => {
+    if (col.type === 'circular') {
+      const radius = (col.diameter || 0) / 2;
+      return total + (Math.PI * radius * radius);
+    } else {
+      return total + ((col.width || 0) * (col.depth || 0));
+    }
+  }, 0) || 0;
+
+  // Calcular perímetro total das colunas para perfis de acabamento
+  const totalColumnPerimeter = input.obstacles.columnDimensions?.reduce((total, col) => {
+    if (col.type === 'circular') {
+      return total + (Math.PI * (col.diameter || 0));
+    } else {
+      return total + (2 * ((col.width || 0) + (col.depth || 0)));
+    }
+  }, 0) || 0;
   
   const usefulArea = totalArea - totalObstacleArea - (input.cutoutArea || 0);
   
@@ -132,7 +161,11 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
   // Validar se todas as colunas têm dimensões preenchidas
   const columnsValid = input.obstacles.columns === 0 || 
     (input.obstacles.columnDimensions?.length === input.obstacles.columns &&
-     input.obstacles.columnDimensions.every(col => col.width > 0 && col.depth > 0));
+     input.obstacles.columnDimensions.every(col => 
+       col.type === 'circular' 
+         ? (col.diameter && col.diameter > 0)
+         : (col.width && col.width > 0 && col.depth && col.depth > 0)
+     ));
   
   const isFormValid = isValid && !perimeterRequired && columnsValid && usefulArea >= 0;
 
@@ -378,11 +411,11 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
           <div className="grid gap-4">
             <div className="flex items-center justify-between">
               <Badge variant="outline">4. OBSTÁCULOS NO AMBIENTE</Badge>
-              {totalObstacleArea > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  Área de obstáculos: {totalObstacleArea.toFixed(2)}m²
-                </Badge>
-              )}
+                 {totalColumnPerimeter > 0 && (
+                   <Badge variant="secondary" className="text-xs">
+                     Perímetro total colunas: {totalColumnPerimeter.toFixed(2)}m
+                   </Badge>
+                 )}
             </div>
             
             <div className="grid gap-4">
@@ -419,41 +452,83 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
                     )}
                   </div>
                   
-                  <div className="grid gap-3">
-                    {Array.from({ length: input.obstacles.columns }, (_, index) => (
-                      <div key={index} className="grid grid-cols-3 gap-2 items-center">
-                        <div className="text-sm text-muted-foreground">
-                          Coluna {index + 1}:
-                        </div>
-                        <div>
-                          <Label className="text-xs">Largura (m)</Label>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            min="0.1"
-                            max="5"
-                            value={input.obstacles.columnDimensions?.[index]?.width || ''}
-                            onChange={(e) => handleColumnDimensionChange(index, 'width', parseFloat(e.target.value) || 0)}
-                            placeholder="0.4"
-                            className="h-8"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Profundidade (m)</Label>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            min="0.1"
-                            max="5"
-                            value={input.obstacles.columnDimensions?.[index]?.depth || ''}
-                            onChange={(e) => handleColumnDimensionChange(index, 'depth', parseFloat(e.target.value) || 0)}
-                            placeholder="0.4"
-                            className="h-8"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                   <div className="grid gap-3">
+                     {Array.from({ length: input.obstacles.columns }, (_, index) => (
+                       <div key={index} className="space-y-3 p-3 border rounded-lg">
+                         <div className="flex items-center justify-between">
+                           <Label className="text-sm font-medium">Coluna {index + 1}</Label>
+                           <Select
+                             value={input.obstacles.columnDimensions?.[index]?.type || 'rectangular'}
+                             onValueChange={(value: 'rectangular' | 'circular') => handleColumnTypeChange(index, value)}
+                           >
+                             <SelectTrigger className="w-28 h-7 text-xs">
+                               <SelectValue />
+                             </SelectTrigger>
+                             <SelectContent>
+                               <SelectItem value="rectangular">Retangular</SelectItem>
+                               <SelectItem value="circular">Cilíndrica</SelectItem>
+                             </SelectContent>
+                           </Select>
+                         </div>
+                         
+                         {input.obstacles.columnDimensions?.[index]?.type === 'circular' ? (
+                           <div>
+                             <Label className="text-xs">Diâmetro (m)</Label>
+                             <Input
+                               type="number"
+                               step="0.1"
+                               min="0.1"
+                               max="5"
+                               value={input.obstacles.columnDimensions?.[index]?.diameter || ''}
+                               onChange={(e) => handleColumnDimensionChange(index, 'diameter', parseFloat(e.target.value) || 0)}
+                               placeholder="0.4"
+                               className="h-8"
+                             />
+                           </div>
+                         ) : (
+                           <div className="grid grid-cols-2 gap-2">
+                             <div>
+                               <Label className="text-xs">Largura (m)</Label>
+                               <Input
+                                 type="number"
+                                 step="0.1"
+                                 min="0.1"
+                                 max="5"
+                                 value={input.obstacles.columnDimensions?.[index]?.width || ''}
+                                 onChange={(e) => handleColumnDimensionChange(index, 'width', parseFloat(e.target.value) || 0)}
+                                 placeholder="0.4"
+                                 className="h-8"
+                               />
+                             </div>
+                             <div>
+                               <Label className="text-xs">Profundidade (m)</Label>
+                               <Input
+                                 type="number"
+                                 step="0.1"
+                                 min="0.1"
+                                 max="5"
+                                 value={input.obstacles.columnDimensions?.[index]?.depth || ''}
+                                 onChange={(e) => handleColumnDimensionChange(index, 'depth', parseFloat(e.target.value) || 0)}
+                                 placeholder="0.4"
+                                 className="h-8"
+                               />
+                             </div>
+                           </div>
+                         )}
+                         
+                         <div className="text-xs text-muted-foreground">
+                           Área: {input.obstacles.columnDimensions?.[index]?.type === 'circular' 
+                             ? (Math.PI * Math.pow((input.obstacles.columnDimensions[index]?.diameter || 0) / 2, 2)).toFixed(2)
+                             : ((input.obstacles.columnDimensions[index]?.width || 0) * (input.obstacles.columnDimensions[index]?.depth || 0)).toFixed(2)
+                           }m² | 
+                           Perímetro: {input.obstacles.columnDimensions?.[index]?.type === 'circular'
+                             ? (Math.PI * (input.obstacles.columnDimensions[index]?.diameter || 0)).toFixed(2)
+                             : (2 * ((input.obstacles.columnDimensions[index]?.width || 0) + (input.obstacles.columnDimensions[index]?.depth || 0))).toFixed(2)
+                           }m
+                         </div>
+                       </div>
+                     ))}
+                   </div>
                   
                   <div className="text-xs text-muted-foreground">
                     💡 Dica: Coluna típica de escritório = 40cm x 40cm (0,16m²)

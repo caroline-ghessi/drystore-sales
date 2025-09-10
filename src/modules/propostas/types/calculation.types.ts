@@ -621,7 +621,12 @@ export interface AcousticMineralCeilingInput extends BaseCalculationInput {
   // Obstáculos
   obstacles: {
     columns: number;
-    columnDimensions?: { width: number; depth: number }[]; // Dimensões específicas das colunas
+    columnDimensions?: Array<{
+      type: 'rectangular' | 'circular';
+      width?: number; // m - para retangular
+      depth?: number; // m - para retangular
+      diameter?: number; // m - para circular
+    }>;
     beams: boolean;
     ducts: boolean;
     pipes: boolean;
@@ -716,6 +721,10 @@ export interface AcousticMineralCeilingResult {
   accessories: {
     tegularClips?: number; // para borda tegular
     lightSupports: number; // 4 por luminária
+    columnEdgeProfiles?: {
+      meters: number; // metros lineares de perfil
+      pieces: number; // peças necessárias
+    };
     specialAnchors?: number;
   };
   
@@ -727,6 +736,7 @@ export interface AcousticMineralCeilingResult {
     perimeterEdge: number;
     suspension: number;
     accessories: number;
+    columnEdgeProfiles: number;
     labor: number;
   };
   totalCost: number;
