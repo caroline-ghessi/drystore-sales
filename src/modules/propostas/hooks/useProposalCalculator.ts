@@ -179,8 +179,12 @@ export function useProposalCalculator(productType: ProductType) {
       case 'solar':
         const solarResult = calculationResult as any;
         
-        // Buscar produtos reais cadastrados
-        const availableProducts = products || [];
+        // Buscar produtos reais cadastrados ou usar produtos vazios como fallback
+        let availableProducts = products || [];
+        if (availableProducts.length === 0) {
+          availableProducts = createEmptySolarProducts();
+        }
+        
         const panelProducts = availableProducts.filter(p => p.subcategory === 'painel' || p.solar_category === 'panel');
         const inverterProducts = availableProducts.filter(p => p.subcategory === 'inversor' || p.solar_category === 'inverter');
         const structureProducts = availableProducts.filter(p => p.subcategory === 'estrutura');
