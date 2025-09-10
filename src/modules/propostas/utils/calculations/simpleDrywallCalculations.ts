@@ -51,6 +51,7 @@ export function calculateDrywallInstallation(input: DrywallCalculationInput): Dr
   
   return {
     plateQuantity,
+    plateArea: plateQuantity, // Compatibilidade  
     montanteQuantity,
     guiaQuantity,
     screw25mmQuantity,
@@ -59,7 +60,13 @@ export function calculateDrywallInstallation(input: DrywallCalculationInput): Dr
     // Massas separadas e campo legado
     jointMassQuantity: massQuantity * 0.4, // 40% para juntas
     finishMassQuantity: massQuantity * 0.6, // 60% para acabamento
-    massQuantity, // Campo legado
+    massQuantity, // Campo obrigatório
+    
+    // Campos de compatibilidade com useProposalCalculator
+    profileQuantity: montanteQuantity + guiaQuantity,
+    screwQuantity: screw25mmQuantity + screw13mmQuantity,
+    jointCompoundQuantity: massQuantity,
+    
     tapeQuantity,
     insulationQuantity,
     acousticBandQuantity: features.acousticBand ? wallArea * 0.6 : undefined,

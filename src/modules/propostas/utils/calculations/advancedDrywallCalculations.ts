@@ -236,6 +236,8 @@ export function calculateAdvancedDrywall(input: DrywallCalculationInput): Drywal
   const drywallFaces = [face1Type, face2Type].filter(type => 
     type.startsWith('knauf_') || type.startsWith('placo_')).length;
   const massQuantity = netWallArea * 0.50 * (drywallFaces / 2);
+  const jointMassQuantity = massQuantity * 0.4; // 40% para juntas
+  const finishMassQuantity = massQuantity * 0.6; // 60% para acabamento
   const tapeQuantity = netWallArea * 2.50 * (drywallFaces / 2);
   
   // 7. Materiais especiais
@@ -332,6 +334,7 @@ export function calculateAdvancedDrywall(input: DrywallCalculationInput): Drywal
 
   return {
     plateQuantity,
+    plateArea: plateQuantity, // Compatibilidade
     osbQuantity: osbQuantity || undefined,
     cementiciousQuantity: cementiciousQuantity || undefined,
     montanteQuantity,
@@ -342,11 +345,19 @@ export function calculateAdvancedDrywall(input: DrywallCalculationInput): Drywal
     screwWoodQuantity: screwWoodQuantity || undefined,
     screwCementQuantity: screwCementQuantity || undefined,
     
-    // Massas separadas e campo legado
-    jointMassQuantity: massQuantity * 0.4, // 40% para juntas  
-    finishMassQuantity: massQuantity * 0.6, // 60% para acabamento
-    massQuantity, // Campo legado
+    // Massas separadas
+    jointMassQuantity,
+    finishMassQuantity,
     tapeQuantity,
+    
+    // Campo obrigatório para compatibilidade
+    massQuantity: jointMassQuantity + finishMassQuantity,
+    
+    // Campos de compatibilidade com useProposalCalculator  
+    profileQuantity: montanteQuantity + guiaQuantity,
+    screwQuantity: screw25mmQuantity + screw13mmQuantity,
+    jointCompoundQuantity: jointMassQuantity + finishMassQuantity,
+    
     insulationQuantity: insulationQuantity || undefined,
     acousticBandQuantity: acousticBandQuantity || undefined,
     waterproofingQuantity: waterproofingQuantity || undefined,

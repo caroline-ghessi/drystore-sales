@@ -136,6 +136,7 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
   
   return {
     plateQuantity,
+    plateArea: plateQuantity, // Compatibilidade
     montanteQuantity: totalMontantes,
     guiaQuantity: Math.ceil(guiaLength / 3),
     screw25mmQuantity,
@@ -146,8 +147,13 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
     finishMassQuantity,
     tapeQuantity,
     
-    // Campo legado para compatibilidade
+    // Campos legados obrigatórios para compatibilidade
     massQuantity: jointMassQuantity + finishMassQuantity,
+    
+    // Campos legados adicionais para compatibilidade com useProposalCalculator
+    profileQuantity: totalMontantes + Math.ceil(guiaLength / 3),
+    screwQuantity: screw25mmQuantity + screw13mmQuantity,
+    jointCompoundQuantity: jointMassQuantity + finishMassQuantity,
     
     insulationQuantity,
     acousticBandQuantity,

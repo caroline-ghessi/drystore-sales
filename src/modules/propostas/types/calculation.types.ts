@@ -359,6 +359,7 @@ export interface DrywallCalculationInput extends BaseCalculationInput {
 export interface DrywallCalculationResult {
   // Quantidades de materiais por tipo
   plateQuantity: number;
+  plateArea: number; // Alias para plateQuantity 
   osbQuantity?: number;
   cementiciousQuantity?: number;
   montanteQuantity: number;
@@ -378,6 +379,11 @@ export interface DrywallCalculationResult {
   
   // Campo legado para compatibilidade
   massQuantity: number;
+  
+  // Campos de compatibilidade com useProposalCalculator
+  profileQuantity?: number; // montanteQuantity + guiaQuantity
+  screwQuantity?: number; // screw25mmQuantity + screw13mmQuantity  
+  jointCompoundQuantity?: number; // jointMassQuantity + finishMassQuantity
   
   // Materiais especiais
   insulationQuantity?: number;
