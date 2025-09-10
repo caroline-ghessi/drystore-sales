@@ -38,14 +38,8 @@ const categories: { key: UnifiedProductCategory | 'all'; label: string; icon: an
   { key: 'battery_backup', label: 'Baterias', icon: Settings },
   { key: 'telha_shingle', label: 'Telha Shingle', icon: Home },
   { key: 'forro_drywall', label: 'Forro Drywall', icon: Layers },
-  // Adicionar categorias abaixo quando houver documentação técnica real:
-  // { key: 'drywall_divisorias', label: 'Drywall', icon: Layers },
-  // { key: 'steel_frame', label: 'Steel Frame', icon: Building2 },
-  // { key: 'forros', label: 'Forros', icon: Layers },
-  // { key: 'ferramentas', label: 'Ferramentas', icon: Wrench },
-  // { key: 'pisos', label: 'Pisos', icon: Settings },
-  // { key: 'acabamentos', label: 'Acabamentos', icon: Settings },
-  // { key: 'geral', label: 'Geral', icon: Settings }
+  { key: 'drywall_divisorias', label: 'Divisórias Drywall', icon: Layers },
+  { key: 'forro_mineral_acustico', label: 'Forro Mineral Acústico', icon: Layers },
 ];
 
 const units: { value: Database['public']['Enums']['product_unit']; label: string }[] = [
@@ -300,6 +294,8 @@ export default function ProductsPage() {
         <TableCell>
           <DryStoreBadge variant={
             product.category === 'forro_drywall' ? "drystore" : 
+            product.category === 'drywall_divisorias' ? "drystore" : 
+            product.category === 'forro_mineral_acustico' ? "drystore" : 
             product.category === 'energia_solar' ? "success" :
             product.category === 'battery_backup' ? "warning" : "info"
           }>
@@ -417,7 +413,7 @@ export default function ProductsPage() {
 
       {/* Products by Category */}
       <Tabs value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as UnifiedProductCategory | 'all')}>
-        <TabsList className="grid w-full grid-cols-5 lg:grid-cols-12">
+        <TabsList className="grid w-full grid-cols-7 lg:grid-cols-7">
           {categories.map((category: any) => {
             const CategoryIcon = category.icon;
             const count = getProductsByCategory(category.key).length;
