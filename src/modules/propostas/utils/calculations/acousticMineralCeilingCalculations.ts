@@ -7,11 +7,32 @@ async function getAcousticMineralProducts() {
     .from('products')
     .select('*')
     .eq('category', 'forro_mineral_acustico')
-    .eq('is_active', true);
-    
-  if (error) throw error;
-  return data;
+    .eq('is_active', true)
+    .order('base_price', { ascending: true });
+  
+  if (error) {
+    console.error('Erro ao buscar produtos de forro mineral acústico:', error);
+    throw new Error('Erro ao buscar produtos de forro mineral acústico');
+  }
+  
+  return data || [];
 }
+
+// COMENTÁRIO: Função auxiliar mantida para futuras expansões
+// async function getAuxiliaryProducts() {
+//   const { data, error } = await supabase
+//     .from('products')
+//     .select('*')
+//     .in('category', ['ferramentas', 'acabamentos', 'forros'])
+//     .eq('is_active', true);
+//   
+//   if (error) {
+//     console.error('Erro ao buscar produtos auxiliares:', error);
+//     return [];
+//   }
+//   
+//   return data || [];
+// }
 
 // Base de dados dos modelos baseada no manual técnico (DEPRECATED - usar produtos da base)
 export const CEILING_MODELS = {
@@ -403,22 +424,22 @@ export async function calculateAcousticMineralCeiling(input: AcousticMineralCeil
     specialAnchors: Math.ceil(hangers * 0.1) // 10% de buchas especiais
   };
 
-// 6. Custos baseados no produto da base de dados (sem variação regional)
+// 6. Custos baseados EXCLUSIVAMENTE nos produtos de forro mineral acústico cadastrados
   const regionMultiplier = 1.0; // Fixado para uniformidade nacional
-  // Usar preços base fixos (poderia ser expandido para buscar produtos específicos)
-  const baseProfilePrice = 25; // R$ por metro
-  const baseLaborPrice = 35; // R$ por m²
+  
+  // IMPORTANTE: Usar APENAS o produto selecionado de forro mineral acústico
+  // Outros componentes (perfis, tirantes, etc) devem ser zerados se não houver produtos específicos cadastrados
 
   const itemizedCosts = {
-    plates: totalPlates * plateArea * selectedProduct.base_price * regionMultiplier,
-    mainProfile: mainProfileMeters * baseProfilePrice * regionMultiplier,
-    secondaryProfiles: ((secondaryProfile1250?.meters || 0) + (secondaryProfile625?.meters || 0)) * baseProfilePrice * regionMultiplier,
-    perimeterEdge: perimeterEdgeMeters * baseProfilePrice * 0.8 * regionMultiplier,
-    suspension: hangers * 15 * regionMultiplier, // R$ 15 por kit
-    accessories: (accessories.tegularClips * 2) + (accessories.lightSupports * 8) + (accessories.specialAnchors * 25),
+    plates: totalPlates * plateArea * selectedProduct.base_price,
+    mainProfile: 0, // Zerar custos de componentes sem produtos cadastrados
+    secondaryProfiles: 0,
+    perimeterEdge: 0,
+    suspension: 0,
+    accessories: 0,
     labor: input.laborConfig?.includeLabor 
       ? (input.laborConfig.customLaborCost || 
-         (input.laborConfig.laborCostPerM2 ? input.laborConfig.laborCostPerM2 * usefulArea : usefulArea * baseLaborPrice))
+         (input.laborConfig.laborCostPerM2 ? input.laborConfig.laborCostPerM2 * usefulArea : 0))
       : 0
   };
 
