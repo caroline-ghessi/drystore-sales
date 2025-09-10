@@ -78,8 +78,10 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Calculation not found');
     }
 
-    // Generate proposal number
+    // Generate proposal number and unique link
     const proposalNumber = `PROP-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    const uniqueId = crypto.randomUUID();
+    const acceptanceLink = `https://a8d68d6e-4efd-4093-966f-bddf0a89dc45.lovableproject.com/proposta/${uniqueId}`;
 
     // Create proposal record
     const { data: proposal, error: proposalError } = await supabase
@@ -95,6 +97,7 @@ const handler = async (req: Request): Promise<Response> => {
         discount_percentage: requestData.pricing.discountPercentage || 0,
         final_value: requestData.pricing.total - (requestData.pricing.discount || 0),
         valid_until: new Date(Date.now() + (requestData.pricing.validityDays * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
+        acceptance_link: acceptanceLink,
         created_by: calculation.user_id
       })
       .select()
@@ -138,8 +141,7 @@ const handler = async (req: Request): Promise<Response> => {
       calculationData: calculation
     });
 
-    // For now, return the HTML content and proposal data
-    // In the future, we could integrate with a PDF generation service
+    // Return the HTML content, proposal data, and unique link
     const response = {
       success: true,
       proposal: {
@@ -148,11 +150,13 @@ const handler = async (req: Request): Promise<Response> => {
         title: proposal.title,
         total: requestData.pricing.total,
         validUntil: proposal.valid_until,
-        status: proposal.status
+        status: proposal.status,
+        acceptanceLink: acceptanceLink,
+        uniqueId: uniqueId
       },
       htmlContent,
-      downloadUrl: null, // Will be implemented with PDF generation
-      message: 'Proposta gerada com sucesso!'
+      acceptanceLink,
+      message: 'Proposta gerada com sucesso! Link único criado para compartilhar com o cliente.'
     };
 
     console.log('Proposal generated successfully:', proposalNumber);
@@ -206,6 +210,21 @@ function generateProposalHTML(data: {
             max-width: 800px; 
             margin: 0 auto; 
             padding: 20px;
+        }
+        @media print {
+            body {
+                padding: 0;
+                margin: 0;
+                max-width: none;
+                width: 210mm;
+                min-height: 297mm;
+            }
+            .no-print { display: none !important; }
+            .page-break { page-break-before: always; }
+        }
+        @page {
+            size: A4;
+            margin: 20mm;
         }
         .header { 
             text-align: center; 

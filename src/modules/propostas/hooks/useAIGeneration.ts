@@ -60,9 +60,56 @@ export function useAIGeneration() {
         throw error;
       }
 
-      const result: AIGenerationResult = data;
-      setGeneratedProposal(result);
-      return result;
+      const result: AIGenerationResult = {
+        proposalData: data.proposal,
+        generatedContent: {
+          executiveSummary: 'Proposta personalizada gerada com base nos seus cálculos e necessidades específicas.',
+          technicalDescription: 'Especificações técnicas detalhadas incluídas na proposta.',
+          benefitsHighlights: [
+            'Solução personalizada para suas necessidades',
+            'Materiais de alta qualidade',
+            'Garantia completa incluída',
+            'Suporte técnico especializado'
+          ],
+          recommendedPaymentTerms: data.pricing?.paymentTerms || 'À vista ou parcelado',
+          deliverySchedule: data.pricing?.deliveryTime || '30 dias',
+          warrantyTerms: 'Garantia de 12 meses para produtos e serviços'
+        },
+        calculations: {
+          // Create a simple solar calculation result as base
+          systemPower: 0,
+          panelQuantity: 0,
+          inverterQuantity: 0,
+          monthlyGeneration: 0,
+          monthlyBillBefore: 0,
+          monthlyBillAfter: 0,
+          monthlySavings: 0,
+          annualSavings: 0,
+          paybackPeriod: 0,
+          roi25Years: 0,
+          co2Reduction: 0,
+          itemizedCosts: {
+            panels: 0,
+            inverters: 0,
+            structure: 0,
+            installation: 0,
+            documentation: 0
+          },
+          totalCost: data.proposal?.total_value || 0,
+          economicMetrics: {
+            totalSavings25Years: 0,
+            netProfit25Years: 0,
+            monthlyROI: 0,
+            breakEvenMonth: 0
+          }
+        },
+        confidence: 85,
+        suggestions: ['Considere manutenção preventiva', 'Aproveite condições especiais de pagamento'],
+        // Include the generated link and unique ID from the edge function
+        acceptanceLink: data.acceptanceLink,
+        proposalId: data.proposal.id,
+        uniqueId: data.proposal.uniqueId
+      };
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro na geração da proposta');
       return null;

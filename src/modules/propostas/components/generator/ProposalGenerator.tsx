@@ -20,6 +20,7 @@ import { ShingleCalculatorWrapper } from '../calculator/ShingleCalculatorWrapper
 import { DrywallCalculatorWrapper } from '../calculator/DrywallCalculatorWrapper';
 import { ForroDrywallCalculator } from '../calculator/ForroDrywallCalculator';
 import { AcousticMineralCeilingWrapper } from '../calculator/AcousticMineralCeilingWrapper';
+import { ProposalResult } from './ProposalResult';
 import { useNavigate } from 'react-router-dom';
 
 interface ProposalGeneratorProps {
@@ -482,44 +483,21 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
 
       {/* Generated Proposal Preview */}
       {generatedProposal && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Proposta Gerada</CardTitle>
-            <CardDescription>
-              Proposta criada automaticamente pela IA
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-semibold">Resumo Executivo</h4>
-                <p className="text-muted-foreground">
-                  {generatedProposal.generatedContent.executiveSummary}
-                </p>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold">Benefícios Principais</h4>
-                <ul className="list-disc list-inside text-muted-foreground">
-                  {generatedProposal.generatedContent.benefitsHighlights.map((benefit, index) => (
-                    <li key={index}>{benefit}</li>
-                  ))}
-                </ul>
-              </div>
-              
-              <div className="flex space-x-2">
-                <Button>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Visualizar Proposta
-                </Button>
-                <Button variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Baixar PDF
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <ProposalResult 
+          proposal={{
+            id: generatedProposal.proposalId || '',
+            number: generatedProposal.proposalData?.id || 'N/A',
+            title: generatedProposal.proposalData?.client?.name ? `Proposta - ${generatedProposal.proposalData.client.name}` : 'Proposta',
+            total: generatedProposal.proposalData?.total || 0,
+            validUntil: generatedProposal.proposalData?.validityDays ? 
+              new Date(Date.now() + (generatedProposal.proposalData.validityDays * 24 * 60 * 60 * 1000)).toISOString().split('T')[0] : 
+              new Date().toISOString().split('T')[0],
+            status: generatedProposal.proposalData?.status || 'generated',
+            acceptanceLink: generatedProposal.acceptanceLink,
+            uniqueId: generatedProposal.uniqueId
+          }}
+          generatedContent={generatedProposal.generatedContent}
+        />
       )}
     </div>
   );

@@ -10,6 +10,7 @@ import Index from "@/pages/Index";
 import SetPasswordPage from "@/pages/SetPassword";
 import ResetPasswordPage from "@/pages/ResetPassword";
 import HomePage from "@/pages/Home";
+import PublicProposal from "@/pages/PublicProposal";
 
 // Module Layouts
 import CRMLayout from "@/modules/crm/components/layout/CRMLayout";
@@ -51,6 +52,7 @@ function AppContent() {
         <Route path="/set-password" element={<SetPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth" element={<Index />} /> {/* Fallback para links de auth */}
+        <Route path="/proposta/:id" element={<PublicProposal />} /> {/* Página pública de proposta */}
         
         {/* Protected main home for module selection */}
         <Route path="/home" element={

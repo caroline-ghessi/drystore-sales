@@ -28,6 +28,9 @@ export interface AIGenerationResult {
   calculations: CalculationResult;
   confidence: number; // 0-100
   suggestions: string[];
+  acceptanceLink?: string;
+  proposalId?: string;
+  uniqueId?: string;
 }
 
 export interface ContextAnalysis {
