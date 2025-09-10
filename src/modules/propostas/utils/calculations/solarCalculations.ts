@@ -38,7 +38,7 @@ const SOLAR_IRRADIATION = {
 export function calculateSolarSystem(input: SolarCalculationInput): SolarCalculationResult {
   // Calculate system power needed
   const dailyConsumption = input.monthlyConsumption / 30;
-  const irradiation = SOLAR_IRRADIATION[input.region];
+  const irradiation = 4.8; // HSP médio nacional fixo para uniformidade
   const efficiencyFactor = getEfficiencyFactor(input);
   
   const systemPower = (dailyConsumption / irradiation) / efficiencyFactor;
@@ -47,8 +47,8 @@ export function calculateSolarSystem(input: SolarCalculationInput): SolarCalcula
   const panelQuantity = Math.ceil((systemPower * 1000) / 540);
   const inverterQuantity = Math.ceil(systemPower / 3.0); // 3kW inverters
   
-  // Calculate costs
-  const regionalMultiplier = REGIONAL_MULTIPLIERS[input.region];
+  // Multiplicador regional fixado em 1.0 (uniformidade nacional)
+  const regionalMultiplier = 1.0;
   
   const totalMultiplier = regionalMultiplier;
   

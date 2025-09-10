@@ -36,7 +36,7 @@ const categoryMapping: Record<ProductType, DatabaseProductCategory> = {
 
 export function useProductPricing(productType: ProductType) {
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>({
-    regionalMultiplier: 1.0,
+    regionalMultiplier: 1.0, // Fixado para uniformidade nacional
     complexityMultiplier: 1.0,
     urgencyMultiplier: 1.0,
     profitMargin: 0.3 // 30% default margin
@@ -150,16 +150,8 @@ export function useProductPricing(productType: ProductType) {
     };
   }, [products, pricingConfig, productType]);
 
-  // Get pricing suggestions based on region and complexity
+  // Get pricing suggestions without regional variations
   const getPricingSuggestions = useCallback((region: string, complexity: 'simple' | 'medium' | 'complex') => {
-    const regionalMultipliers: Record<string, number> = {
-      'norte': 1.15,
-      'nordeste': 1.10,
-      'centro-oeste': 1.05,
-      'sudeste': 1.0,
-      'sul': 0.95
-    };
-
     const complexityMultipliers = {
       'simple': 1.0,
       'medium': 1.1,
@@ -167,7 +159,7 @@ export function useProductPricing(productType: ProductType) {
     };
 
     return {
-      regionalMultiplier: regionalMultipliers[region.toLowerCase()] || 1.0,
+      regionalMultiplier: 1.0, // Uniformidade nacional
       complexityMultiplier: complexityMultipliers[complexity] || 1.0,
       urgencyMultiplier: 1.0
     };

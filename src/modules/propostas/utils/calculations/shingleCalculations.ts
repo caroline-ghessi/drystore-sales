@@ -74,8 +74,8 @@ export function calculateShingleInstallation(
   const wasteFactor = 1.12;
   const totalArea = realArea * wasteFactor;
   
-  // 3. Calcular multiplicadores
-  const regionalMultiplier = REGIONAL_MULTIPLIERS[region];
+  // Multiplicador regional fixado em 1.0 (uniformidade nacional)
+  const regionalMultiplier = 1.0;
   const totalMultiplier = regionalMultiplier;
   
   // 4. QUANTIDADES DE MATERIAIS

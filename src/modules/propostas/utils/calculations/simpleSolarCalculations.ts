@@ -34,9 +34,9 @@ const REGIONAL_COST_MULTIPLIERS = {
 const ANNUAL_TARIFF_INCREASE = 0.05; // 5% ao ano
 
 export function calculateSimpleSolarSystem(input: SimpleSolarCalculationInput): SimpleSolarCalculationResult {
-  // 1. Cálculo da potência necessária do sistema
+  // 1. Cálculo da potência necessária do sistema (usando HSP padrão nacional)
   const dailyConsumption = input.monthlyConsumption / 30;
-  const hsp = SOLAR_IRRADIATION[input.region];
+  const hsp = 4.8; // HSP médio nacional fixo para uniformidade
   const systemPower = dailyConsumption / (hsp * SYSTEM_EFFICIENCY);
   
   // 2. Quantidades de equipamentos (baseado em painéis de 550W)
@@ -57,8 +57,8 @@ export function calculateSimpleSolarSystem(input: SimpleSolarCalculationInput): 
   const monthlySavings = monthlyBillBefore - monthlyBillAfter;
   const annualSavings = monthlySavings * 12;
   
-  // 5. Custos do sistema
-  const regionalMultiplier = REGIONAL_COST_MULTIPLIERS[input.region];
+  // 5. Custos do sistema (sem variação regional)
+  const regionalMultiplier = 1.0; // Fixado para uniformidade nacional
   
   const itemizedCosts = {
     panels: SOLAR_PRICES.panels * systemPower * regionalMultiplier,

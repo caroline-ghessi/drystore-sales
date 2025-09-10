@@ -17,8 +17,7 @@ export function SolarCalculator({ onCalculate }: SolarCalculatorProps) {
     roofType: 'ceramic',
     roofOrientation: 'north',
     shadowing: 'none',
-    installationType: 'grid_tie',
-    region: 'southeast'
+    installationType: 'grid_tie'
   });
 
   const handleCalculate = () => {
@@ -134,25 +133,6 @@ export function SolarCalculator({ onCalculate }: SolarCalculatorProps) {
             </Select>
           </div>
 
-          {/* Region */}
-          <div>
-            <Label>Região *</Label>
-            <Select
-              value={input.region}
-              onValueChange={(value: any) => setInput({ ...input, region: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="north">Norte</SelectItem>
-                <SelectItem value="northeast">Nordeste</SelectItem>
-                <SelectItem value="center_west">Centro-Oeste</SelectItem>
-                <SelectItem value="southeast">Sudeste</SelectItem>
-                <SelectItem value="south">Sul</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         {/* Information Cards */}

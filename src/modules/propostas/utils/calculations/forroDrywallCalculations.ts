@@ -74,8 +74,8 @@ export function calculateForroDrywall(input: ForroDrywallCalculationInput): Forr
     insulationQuantity = ceilingArea * 1.05;
   }
 
-  // Calculate costs
-  const totalMultiplier = REGIONAL_MULTIPLIERS[region];
+  // Multiplicador regional fixado em 1.0 (uniformidade nacional)
+  const totalMultiplier = 1.0;
   
   const platesCost = plateQuantity * BASE_PRICES.plates[plateType] * totalMultiplier;
   const profilesCost = profileQuantity * BASE_PRICES.profiles.steel * totalMultiplier;

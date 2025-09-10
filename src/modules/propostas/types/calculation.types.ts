@@ -40,7 +40,6 @@ export interface SolarCalculationInput extends BaseCalculationInput {
 export interface SimpleSolarCalculationInput {
   monthlyConsumption: number; // kWh
   currentTariff: number; // R$/kWh - Campo principal para cálculo de economia
-  region: 'north' | 'northeast' | 'center_west' | 'southeast' | 'south';
   installationType: 'grid_tie' | 'off_grid' | 'hybrid';
   
   // Dados do cliente (preparação para OCR)

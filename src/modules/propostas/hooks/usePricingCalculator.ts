@@ -48,7 +48,7 @@ export function usePricingCalculator(productType: ProductType) {
     setIsCalculatingPrices(true);
     
     try {
-      // Get pricing suggestions based on region/complexity
+      // Get pricing suggestions without regional variations
       const suggestions = getPricingSuggestions(pricingInput.region, pricingInput.complexity);
       
       // Apply urgency multiplier
@@ -58,15 +58,13 @@ export function usePricingCalculator(productType: ProductType) {
         'super_urgent': 1.3
       };
 
-      const finalMultiplier = suggestions.regionalMultiplier * 
-                              suggestions.complexityMultiplier * 
-                              urgencyMultipliers[pricingInput.urgency];
+      const finalMultiplier = suggestions.complexityMultiplier * urgencyMultipliers[pricingInput.urgency];
 
       const profitMargin = pricingInput.customMargin || 0.3;
 
-      // Calculate pricing using the product pricing hook
+      // Calculate pricing using the product pricing hook (no regional variation)
       const pricingResult = calculatePricing(calculationResult, {
-        regionalMultiplier: suggestions.regionalMultiplier,
+        regionalMultiplier: 1.0, // Fixado para uniformidade nacional
         complexityMultiplier: suggestions.complexityMultiplier,
         urgencyMultiplier: urgencyMultipliers[pricingInput.urgency],
         profitMargin

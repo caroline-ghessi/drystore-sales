@@ -23,7 +23,7 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
     perimeterFinishingType: 'L_profile',
     massType: 'PVA',
     fiberType: 'fiberglass',
-    region: 'southeast',
+    
     insulation: {
       enabled: false,
     },
@@ -202,25 +202,6 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
               </Select>
             </div>
 
-            {/* Região */}
-            <div>
-              <Label>Região *</Label>
-              <Select
-                value={input.region}
-                onValueChange={(value: any) => setInput({ ...input, region: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="north">Norte</SelectItem>
-                  <SelectItem value="northeast">Nordeste</SelectItem>
-                  <SelectItem value="center_west">Centro-Oeste</SelectItem>
-                  <SelectItem value="southeast">Sudeste</SelectItem>
-                  <SelectItem value="south">Sul</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
 
           </div>
         </div>

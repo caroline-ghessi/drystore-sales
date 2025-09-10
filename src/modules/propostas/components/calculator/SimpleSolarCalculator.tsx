@@ -15,7 +15,6 @@ export function SimpleSolarCalculator({ onCalculate }: SimpleSolarCalculatorProp
   const [input, setInput] = useState<SimpleSolarCalculationInput>({
     monthlyConsumption: 300,
     currentTariff: 0.75,
-    region: 'southeast',
     installationType: 'grid_tie',
     clientData: {
       name: '',
@@ -131,25 +130,6 @@ export function SimpleSolarCalculator({ onCalculate }: SimpleSolarCalculatorProp
             )}
           </div>
 
-          {/* Region */}
-          <div>
-            <Label>Região *</Label>
-            <Select
-              value={input.region}
-              onValueChange={(value: any) => setInput({ ...input, region: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="north">Norte</SelectItem>
-                <SelectItem value="northeast">Nordeste</SelectItem>
-                <SelectItem value="center_west">Centro-Oeste</SelectItem>
-                <SelectItem value="southeast">Sudeste</SelectItem>
-                <SelectItem value="south">Sul</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
           {/* Installation Type */}
           <div>

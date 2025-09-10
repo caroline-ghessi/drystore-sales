@@ -21,7 +21,6 @@ export function AdvancedSolarCalculator({ onCalculate }: AdvancedSolarCalculator
     roofOrientation: 'north',
     shadowing: 'none',
     installationType: 'grid_tie',
-    region: 'southeast',
     dailyConsumptionPattern: {
       diurnal: 360,  // 60% diurno
       nocturnal: 240, // 40% noturno
@@ -222,24 +221,6 @@ export function AdvancedSolarCalculator({ onCalculate }: AdvancedSolarCalculator
               </Select>
             </div>
 
-            <div>
-              <Label>Região</Label>
-              <Select
-                value={input.region}
-                onValueChange={(value: any) => setInput({ ...input, region: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="north">Norte (4,5-5,0 HSP)</SelectItem>
-                  <SelectItem value="northeast">Nordeste (5,5-6,0 HSP)</SelectItem>
-                  <SelectItem value="center_west">Centro-Oeste (5,0-5,5 HSP)</SelectItem>
-                  <SelectItem value="southeast">Sudeste (4,5-5,5 HSP)</SelectItem>
-                  <SelectItem value="south">Sul (4,0-5,0 HSP)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
 

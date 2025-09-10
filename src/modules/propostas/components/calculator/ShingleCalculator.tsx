@@ -30,7 +30,7 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
       ventilation: false,
       insulation: false,
     },
-    region: 'southeast'
+    
   });
 
   const handleCalculate = () => {
@@ -210,25 +210,6 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
               </p>
             </div>
 
-            {/* Region */}
-            <div>
-              <Label>Região *</Label>
-              <Select
-                value={input.region}
-                onValueChange={(value: any) => setInput(prev => ({ ...prev, region: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="north">Norte</SelectItem>
-                  <SelectItem value="northeast">Nordeste</SelectItem>
-                  <SelectItem value="center_west">Centro-Oeste</SelectItem>
-                  <SelectItem value="southeast">Sudeste</SelectItem>
-                  <SelectItem value="south">Sul</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
 
           </div>
         </div>

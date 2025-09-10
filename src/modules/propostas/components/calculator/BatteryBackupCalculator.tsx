@@ -31,7 +31,7 @@ export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculator
       grid: true,
       generator: false
     },
-    region: 'southeast',
+    
     usagePattern: {
       dailyUsageHours: 12,
       peakUsageHours: 4,
@@ -230,24 +230,6 @@ export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculator
             </p>
           </div>
 
-          <div>
-            <Label>Região</Label>
-            <Select
-              value={input.region}
-              onValueChange={(value: any) => setInput({ ...input, region: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="north">Norte</SelectItem>
-                <SelectItem value="northeast">Nordeste</SelectItem>
-                <SelectItem value="center_west">Centro-Oeste</SelectItem>
-                <SelectItem value="southeast">Sudeste</SelectItem>
-                <SelectItem value="south">Sul</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
         </div>
 

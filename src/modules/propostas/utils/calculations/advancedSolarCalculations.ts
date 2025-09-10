@@ -62,7 +62,8 @@ const LIVOLTEK_BATTERIES = {
 };
 
 export function calculateAdvancedSolarSystem(input: SolarCalculationInput): SolarCalculationResult {
-  const hsp = SOLAR_IRRADIATION_RANGES[input.region].default;
+  // Usar HSP padrão nacional para uniformidade
+  const hsp = 4.8; // HSP médio nacional fixo
   
   // Cálculo de consumo diário
   const dailyConsumption = input.monthlyConsumption / 30;
@@ -146,15 +147,9 @@ function calculateSystemLosses(input: SolarCalculationInput): number {
   totalLosses += 0.01; // Cabeamento CA (1%)
   totalLosses += 0.03; // Inversor (3%)
   
-  // Perdas por temperatura (varia por região)
-  const tempLosses = {
-    north: 0.15,
-    northeast: 0.12,
-    center_west: 0.10,
-    southeast: 0.08,
-    south: 0.05
-  };
-  totalLosses += tempLosses[input.region];
+  // Perdas por temperatura fixadas (uniformidade nacional)
+  const tempLosses = 0.08; // Valor médio nacional
+  totalLosses += tempLosses;
   
   // Perdas por orientação
   const orientationLosses = {
@@ -310,14 +305,8 @@ function calculateItemizedCosts(
     batteriesCost = batteryConfig.batteryQuantity * batteryPrice;
   }
   
-  // Aplicar multiplicador regional
-  const regionalMultiplier = {
-    north: 1.15,
-    northeast: 1.05,
-    center_west: 1.10,
-    southeast: 1.0,
-    south: 1.08
-  }[input.region];
+  // Multiplicador regional fixado em 1.0 (uniformidade nacional)
+  const regionalMultiplier = 1.0;
   
   const multiplier = regionalMultiplier;
   

@@ -343,8 +343,8 @@ export async function calculateAcousticMineralCeiling(input: AcousticMineralCeil
     specialAnchors: Math.ceil(hangers * 0.1) // 10% de buchas especiais
   };
 
-  // 6. Custos baseados no produto da base de dados
-  const regionMultiplier = getRegionMultiplier(input.region);
+  // 6. Custos baseados no produto da base de dados (sem variação regional)
+  const regionMultiplier = 1.0; // Fixado para uniformidade nacional
   const baseProfilePrice = 25; // R$ por metro
   const baseLaborPrice = 35; // R$ por m²
 
