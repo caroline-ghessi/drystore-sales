@@ -363,7 +363,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                       <CardContent className="space-y-6">
                         {/* Painéis Solares */}
                         {calculator.calculationSummary.proposalItems.filter(item => 
-                          item.description.toLowerCase().includes('painel')).map((item, index) => (
+                          item.id === '1').map((item, index) => (
                           <div key={`panel-${index}`}>
                             <div className="flex items-center justify-between mb-3">
                               <h4 className="font-semibold text-blue-700">Painéis Solares Fotovoltaicos</h4>
@@ -396,7 +396,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
 
                         {/* Inversores */}
                         {calculator.calculationSummary.proposalItems.filter(item => 
-                          item.description.toLowerCase().includes('inversor')).map((item, index) => (
+                          item.id === '2').map((item, index) => (
                           <div key={`inverter-${index}`}>
                             <div className="flex items-center justify-between mb-3">
                               <h4 className="font-semibold text-orange-700">Inversor Solar</h4>
@@ -429,7 +429,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
 
                         {/* Estrutura de Fixação */}
                         {calculator.calculationSummary.proposalItems.filter(item => 
-                          item.description.toLowerCase().includes('estrutura')).map((item, index) => (
+                          item.id === '3').map((item, index) => (
                           <div key={`structure-${index}`}>
                             <div className="flex items-center justify-between mb-3">
                               <h4 className="font-semibold text-green-700">Estrutura de Fixação</h4>
@@ -461,8 +461,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
 
                         {/* Material Elétrico */}
                         {calculator.calculationSummary.proposalItems.filter(item => 
-                          item.description.toLowerCase().includes('material') || 
-                          item.description.toLowerCase().includes('elétrico')).map((item, index) => (
+                          item.id === '4').map((item, index) => (
                           <div key={`electrical-${index}`}>
                             <div className="flex items-center justify-between mb-3">
                               <h4 className="font-semibold text-purple-700">Material Elétrico</h4>
@@ -493,8 +492,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
 
                         {/* Documentação */}
                         {calculator.calculationSummary.proposalItems.filter(item => 
-                          item.description.toLowerCase().includes('documentação') ||
-                          item.description.toLowerCase().includes('homologação')).map((item, index) => (
+                          item.id === '5').map((item, index) => (
                           <div key={`documentation-${index}`}>
                             <div className="flex items-center justify-between mb-3">
                               <h4 className="font-semibold text-teal-700">Documentação e Homologação</h4>
