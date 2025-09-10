@@ -14,11 +14,11 @@ import { ConversationsPage } from "@/modules/whatsapp/pages/Conversations";
 export default function WhatsAppLayout() {
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="h-screen flex w-full overflow-hidden">
         <WhatsAppSidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col overflow-hidden">
           <WhatsAppHeader />
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-hidden">
             <Routes>
               <Route index element={<ConversationsPage />} />
               <Route path="/conversas" element={<ConversationsPage />} />
