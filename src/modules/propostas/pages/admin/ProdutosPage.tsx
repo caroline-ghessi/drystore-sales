@@ -17,6 +17,7 @@ export default function ProdutosPage() {
   const { products: allProducts, updateProduct, isLoading } = useProducts();
   const { products: knaufProducts } = useProducts('forro_drywall');
   const { products: drywallProducts } = useProducts('drywall_divisorias');
+  const { products: acousticProducts } = useProducts('forro_mineral_acustico');
 
   const filteredProducts = allProducts.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -138,9 +139,10 @@ export default function ProdutosPage() {
           </div>
 
           <Tabs defaultValue="drywall_divisorias" className="w-full">
-            <TabsList>
+            <TabsList className="grid grid-cols-4 w-full">
               <TabsTrigger value="drywall_divisorias">Drywall Divisórias</TabsTrigger>
               <TabsTrigger value="forro_drywall">Forro Drywall</TabsTrigger>
+              <TabsTrigger value="forro_mineral_acustico">Forro Mineral Acústico</TabsTrigger>
               <TabsTrigger value="all">Todos os Produtos</TabsTrigger>
             </TabsList>
             
@@ -161,6 +163,17 @@ export default function ProdutosPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {knaufProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="forro_mineral_acustico" className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                {acousticProducts.length} produtos de forro mineral acústico encontrados
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {acousticProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>

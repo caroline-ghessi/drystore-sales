@@ -19,7 +19,7 @@ export function useProposalCalculator(productType: ProductType) {
     setError(null);
     
     try {
-      let result: CalculationResult;
+      let result: CalculationResult | any;
       
       switch (productType) {
         case 'solar':
@@ -38,7 +38,7 @@ export function useProposalCalculator(productType: ProductType) {
           result = calculateForroDrywall(input as any);
           break;
         case 'acoustic_mineral_ceiling':
-          result = calculateAcousticMineralCeiling(input as any);
+          result = await calculateAcousticMineralCeiling(input as any);
           break;
         default:
           throw new Error(`Cálculo não implementado para o produto: ${productType}`);

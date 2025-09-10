@@ -95,6 +95,7 @@ export type ProductCategory =
   | 'forros'
   | 'forro_drywall'
   | 'battery_backup'
+  | 'forro_mineral_acustico'
   | 'saudacao'
   | 'institucional'
   | 'indefinido';

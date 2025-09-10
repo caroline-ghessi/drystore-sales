@@ -31,7 +31,7 @@ const categoryMapping: Record<ProductType, DatabaseProductCategory> = {
   'ceiling': 'forros',
   'forro_drywall': 'forro_drywall',
   'battery_backup': 'battery_backup',
-  'acoustic_mineral_ceiling': 'forros'
+  'acoustic_mineral_ceiling': 'forro_mineral_acustico'
 };
 
 export function useProductPricing(productType: ProductType) {

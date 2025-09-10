@@ -56,6 +56,7 @@ function mapFromDbProductType(dbType: DatabaseProductType): ProductType {
     'forros': 'ceiling', // Default mapping - pode ser 'ceiling' ou 'acoustic_mineral_ceiling'
     'forro_drywall': 'forro_drywall',
     'battery_backup': 'battery_backup',
+    'forro_mineral_acustico': 'acoustic_mineral_ceiling',
     // Default mappings for other categories
     'ferramentas': 'drywall',
     'pisos': 'drywall',

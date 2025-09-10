@@ -1,6 +1,19 @@
 import { AcousticMineralCeilingInput, AcousticMineralCeilingResult, AcousticMineralCeilingModel, CeilingModulation, EdgeType } from '../../types/calculation.types';
+import { supabase } from '@/lib/supabase';
 
-// Base de dados dos modelos baseada no manual técnico
+// Função para buscar produtos da base de dados
+async function getAcousticMineralProducts() {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('category', 'forro_mineral_acustico')
+    .eq('is_active', true);
+    
+  if (error) throw error;
+  return data;
+}
+
+// Base de dados dos modelos baseada no manual técnico (DEPRECATED - usar produtos da base)
 export const CEILING_MODELS = {
   ALCOR: {
     manufacturer: 'Hunter Douglas',
@@ -122,46 +135,74 @@ export const MODULATION_AREAS = {
   '600x1200': 0.72 // 595x1195mm
 } as const;
 
-// Árvore de decisão para seleção automática
-export function selectOptimalModel(input: AcousticMineralCeilingInput): AcousticMineralCeilingModel {
-  // Se modelo manual selecionado, usar ele
+// Seleção otimizada baseada em produtos da base de dados
+export async function selectOptimalProduct(input: AcousticMineralCeilingInput) {
+  const products = await getAcousticMineralProducts();
+  
+  // Se modelo manual selecionado pelo código, buscar produto
   if (input.manualModel) {
-    return input.manualModel;
+    const product = products.find(p => 
+      p.code.toLowerCase().includes(input.manualModel!.toLowerCase())
+    );
+    if (product) return product;
   }
 
-  // Árvore de decisão baseada no manual
+  // Seleção automática baseada na necessidade principal
   if (input.primaryNeed === 'humidity') {
-    if (input.humidityLevel && input.humidityLevel > 90) {
-      return 'TOPIQ_PRIME'; // ou THERMATEX
-    } else {
-      return 'THERMATEX'; // APUS, KYROS, LYRA também servem
-    }
+    return products
+      .filter(p => {
+        const specs = p.specifications as any;
+        return specs?.humidity_resistance === true;
+      })
+      .sort((a, b) => {
+        const aSpecs = a.specifications as any;
+        const bSpecs = b.specifications as any;
+        return (bSpecs?.nrc || 0) - (aSpecs?.nrc || 0);
+      })[0];
   }
 
   if (input.primaryNeed === 'acoustic') {
-    if (input.nrcRequired && input.nrcRequired > 0.70) {
-      return 'TOPIQ_PRIME'; // ALCOR, TOPIQ, APUS
-    } else {
-      return 'KYROS'; // LÚCIDA, KYROS
-    }
+    const minNrc = input.nrcRequired || 0.70;
+    return products
+      .filter(p => {
+        const specs = p.specifications as any;
+        return (specs?.nrc || 0) >= minNrc;
+      })
+      .sort((a, b) => {
+        const aSpecs = a.specifications as any;
+        const bSpecs = b.specifications as any;
+        return (bSpecs?.nrc || 0) - (aSpecs?.nrc || 0);
+      })[0];
   }
 
   if (input.primaryNeed === 'economy') {
-    return 'ADHARA'; // ADHARA, LYRA, ECOMIN
+    return products
+      .sort((a, b) => a.base_price - b.base_price)[0];
   }
 
-  // Premium por padrão
-  return 'LUCIDA';
+  // Produto intermediário por padrão
+  return products
+    .sort((a, b) => {
+      const aSpecs = a.specifications as any;
+      const bSpecs = b.specifications as any;
+      return (bSpecs?.nrc || 0) - (aSpecs?.nrc || 0);
+    })[2] || products[0];
 }
 
-// Selecionar modulação otimizada
-export function selectOptimalModulation(input: AcousticMineralCeilingInput, model: AcousticMineralCeilingModel): CeilingModulation {
+// DEPRECATED: Manter para compatibilidade temporária
+export function selectOptimalModel(input: AcousticMineralCeilingInput): AcousticMineralCeilingModel {
+  return 'ALCOR'; // Fallback - deve usar selectOptimalProduct
+}
+
+// Selecionar modulação otimizada baseada no produto
+export function selectOptimalModulation(input: AcousticMineralCeilingInput, product: any): CeilingModulation {
   if (input.manualModulation) {
     return input.manualModulation;
   }
 
   const area = input.roomLength * input.roomWidth;
-  const availableModulations = CEILING_MODELS[model].modulations;
+  const specs = product.specifications as any;
+  const availableModulations = specs?.modulations || ['625x625'];
 
   // Ambiente pequeno (<30m²): usar modulações pequenas
   if (area < 30) {
@@ -176,7 +217,7 @@ export function selectOptimalModulation(input: AcousticMineralCeilingInput, mode
   }
 
   // Default: primeira modulação disponível
-  return availableModulations[0];
+  return availableModulations[0] as CeilingModulation;
 }
 
 // Calcular percentual de perda baseado no formato
@@ -196,13 +237,17 @@ export function calculateLossPercentage(format: AcousticMineralCeilingInput['roo
   return basePercentage;
 }
 
-// Função principal de cálculo
-export function calculateAcousticMineralCeiling(input: AcousticMineralCeilingInput): AcousticMineralCeilingResult {
-  // 1. Seleção do modelo e configuração
-  const selectedModelName = selectOptimalModel(input);
-  const modelData = CEILING_MODELS[selectedModelName];
-  const selectedModulation = selectOptimalModulation(input, selectedModelName);
-  const selectedEdgeType = input.manualEdgeType || input.edgeType || modelData.edgeType;
+// Função principal de cálculo (nova versão com produtos dinâmicos)
+export async function calculateAcousticMineralCeiling(input: AcousticMineralCeilingInput): Promise<AcousticMineralCeilingResult> {
+  // 1. Seleção do produto da base de dados
+  const selectedProduct = await selectOptimalProduct(input);
+  if (!selectedProduct) {
+    throw new Error('Nenhum produto de forro mineral acústico encontrado na base de dados');
+  }
+  
+  const selectedModulation = selectOptimalModulation(input, selectedProduct);
+  const productSpecs = selectedProduct.specifications as any;
+  const selectedEdgeType = input.manualEdgeType || input.edgeType || productSpecs?.edge_type || 'tegular';
 
   // 2. Cálculos de área
   const totalArea = input.roomLength * input.roomWidth;
@@ -229,7 +274,10 @@ export function calculateAcousticMineralCeiling(input: AcousticMineralCeilingInp
   const lossPercentage = calculateLossPercentage(input.roomFormat, input.obstacles.columns > 0);
   const totalPlates = Math.ceil(basePlateQuantity * (1 + lossPercentage / 100));
   const platesAfterLights = totalPlates - input.installations.lightFixtures;
-  const boxesNeeded = Math.ceil(totalPlates / modelData.platesPerBox);
+  
+  // Assumir 10 placas por caixa como padrão se não especificado
+  const platesPerBox = 10;
+  const boxesNeeded = Math.ceil(totalPlates / platesPerBox);
 
   // 4. Estrutura de sustentação (baseada no manual)
   
@@ -272,14 +320,13 @@ export function calculateAcousticMineralCeiling(input: AcousticMineralCeilingInp
     specialAnchors: Math.ceil(hangers * 0.1) // 10% de buchas especiais
   };
 
-  // 6. Custos (preços base por região)
+  // 6. Custos baseados no produto da base de dados
   const regionMultiplier = getRegionMultiplier(input.region);
-  const basePlatePrice = 45; // R$ por m²
   const baseProfilePrice = 25; // R$ por metro
   const baseLaborPrice = 35; // R$ por m²
 
   const itemizedCosts = {
-    plates: totalPlates * plateArea * basePlatePrice * modelData.costMultiplier * regionMultiplier,
+    plates: totalPlates * plateArea * selectedProduct.base_price * regionMultiplier,
     mainProfile: mainProfileMeters * baseProfilePrice * regionMultiplier,
     secondaryProfiles: ((secondaryProfile1250?.meters || 0) + (secondaryProfile625?.meters || 0)) * baseProfilePrice * regionMultiplier,
     perimeterEdge: perimeterEdgeMeters * baseProfilePrice * 0.8 * regionMultiplier,
@@ -290,31 +337,33 @@ export function calculateAcousticMineralCeiling(input: AcousticMineralCeilingInp
 
   const totalCost = Object.values(itemizedCosts).reduce((sum, cost) => sum + cost, 0);
 
-  // 7. Performance acústica
+  // 7. Performance acústica do produto
+  const modelSpecs = selectedProduct.specifications as any;
+  const nrcValue = modelSpecs?.nrc || 0.7;
   const acousticPerformance = {
-    nrc: modelData.nrc,
-    classification: (modelData.nrc >= 0.85 ? 'premium' : modelData.nrc >= 0.70 ? 'alta' : modelData.nrc >= 0.60 ? 'média' : 'baixa') as 'premium' | 'alta' | 'média' | 'baixa',
-    suitableFor: [...modelData.suitableFor]
+    nrc: nrcValue,
+    classification: (nrcValue >= 0.85 ? 'premium' : nrcValue >= 0.70 ? 'alta' : nrcValue >= 0.60 ? 'média' : 'baixa') as 'premium' | 'alta' | 'média' | 'baixa',
+    suitableFor: ['Escritórios', 'Salas de reunião', 'Consultórios'] // Genérico
   };
 
   // 8. Validações automáticas
   const validations = {
     minSpaceOk: input.availableSpace >= 15,
     structureCompatible: true, // Sempre compatível com forros minerais
-    modelSuitable: checkModelSuitability(selectedModelName, input),
-    warnings: generateWarnings(input, selectedModelName, modelData)
+    modelSuitable: checkProductSuitability(selectedProduct, input),
+    warnings: generateProductWarnings(input, selectedProduct)
   };
 
   return {
     selectedModel: {
-      name: selectedModelName,
-      manufacturer: modelData.manufacturer,
+      name: selectedProduct.name as AcousticMineralCeilingModel,
+      manufacturer: selectedProduct.supplier || 'Nacional',
       modulation: selectedModulation,
       edgeType: selectedEdgeType,
-      nrc: modelData.nrc,
-      rh: modelData.rh,
-      weight: modelData.weight,
-      platesPerBox: modelData.platesPerBox
+      nrc: modelSpecs?.nrc || 0.7,
+      rh: modelSpecs?.humidity_resistance ? 95 : 85,
+      weight: modelSpecs?.weight_kg_m2 || 3.0,
+      platesPerBox: platesPerBox
     },
     areas: {
       total: totalArea,
@@ -353,9 +402,9 @@ export function calculateAcousticMineralCeiling(input: AcousticMineralCeilingInp
     acousticPerformance,
     technicalSpecs: {
       configuration: `${selectedModulation} ${selectedEdgeType}`,
-      finalThickness: 15, // Espessura padrão sistema mineral
-      weight: modelData.weight,
-      moistureResistance: modelData.rh,
+      finalThickness: modelSpecs?.thickness_mm || 15,
+      weight: modelSpecs?.weight_kg_m2 || 3.0,
+      moistureResistance: modelSpecs?.humidity_resistance ? 95 : 85,
       installationComplexity: selectedEdgeType === 'tegular' ? 'média' : 'simples'
     },
     validations
@@ -374,31 +423,37 @@ function getRegionMultiplier(region: string): number {
   return multipliers[region as keyof typeof multipliers] || 1.00;
 }
 
-function checkModelSuitability(model: AcousticMineralCeilingModel, input: AcousticMineralCeilingInput): boolean {
-  const modelData = CEILING_MODELS[model];
+function checkProductSuitability(product: any, input: AcousticMineralCeilingInput): boolean {
+  const specs = product.specifications as any;
   
   // Verificar umidade se necessário
   if (input.primaryNeed === 'humidity' && input.humidityLevel) {
-    return modelData.rh >= input.humidityLevel;
+    return specs?.humidity_resistance || false;
   }
   
   // Verificar acústica se necessário  
   if (input.primaryNeed === 'acoustic' && input.nrcRequired) {
-    return modelData.nrc >= input.nrcRequired;
+    return (specs?.nrc || 0) >= input.nrcRequired;
   }
   
   return true;
 }
 
-function generateWarnings(input: AcousticMineralCeilingInput, model: AcousticMineralCeilingModel, modelData: any): string[] {
+// DEPRECATED: Manter compatibilidade
+function checkModelSuitability(model: AcousticMineralCeilingModel, input: AcousticMineralCeilingInput): boolean {
+  return true;
+}
+
+function generateProductWarnings(input: AcousticMineralCeilingInput, product: any): string[] {
   const warnings: string[] = [];
+  const specs = product.specifications as any;
   
   if (input.availableSpace < 15) {
     warnings.push('Espaço disponível insuficiente. Mínimo 15cm necessário.');
   }
   
-  if (input.primaryNeed === 'humidity' && modelData.rh < 90) {
-    warnings.push('Modelo selecionado pode não ser adequado para alta umidade.');
+  if (input.primaryNeed === 'humidity' && !specs?.humidity_resistance) {
+    warnings.push('Produto selecionado pode não ser adequado para alta umidade.');
   }
   
   if (input.obstacles.columns > 5) {
@@ -410,4 +465,92 @@ function generateWarnings(input: AcousticMineralCeilingInput, model: AcousticMin
   }
   
   return warnings;
+}
+
+// DEPRECATED: Manter compatibilidade
+function generateWarnings(input: AcousticMineralCeilingInput, model: AcousticMineralCeilingModel, modelData: any): string[] {
+  return generateProductWarnings(input, {});
+}
+
+// Função síncrona para compatibilidade com código existente
+export function calculateAcousticMineralCeilingSyncLegacy(input: AcousticMineralCeilingInput): AcousticMineralCeilingResult {
+  // Fallback usando dados hardcoded para compatibilidade
+  const selectedModelName = selectOptimalModel(input);
+  const modelData = CEILING_MODELS[selectedModelName];
+  const selectedModulation = '625x625' as CeilingModulation;
+  const selectedEdgeType = input.manualEdgeType || input.edgeType || 'tegular';
+
+  const totalArea = input.roomLength * input.roomWidth;
+  const obstacleArea = input.obstacles.columns * 1;
+  const cutoutArea = input.cutoutArea || 0;
+  const usefulArea = totalArea - obstacleArea - cutoutArea;
+  const perimeter = input.roomPerimeter || (2 * (input.roomLength + input.roomWidth));
+
+  const plateArea = MODULATION_AREAS[selectedModulation];
+  const basePlateQuantity = Math.ceil(usefulArea / plateArea);
+  const lossPercentage = calculateLossPercentage(input.roomFormat, input.obstacles.columns > 0);
+  const totalPlates = Math.ceil(basePlateQuantity * (1 + lossPercentage / 100));
+  const platesAfterLights = totalPlates - input.installations.lightFixtures;
+  const boxesNeeded = Math.ceil(totalPlates / modelData.platesPerBox);
+
+  return {
+    selectedModel: {
+      name: selectedModelName,
+      manufacturer: modelData.manufacturer,
+      modulation: selectedModulation,
+      edgeType: selectedEdgeType,
+      nrc: modelData.nrc,
+      rh: modelData.rh,
+      weight: modelData.weight,
+      platesPerBox: modelData.platesPerBox
+    },
+    areas: {
+      total: totalArea,
+      obstacles: obstacleArea,
+      cutouts: cutoutArea,
+      useful: usefulArea,
+      perimeter: perimeter
+    },
+    plates: {
+      baseQuantity: basePlateQuantity,
+      lossPercentage: lossPercentage,
+      totalPlates: totalPlates,
+      boxesNeeded: boxesNeeded,
+      platesDiscountedLights: platesAfterLights
+    },
+    structure: {
+      mainProfile: { meters: 0, bars: 0 },
+      perimeterEdge: { meters: 0, bars: 0 },
+      suspension: { hangers: 0, regulators: 0, anchors: 0 }
+    },
+    accessories: { tegularClips: 0, lightSupports: 0, specialAnchors: 0 },
+    itemizedCosts: {
+      plates: totalPlates * plateArea * 45 * modelData.costMultiplier,
+      mainProfile: 0,
+      secondaryProfiles: 0,
+      perimeterEdge: 0,
+      suspension: 0,
+      accessories: 0,
+      labor: usefulArea * 35
+    },
+    totalCost: totalPlates * plateArea * 45 * modelData.costMultiplier + usefulArea * 35,
+    acousticPerformance: {
+      nrc: modelData.nrc,
+      classification: (modelData.nrc >= 0.85 ? 'premium' : 'alta') as 'premium' | 'alta' | 'média' | 'baixa',
+      suitableFor: [...modelData.suitableFor]
+    },
+    technicalSpecs: {
+      configuration: `${selectedModulation} ${selectedEdgeType}`,
+      finalThickness: 15,
+      weight: modelData.weight,
+      moistureResistance: modelData.rh,
+      installationComplexity: 'média'
+    },
+    validations: {
+      minSpaceOk: true,
+      structureCompatible: true,
+      modelSuitable: true,
+      warnings: []
+    }
+  };
 }
