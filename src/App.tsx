@@ -50,6 +50,7 @@ function AppContent() {
         <Route path="/" element={<Index />} />
         <Route path="/set-password" element={<SetPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/auth" element={<Index />} /> {/* Fallback para links de auth */}
         
         {/* Protected main home for module selection */}
         <Route path="/home" element={

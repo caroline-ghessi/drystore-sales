@@ -19,10 +19,25 @@ export default function ResetPasswordPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Verificar se há tokens de reset na URL
-  const accessToken = searchParams.get('access_token');
-  const refreshToken = searchParams.get('refresh_token');
-  const type = searchParams.get('type');
+  // Verificar se há tokens de reset na URL (tanto query params quanto hash fragments)
+  const getTokenFromUrl = () => {
+    // Primeiro tenta query params
+    let accessToken = searchParams.get('access_token');
+    let refreshToken = searchParams.get('refresh_token');
+    let type = searchParams.get('type');
+    
+    // Se não encontrou, tenta hash fragments
+    if (!accessToken && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      accessToken = hashParams.get('access_token');
+      refreshToken = hashParams.get('refresh_token');
+      type = hashParams.get('type');
+    }
+    
+    return { accessToken, refreshToken, type };
+  };
+  
+  const { accessToken, refreshToken, type } = getTokenFromUrl();
 
   useEffect(() => {
     // Se não há tokens de reset, redirecionar para login
