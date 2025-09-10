@@ -26,7 +26,7 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
     },
     features: {
       gutters: false,
-      underlayment: 'standard',
+      underlayment: 'rhinoroof',
       ventilation: false,
       insulation: false,
     },
@@ -261,10 +261,12 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="standard">Padrão</SelectItem>
-                  <SelectItem value="premium">Premium</SelectItem>
+                  <SelectItem value="rhinoroof">RhinoRoof - Manta Asfáltica (86 m²/rolo)</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Manta asfáltica de alta performance - Rolo 1,1x87m
+              </p>
             </div>
           </div>
         </div>

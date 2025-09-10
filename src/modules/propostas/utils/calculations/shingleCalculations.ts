@@ -27,7 +27,7 @@ const REGIONAL_MULTIPLIERS = {
 const MATERIAL_YIELDS = {
   shingleCoverage: 3.0,        // m² por fardo
   osbPlate: 2.88,             // m² por placa OSB
-  underlaymentRoll: 50,       // m² por rolo
+  rhinoroofRoll: 86,          // m² por rolo RhinoRoof (1,1x87m com sobreposição)
   nailsPerM2: 15,             // pregos por m²
 };
 
@@ -86,8 +86,8 @@ export function calculateShingleInstallation(
   // Placas OSB
   const osbQuantity = Math.ceil(totalArea / MATERIAL_YIELDS.osbPlate * 1.05); // 5% adicional
   
-  // Subcobertura (rolos)
-  const underlaymentQuantity = Math.ceil(totalArea / MATERIAL_YIELDS.underlaymentRoll);
+  // Subcobertura RhinoRoof (rolos)
+  const underlaymentQuantity = Math.ceil(totalArea / MATERIAL_YIELDS.rhinoroofRoll);
   
   // Telhas para cumeeiras
   const ridgeCapQuantity = Math.ceil(roofDetails.ridgeLength / 5); // 5m por fardo

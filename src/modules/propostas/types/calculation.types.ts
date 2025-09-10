@@ -241,7 +241,7 @@ export interface ShingleCalculationInput extends BaseCalculationInput {
   // Additional features
   features: {
     gutters: boolean;
-    underlayment: 'standard' | 'premium';
+    underlayment: 'standard' | 'premium' | 'rhinoroof';
     ventilation: boolean;
     insulation: boolean;
   };
