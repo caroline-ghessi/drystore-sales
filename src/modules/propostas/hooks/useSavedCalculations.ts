@@ -36,13 +36,14 @@ export interface SaveCalculationData {
 function mapToDbProductType(productType: ProductType): DatabaseProductType {
   const mapping: Record<ProductType, DatabaseProductType> = {
     'solar': 'energia_solar',
+    'solar_advanced': 'energia_solar',
     'shingle': 'telha_shingle',
     'drywall': 'drywall_divisorias',
     'steel_frame': 'steel_frame',
     'ceiling': 'forros',
     'forro_drywall': 'forro_drywall',
     'battery_backup': 'battery_backup',
-    'acoustic_mineral_ceiling': 'forros'
+    'acoustic_mineral_ceiling': 'forro_mineral_acustico'
   };
   return mapping[productType];
 }

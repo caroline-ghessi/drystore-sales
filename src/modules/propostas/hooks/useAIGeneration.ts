@@ -133,12 +133,19 @@ function mapProductType(desiredProduct: string | null): ProductType {
   const productMapping: Record<string, ProductType> = {
     'energia_solar': 'solar',
     'solar': 'solar',
+    'solar_advanced': 'solar_advanced',
     'telha_shingle': 'shingle', 
     'shingle': 'shingle',
+    'drywall_divisorias': 'drywall',
     'drywall': 'drywall',
     'divisoria': 'drywall',
     'steel_frame': 'steel_frame',
-    'forro': 'ceiling'
+    'forros': 'ceiling',
+    'ceiling': 'ceiling',
+    'forro_drywall': 'forro_drywall',
+    'battery_backup': 'battery_backup',
+    'acoustic_mineral_ceiling': 'acoustic_mineral_ceiling',
+    'forro_mineral_acustico': 'acoustic_mineral_ceiling'
   };
   
   return productMapping[desiredProduct.toLowerCase()] || 'solar';

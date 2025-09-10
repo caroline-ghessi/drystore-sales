@@ -13,6 +13,7 @@ import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useProposalCalculator } from '../../hooks/useProposalCalculator';
 import { useSavedCalculations } from '../../hooks/useSavedCalculations';
 import { SimpleSolarCalculator } from '../calculator/SimpleSolarCalculator';
+import { SolarCalculator } from '../calculator/SolarCalculator';
 import { BatteryBackupCalculator } from '../calculator/BatteryBackupCalculator';
 import { ShingleCalculatorWrapper } from '../calculator/ShingleCalculatorWrapper';
 import { DrywallCalculatorWrapper } from '../calculator/DrywallCalculatorWrapper';
@@ -117,6 +118,8 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
     switch (productType) {
       case 'solar':
         return <SimpleSolarCalculator onCalculate={calculator.calculate} />;
+      case 'solar_advanced':
+        return <SolarCalculator onCalculate={calculator.calculate} />;
       case 'battery_backup':
         return <BatteryBackupCalculator onCalculate={calculator.calculate} />;
       case 'shingle':
@@ -214,7 +217,8 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {[
-                    { value: 'solar', label: 'Energia Solar', description: 'Sistemas fotovoltaicos' },
+                    { value: 'solar', label: 'Energia Solar', description: 'Sistemas fotovoltaicos simplificados' },
+                    { value: 'solar_advanced', label: 'Solar Avançado', description: 'Cálculo robusto com todas configurações' },
                     { value: 'battery_backup', label: 'Sistema de Backup', description: 'Baterias + inversor híbrido' },
                     { value: 'shingle', label: 'Telha Shingle', description: 'Telhados e coberturas' },
                     { value: 'drywall', label: 'Drywall', description: 'Divisórias e paredes' },

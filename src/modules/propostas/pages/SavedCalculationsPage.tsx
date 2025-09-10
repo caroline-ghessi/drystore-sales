@@ -36,11 +36,14 @@ export default function SavedCalculationsPage() {
   const getProductLabel = (productType: string) => {
     const types = {
       solar: 'Energia Solar',
+      solar_advanced: 'Solar Avançado',
       shingle: 'Telha Shingle', 
       drywall: 'Drywall',
       steel_frame: 'Steel Frame',
       ceiling: 'Forros',
-      forro_drywall: 'Forro Drywall'
+      forro_drywall: 'Forro Drywall',
+      battery_backup: 'Sistema de Backup',
+      acoustic_mineral_ceiling: 'Forro Mineral Acústico'
     };
     return types[productType as keyof typeof types] || productType;
   };

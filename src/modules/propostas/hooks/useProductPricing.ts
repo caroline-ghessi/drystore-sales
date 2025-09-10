@@ -25,6 +25,7 @@ interface ProductPricing {
 
 const categoryMapping: Record<ProductType, DatabaseProductCategory> = {
   'solar': 'energia_solar',
+  'solar_advanced': 'energia_solar',
   'shingle': 'telha_shingle', 
   'drywall': 'drywall_divisorias',
   'steel_frame': 'steel_frame',

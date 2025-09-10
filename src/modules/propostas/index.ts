@@ -17,5 +17,4 @@ export * from './types';
 // Components
 export { SolarCalculator } from './components/calculator/SolarCalculator';
 export { ShingleCalculator } from './components/calculator/ShingleCalculator';
-export { DrywallCalculator } from './components/calculator/DrywallCalculator';
 export { ForroDrywallCalculator } from './components/calculator/ForroDrywallCalculator';
