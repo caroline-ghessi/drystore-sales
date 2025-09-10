@@ -10,7 +10,7 @@ interface DrywallProduct {
 }
 
 export async function calculateImprovedDrywall(input: DrywallCalculationInput): Promise<DrywallCalculationResult> {
-  const { wallArea, wallHeight, openings, features, region, selectedProducts } = input;
+  const { wallArea, wallHeight, openings, features, region, selectedProducts, finishType = 'level_4' } = input;
 
   // Calcular área líquida (descontar 50% das aberturas)
   const standardDoorArea = 0.80 * 2.10; // Porta padrão
@@ -74,34 +74,62 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
   // Total de metros lineares de junta
   const totalJointMeters = verticalJoints + horizontalJoints + perimeter;
   
-  // MASSA PARA JUNTAS: 0,3-0,4 kg por metro linear
-  const jointMassQuantity = totalJointMeters * 0.35; // Usando valor médio
+  // 5. SISTEMA INTELIGENTE DE ACABAMENTO POR NÍVEL
+  const finishLevelMultipliers = {
+    level_3: { 
+      joint: 0.3,       // kg/m linear - Texturizado (menor consumo)
+      finish: 0.45,     // kg/m² - Superfície para textura
+      laborMultiplier: 1.0,     // Multiplicador base (12h/100m²)
+      timeline: 1.0     // Cronograma base
+    },
+    level_4: { 
+      joint: 0.35,      // kg/m linear - Tinta fosca (consumo médio)
+      finish: 0.65,     // kg/m² - Boa uniformidade
+      laborMultiplier: 1.25,    // 25% mais tempo (15h/100m²)
+      timeline: 1.15    // 15% mais tempo total
+    },
+    level_5: { 
+      joint: 0.4,       // kg/m linear - Tinta brilhante (maior consumo)
+      finish: 0.9,      // kg/m² - Superfície perfeita
+      laborMultiplier: 1.67,    // 67% mais tempo (20h/100m²)
+      timeline: 1.35    // 35% mais tempo total
+    }
+  };
   
-  // MASSA DE ACABAMENTO: 0,5-0,8 kg por m² de área total
-  const finishMassQuantity = totalPlateArea * 0.65; // Usando valor médio
+  const levelConfig = finishLevelMultipliers[finishType];
   
-  // 5. FITA PARA JUNTAS
+  // MASSAS com Sistema Inteligente
+  const jointMassQuantity = totalJointMeters * levelConfig.joint;
+  const finishMassQuantity = totalPlateArea * levelConfig.finish;
+  
+  // 6. FITA PARA JUNTAS
   const tapeQuantity = totalJointMeters * 1.10; // 10% de perda
   
-  // 6. ISOLAMENTO (se selecionado)
+  // 7. ISOLAMENTO (se selecionado)
   const insulationQuantity = features.insulation ? netArea * 1.05 : undefined;
   
-  // 7. BANDA ACÚSTICA (se selecionada)
+  // 8. BANDA ACÚSTICA (se selecionada)
   const acousticBandQuantity = features.acousticBand ? wallLength * 0.6 : undefined;
   
   // Buscar preços dos produtos selecionados
   const productPrices = await getSelectedProductPrices(selectedProducts);
   
+  // Materiais extras por nível de acabamento
+  const extraMaterials = getExtraMaterialsByFinishLevel(finishType, netArea);
+  
   // Cálculo de custos usando produtos específicos ou preços padrão
   const materialCosts = {
-    plates: plateQuantity * (productPrices.placas?.price || 25), // Preço padrão se não selecionado
+    plates: plateQuantity * (productPrices.placas?.price || 25),
     profiles: (montanteQuantity + guiaQuantity) * (productPrices.perfisMetalicos?.price || 15),
     screws: (screw25mmQuantity * 0.05) + (screw13mmQuantity * 0.08),
-    jointMass: jointMassQuantity * (productPrices.massaJuntas?.price || 8), // R$/kg
-    finishMass: finishMassQuantity * (productPrices.massaAcabamento?.price || 12), // R$/kg
-    tape: tapeQuantity * (productPrices.fita?.price || 0.80), // R$/metro
+    jointMass: jointMassQuantity * (productPrices.massaJuntas?.price || 8),
+    finishMass: finishMassQuantity * (productPrices.massaAcabamento?.price || 12),
+    tape: tapeQuantity * (productPrices.fita?.price || 0.80),
     insulation: insulationQuantity ? insulationQuantity * (productPrices.isolamento?.price || 15) : 0,
-    acousticBand: acousticBandQuantity ? acousticBandQuantity * 2.50 : 0
+    acousticBand: acousticBandQuantity ? acousticBandQuantity * 2.50 : 0,
+    // Custos dos materiais extras
+    extraMaterialsCost: (extraMaterials.primer * 12) + (extraMaterials.sandpaper * 5) + 
+                        (extraMaterials.extraCoats * 50) + (extraMaterials.specialTools * 100)
   };
   
   // Multiplicadores regionais
@@ -115,19 +143,32 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
   
   const regionalMultiplier = regionalMultipliers[region] || 1.0;
   
-  // Custos de mão de obra
+  // Custos de mão de obra com Sistema Inteligente
+  const baseLaborCosts = {
+    structure: 15,      // R$/m² para estrutura (constante)
+    installation: 20,   // R$/m² para instalação (constante)
+    finishing: 35       // R$/m² base para acabamento Level 4
+  };
+  
   const laborCosts = {
-    structure: netArea * 15 * regionalMultiplier,
-    installation: netArea * 20 * regionalMultiplier,
-    finishing: netArea * 35 * regionalMultiplier,
+    structure: netArea * baseLaborCosts.structure * regionalMultiplier,
+    installation: netArea * baseLaborCosts.installation * regionalMultiplier,
+    finishing: netArea * baseLaborCosts.finishing * levelConfig.laborMultiplier * regionalMultiplier,
     insulation: features.insulation ? netArea * 8 * regionalMultiplier : 0
   };
   
-  // Horas de mão de obra
+  // Horas de mão de obra com Sistema Inteligente
+  // Produtividade por nível: Level 3: 8.33 m²/h, Level 4: 6.67 m²/h, Level 5: 5 m²/h
+  const finishProductivity = {
+    level_3: 8.33, // 12h para 100m²
+    level_4: 6.67, // 15h para 100m²  
+    level_5: 5.0   // 20h para 100m²
+  };
+  
   const laborHours = {
-    structure: netArea / 15,
-    installation: netArea / 20,
-    finishing: netArea / 12,
+    structure: netArea / 15,        // 15 m²/hora para estrutura (constante)
+    installation: netArea / 20,     // 20 m²/hora para instalação (constante)
+    finishing: netArea / finishProductivity[finishType],
     insulation: features.insulation ? netArea / 25 : undefined
   };
   
@@ -142,7 +183,7 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
     screw25mmQuantity,
     screw13mmQuantity,
     
-    // Massas separadas corretamente
+    // Massas separadas com Sistema Inteligente
     jointMassQuantity,
     finishMassQuantity,
     tapeQuantity,
@@ -165,10 +206,11 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
         plates: materialCosts.plates,
         profiles: materialCosts.profiles,
         screws: materialCosts.screws,
-        mass: materialCosts.jointMass + materialCosts.finishMass, // Legado
+        mass: materialCosts.jointMass + materialCosts.finishMass,
         tape: materialCosts.tape,
         insulation: materialCosts.insulation,
-        acousticBand: materialCosts.acousticBand
+        acousticBand: materialCosts.acousticBand,
+        extraMaterials: materialCosts.extraMaterialsCost
       },
       labor: laborCosts
     },
@@ -185,7 +227,14 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
       configuration: input.wallConfiguration.replace('_', ' ').toLowerCase(),
       face1Material: 'drywall padrão',
       face2Material: 'drywall padrão',
-      recommendedUse: ['Divisórias internas', 'Uso geral']
+      recommendedUse: ['Divisórias internas', 'Uso geral'],
+      
+      // Dados específicos do Sistema Inteligente de Acabamento
+      finishLevel: finishType,
+      finishDescription: getFinishDescription(finishType),
+      extraMaterials: extraMaterials,
+      timelineMultiplier: levelConfig.timeline,
+      estimatedDays: Math.ceil((netArea / 20) * levelConfig.timeline) // Base: 20m²/dia
     }
   };
 }
@@ -224,6 +273,48 @@ async function getSelectedProductPrices(selectedProducts?: any) {
     console.error('Erro ao buscar preços dos produtos:', error);
     return {};
   }
+}
+
+// Sistema de materiais extras por nível de acabamento
+function getExtraMaterialsByFinishLevel(finishType: 'level_3' | 'level_4' | 'level_5', area: number) {
+  switch (finishType) {
+    case 'level_5':
+      return {
+        primer: area * 0.15, // L/m² - Primer específico para nível 5
+        sandpaper: area * 0.25, // m² - Lixa mais fina e maior quantidade  
+        extraCoats: 2, // Demãos extras de massa
+        specialTools: 1, // Ferramentas especializadas
+        description: 'Primer de alta aderência, lixa grão 220/320, ferramentas de precisão'
+      };
+    case 'level_4':
+      return {
+        primer: area * 0.10, // L/m² - Primer padrão
+        sandpaper: area * 0.15, // m² - Lixa padrão
+        extraCoats: 1, // Uma demão extra
+        specialTools: 0,
+        description: 'Primer padrão, lixa grão 150/180'
+      };
+    case 'level_3':
+    default:
+      return {
+        primer: area * 0.05, // L/m² - Primer básico  
+        sandpaper: area * 0.08, // m² - Lixa básica
+        extraCoats: 0, // Sem demãos extras
+        specialTools: 0,
+        description: 'Primer básico, lixa grão 100/120, textura aplicada'
+      };
+  }
+}
+
+// Descrições técnicas dos níveis de acabamento
+function getFinishDescription(finishType: 'level_3' | 'level_4' | 'level_5'): string {
+  const descriptions = {
+    level_3: 'Acabamento Nível 3 - Texturizado: Superfície preparada para texturas decorativas e tintas que escondem pequenas imperfeições. Ideal para áreas residenciais com acabamento texturizado.',
+    level_4: 'Acabamento Nível 4 - Tinta Fosca/Acetinada: Superfície lisa preparada para tintas foscas e acetinadas. Padrão comercial com excelente relação custo-benefício.',
+    level_5: 'Acabamento Nível 5 - Tinta Brilhante/Semibrilho: Superfície perfeitamente lisa para tintas brilhantes e semibrillhantes. Máxima qualidade para ambientes sofisticados.'
+  };
+  
+  return descriptions[finishType];
 }
 
 // Função auxiliar para seleção automática de produtos (mais econômicos)

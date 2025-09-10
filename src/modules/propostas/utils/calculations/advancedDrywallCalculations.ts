@@ -232,12 +232,23 @@ export function calculateAdvancedDrywall(input: DrywallCalculationInput): Drywal
   const screwWoodQuantity = osbQuantity > 0 ? Math.ceil(netWallArea * 25 * (osbQuantity / Math.ceil((netWallArea / 2.88) * 1.10))) : 0;
   const screwCementQuantity = cementiciousQuantity > 0 ? Math.ceil(netWallArea * 20 * (cementiciousQuantity / Math.ceil((netWallArea / 2.88) * 1.10))) : 0;
   
-  // 5. Massa e fita (apenas para placas de gesso)
+  // 5. MASSAS E FITA (Sistema Inteligente por Nível)
+  const finishLevelMultipliers = {
+    level_3: { joint: 0.4, finish: 0.45, laborMultiplier: 1.0 },
+    level_4: { joint: 0.5, finish: 0.65, laborMultiplier: 1.25 },  
+    level_5: { joint: 0.6, finish: 0.9, laborMultiplier: 1.67 }
+  };
+  
+  const levelConfig = finishLevelMultipliers[finishType];
+  
+  // Calcular número de faces de drywall para determinar consumo proporcional
   const drywallFaces = [face1Type, face2Type].filter(type => 
     type.startsWith('knauf_') || type.startsWith('placo_')).length;
-  const massQuantity = netWallArea * 0.50 * (drywallFaces / 2);
-  const jointMassQuantity = massQuantity * 0.4; // 40% para juntas
-  const finishMassQuantity = massQuantity * 0.6; // 60% para acabamento
+  
+  // Massa com Sistema Inteligente baseado no nível de acabamento
+  const jointMassQuantity = netWallArea * levelConfig.joint * (drywallFaces / 2);
+  const finishMassQuantity = netWallArea * levelConfig.finish * (drywallFaces / 2);
+  const massQuantity = jointMassQuantity + finishMassQuantity; // Total para compatibilidade
   const tapeQuantity = netWallArea * 2.50 * (drywallFaces / 2);
   
   // 7. Materiais especiais
@@ -329,7 +340,14 @@ export function calculateAdvancedDrywall(input: DrywallCalculationInput): Drywal
     configuration: configDescription,
     face1Material: face1Type.replace('_', ' '),
     face2Material: face2Type.replace('_', ' '),
-    recommendedUse
+    recommendedUse,
+    
+    // Sistema Inteligente de Acabamento
+    finishLevel: finishType,
+    finishDescription: getFinishDescription(finishType),
+    extraMaterials: getExtraMaterialsByFinishLevel(finishType, netWallArea),
+    timelineMultiplier: levelConfig.laborMultiplier,
+    estimatedDays: Math.ceil((netWallArea / 20) * levelConfig.laborMultiplier)
   };
 
   return {
@@ -350,7 +368,7 @@ export function calculateAdvancedDrywall(input: DrywallCalculationInput): Drywal
     finishMassQuantity,
     tapeQuantity,
     
-    // Campo obrigatório para compatibilidade
+    // Campos obrigatórios
     massQuantity: jointMassQuantity + finishMassQuantity,
     
     // Campos de compatibilidade com useProposalCalculator  
@@ -407,4 +425,46 @@ function getRecommendedUse(face1: string, face2: string, features: any): string[
   }
   
   return uses;
+}
+
+// Sistema de materiais extras por nível de acabamento  
+function getExtraMaterialsByFinishLevel(finishType: 'level_3' | 'level_4' | 'level_5', area: number) {
+  switch (finishType) {
+    case 'level_5':
+      return {
+        primer: area * 0.15,
+        sandpaper: area * 0.25,
+        extraCoats: 2,
+        specialTools: 1,
+        description: 'Primer de alta aderência, lixa grão 220/320, ferramentas de precisão'
+      };
+    case 'level_4':
+      return {
+        primer: area * 0.10,
+        sandpaper: area * 0.15,
+        extraCoats: 1,
+        specialTools: 0,
+        description: 'Primer padrão, lixa grão 150/180'
+      };
+    case 'level_3':
+    default:
+      return {
+        primer: area * 0.05,
+        sandpaper: area * 0.08,
+        extraCoats: 0,
+        specialTools: 0,
+        description: 'Primer básico, lixa grão 100/120, textura aplicada'
+      };
+  }
+}
+
+// Descrições técnicas dos níveis de acabamento
+function getFinishDescription(finishType: 'level_3' | 'level_4' | 'level_5'): string {
+  const descriptions = {
+    level_3: 'Acabamento Nível 3 - Texturizado: Superfície preparada para texturas decorativas e tintas que escondem pequenas imperfeições. Ideal para áreas residenciais com acabamento texturizado.',
+    level_4: 'Acabamento Nível 4 - Tinta Fosca/Acetinada: Superfície lisa preparada para tintas foscas e acetinadas. Padrão comercial com excelente relação custo-benefício.',
+    level_5: 'Acabamento Nível 5 - Tinta Brilhante/Semibrilho: Superfície perfeitamente lisa para tintas brilhantes e semibrillhantes. Máxima qualidade para ambientes sofisticados.'
+  };
+  
+  return descriptions[finishType];
 }

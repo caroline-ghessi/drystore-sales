@@ -417,6 +417,7 @@ export interface DrywallCalculationResult {
       waterproofing?: number;
       osbFinish?: number;
       specialAnchors?: number;
+      extraMaterials?: number; // Materiais extras por nível de acabamento
     };
     labor: {
       structure: number;
@@ -443,6 +444,19 @@ export interface DrywallCalculationResult {
     face1Material: string;
     face2Material: string;
     recommendedUse: string[];
+    
+    // Sistema Inteligente de Acabamento
+    finishLevel?: 'level_3' | 'level_4' | 'level_5';
+    finishDescription?: string;
+    extraMaterials?: {
+      primer: number;
+      sandpaper: number;
+      extraCoats: number;
+      specialTools: number;
+      description: string;
+    };
+    timelineMultiplier?: number;
+    estimatedDays?: number;
   };
 }
 
