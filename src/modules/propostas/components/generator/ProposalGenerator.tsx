@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Loader2, Zap, Calculator, FileText, Download, Save, Trash2 } from 'lucide-react';
 import { ProductType, ClientData } from '../../types/proposal.types';
+import { BatteryBackupResult } from '../../types/calculation.types';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useProposalCalculator } from '../../hooks/useProposalCalculator';
 import { useSavedCalculations } from '../../hooks/useSavedCalculations';
@@ -121,7 +122,12 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
       case 'solar_advanced':
         return <SolarCalculator onCalculate={calculator.calculate} />;
       case 'battery_backup':
-        return <BatteryBackupCalculator onCalculate={calculator.calculate} />;
+        return <BatteryBackupCalculator 
+          onCalculate={calculator.calculate}
+          calculationResult={calculator.calculationResult as BatteryBackupResult}
+          onSaveCalculation={handleSaveCalculation}
+          onGenerateProposal={handleManualGeneration}
+        />;
       case 'shingle':
         return <ShingleCalculatorWrapper onCalculate={calculator.calculate} />;
       case 'drywall':
