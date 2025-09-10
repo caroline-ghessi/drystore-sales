@@ -19,7 +19,6 @@ export function AdvancedDrywallCalculator({ onCalculate }: AdvancedDrywallCalcul
   const [input, setInput] = useState<DrywallCalculationInput>({
     area: 0,
     quantity: 1,
-    region: 'southeast',
     wallArea: 10,
     wallHeight: 2.8,
     configMode: 'predefined',
@@ -147,25 +146,6 @@ export function AdvancedDrywallCalculator({ onCalculate }: AdvancedDrywallCalcul
                   value={input.wallHeight}
                   onChange={(e) => setInput({ ...input, wallHeight: Number(e.target.value) })}
                 />
-              </div>
-
-              <div>
-                <Label>Região *</Label>
-                <Select
-                  value={input.region}
-                  onValueChange={(value: any) => setInput({ ...input, region: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="north">Norte (+25%)</SelectItem>
-                    <SelectItem value="northeast">Nordeste (+15%)</SelectItem>
-                    <SelectItem value="center_west">Centro-Oeste (+10%)</SelectItem>
-                    <SelectItem value="southeast">Sudeste (Base)</SelectItem>
-                    <SelectItem value="south">Sul (+8%)</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
 

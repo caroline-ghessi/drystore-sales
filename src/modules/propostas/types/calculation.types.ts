@@ -1,7 +1,7 @@
 export interface BaseCalculationInput {
   area?: number;
   quantity?: number;
-  region: 'north' | 'northeast' | 'center_west' | 'southeast' | 'south';
+  region?: 'north' | 'northeast' | 'center_west' | 'southeast' | 'south';
 }
 
 // Energia Solar

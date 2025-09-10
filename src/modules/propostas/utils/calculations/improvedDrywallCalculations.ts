@@ -138,16 +138,8 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
                         (extraMaterials.extraCoats * 50) + (extraMaterials.specialTools * 100)
   };
   
-  // Multiplicadores regionais
-  const regionalMultipliers = {
-    north: 1.25,
-    northeast: 1.15,
-    center_west: 1.10,
-    southeast: 1.0,
-    south: 1.08
-  };
-  
-  const regionalMultiplier = regionalMultipliers[region] || 1.0;
+  // Multiplicador regional fixado em 1.0 (sem variação regional)
+  const regionalMultiplier = 1.0;
   
   // Custos de mão de obra com Sistema Inteligente
   const baseLaborCosts = {
