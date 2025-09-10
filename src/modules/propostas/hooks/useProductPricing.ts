@@ -76,13 +76,17 @@ export function useProductPricing(productType: ProductType) {
       case 'shingle': {
         const result = calculationResult as any;
         
-        // Find products and calculate costs
-        const shingleProduct = products.find(p => p.name.toLowerCase().includes('shingle'));
+        // Find products by specific shingle type
+        const oakridgeProduct = products.find(p => p.name.toLowerCase().includes('oakridge'));
+        const supremeProduct = products.find(p => p.name.toLowerCase().includes('supreme'));
         const osbProduct = products.find(p => p.name.toLowerCase().includes('osb'));
         const underlaymentProduct = products.find(p => p.name.toLowerCase().includes('manta'));
         
-        if (shingleProduct && result.shingleQuantity) {
-          const shingleCost = (result.shingleQuantity * shingleProduct.base_price) * baseMultiplier;
+        // Use shingle type from result to select correct product
+        const selectedShingleProduct = result.shingleType === 'oakridge' ? oakridgeProduct : supremeProduct;
+        
+        if (selectedShingleProduct && result.shingleQuantity) {
+          const shingleCost = (result.shingleQuantity * selectedShingleProduct.base_price) * baseMultiplier;
           itemizedPrices['shingles'] = shingleCost * (1 + finalConfig.profitMargin);
           totalMaterialCost += shingleCost;
         }
@@ -93,8 +97,8 @@ export function useProductPricing(productType: ProductType) {
           totalMaterialCost += osbCost;
         }
 
-        if (underlaymentProduct && result.underlaymentArea) {
-          const underlaymentCost = (result.underlaymentArea * underlaymentProduct.base_price) * baseMultiplier;
+        if (underlaymentProduct && result.underlaymentQuantity) {
+          const underlaymentCost = (result.underlaymentQuantity * underlaymentProduct.base_price) * baseMultiplier;
           itemizedPrices['underlayment'] = underlaymentCost * (1 + finalConfig.profitMargin);
           totalMaterialCost += underlaymentCost;
         }

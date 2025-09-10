@@ -16,7 +16,7 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
   const [input, setInput] = useState<ShingleCalculationInput>({
     roofArea: 100,
     roofSlope: 25,
-    shingleType: 'asphalt',
+    shingleType: 'oakridge',
     roofDetails: {
       perimeterLength: 40,
       ridgeLength: 10,
@@ -122,10 +122,8 @@ export function ShingleCalculator({ onCalculate }: ShingleCalculatorProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="asphalt">Asfáltica - 30 anos garantia</SelectItem>
-                  <SelectItem value="ceramic">Cerâmica - 25 anos garantia</SelectItem>
-                  <SelectItem value="concrete">Concreto - 20 anos garantia</SelectItem>
-                  <SelectItem value="metal">Metálica - 50 anos garantia</SelectItem>
+                  <SelectItem value="oakridge">Linha Oakridge - 30 anos garantia</SelectItem>
+                  <SelectItem value="supreme">Linha Supreme - 25 anos garantia</SelectItem>
                 </SelectContent>
               </Select>
             </div>

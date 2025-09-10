@@ -222,7 +222,7 @@ export interface BatteryBackupResult {
 export interface ShingleCalculationInput extends BaseCalculationInput {
   roofArea: number; // m²
   roofSlope: number; // degrees
-  shingleType: 'asphalt' | 'ceramic' | 'concrete' | 'metal';
+  shingleType: 'oakridge' | 'supreme';
   
   // Roof details
   roofDetails: {

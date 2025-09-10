@@ -21,13 +21,7 @@ const REGIONAL_MULTIPLIERS = {
   south: 1.08
 };
 
-// Preços base por tipo de telha (R$/m²)
-const SHINGLE_PRICES = {
-  asphalt: 45,
-  ceramic: 65,
-  concrete: 35,
-  metal: 85
-};
+// Preços serão passados como parâmetro do sistema de produtos
 
 // Rendimentos dos materiais
 const MATERIAL_YIELDS = {
@@ -47,7 +41,22 @@ function getSlopeCorrectionFactor(slope: number): number {
   return SLOPE_CORRECTION_FACTORS[50];
 }
 
-export function calculateShingleInstallation(input: ShingleCalculationInput): ShingleCalculationResult {
+export function calculateShingleInstallation(
+  input: ShingleCalculationInput, 
+  productPrices?: {
+    shinglePrice?: number;
+    osbPrice?: number; 
+    underlaymentPrice?: number;
+    laborCostPerM2?: number;
+    equipmentCostPerM2?: number;
+    accessoryPrices?: {
+      ridgeCapPrice?: number;
+      valleyPrice?: number;
+      flashingPrice?: number;
+      sealantPrice?: number;
+    };
+  }
+): ShingleCalculationResult {
   const { 
     roofArea, 
     roofSlope, 
@@ -104,15 +113,29 @@ export function calculateShingleInstallation(input: ShingleCalculationInput): Sh
   // Unidades de ventilação (se incluídas)
   const ventilationUnits = features.ventilation ? Math.ceil(totalArea / 50) : undefined;
   
-  // 5. CUSTOS
-  const shingleUnitPrice = SHINGLE_PRICES[shingleType];
-  const laborCostPerM2 = 25; // R$/m²
-  const equipmentCostPerM2 = 5; // R$/m²
+  // 5. CUSTOS - Usar preços do sistema de produtos ou fallback
+  const shinglePrice = productPrices?.shinglePrice || 40; // Fallback price
+  const osbPrice = productPrices?.osbPrice || 35;
+  const underlaymentPrice = productPrices?.underlaymentPrice || 180;
+  const laborCostPerM2 = productPrices?.laborCostPerM2 || 25;
+  const equipmentCostPerM2 = productPrices?.equipmentCostPerM2 || 5;
   
-  const shinglesCost = shingleQuantity * shingleUnitPrice * 3 * totalMultiplier; // 3m² por fardo
-  const osbCost = osbQuantity * 35 * totalMultiplier; // R$ 35 por placa
-  const underlaymentCost = underlaymentQuantity * 180 * totalMultiplier; // R$ 180 por rolo
-  const accessoriesCost = (ridgeCapQuantity * 45 + valleyQuantity * 25 + flashingQuantity * 15 + sealantQuantity * 12) * totalMultiplier;
+  const accessoryPrices = productPrices?.accessoryPrices || {
+    ridgeCapPrice: 45,
+    valleyPrice: 25, 
+    flashingPrice: 15,
+    sealantPrice: 12
+  };
+  
+  const shinglesCost = shingleQuantity * shinglePrice * 3 * totalMultiplier; // 3m² por fardo
+  const osbCost = osbQuantity * osbPrice * totalMultiplier;
+  const underlaymentCost = underlaymentQuantity * underlaymentPrice * totalMultiplier;
+  const accessoriesCost = (
+    ridgeCapQuantity * accessoryPrices.ridgeCapPrice + 
+    valleyQuantity * accessoryPrices.valleyPrice + 
+    flashingQuantity * accessoryPrices.flashingPrice + 
+    sealantQuantity * accessoryPrices.sealantPrice
+  ) * totalMultiplier;
   const laborCost = totalArea * laborCostPerM2 * totalMultiplier;
   const equipmentCost = totalArea * equipmentCostPerM2;
   

@@ -14,7 +14,7 @@ import { useProposalCalculator } from '../../hooks/useProposalCalculator';
 import { useSavedCalculations } from '../../hooks/useSavedCalculations';
 import { SimpleSolarCalculator } from '../calculator/SimpleSolarCalculator';
 import { BatteryBackupCalculator } from '../calculator/BatteryBackupCalculator';
-import { ShingleCalculator } from '../calculator/ShingleCalculator';
+import { ShingleCalculatorWrapper } from '../calculator/ShingleCalculatorWrapper';
 import { DrywallCalculatorWrapper } from '../calculator/DrywallCalculatorWrapper';
 import { ForroDrywallCalculator } from '../calculator/ForroDrywallCalculator';
 import { AcousticMineralCeilingWrapper } from '../calculator/AcousticMineralCeilingWrapper';
@@ -120,7 +120,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
       case 'battery_backup':
         return <BatteryBackupCalculator onCalculate={calculator.calculate} />;
       case 'shingle':
-        return <ShingleCalculator onCalculate={calculator.calculate} />;
+        return <ShingleCalculatorWrapper onCalculate={calculator.calculate} />;
       case 'drywall':
         return <DrywallCalculatorWrapper onCalculate={calculator.calculate} />;
       case 'forro_drywall':
