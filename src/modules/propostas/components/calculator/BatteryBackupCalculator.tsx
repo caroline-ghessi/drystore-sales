@@ -10,6 +10,9 @@ import { Battery, Zap, Shield, Clock } from 'lucide-react';
 import { BatteryBackupInput, BatteryBackupResult } from '../../types/calculation.types';
 import { validateEssentialLoads } from '../../utils/calculations/batteryBackupCalculations';
 import { BatteryBackupResults } from './BatteryBackupResults';
+import { useBatteryProductCalculator } from '../../hooks/useBatteryProductCalculator';
+import { ProductWarning } from '../shared/ProductWarning';
+import { useNavigate } from 'react-router-dom';
 
 interface BatteryBackupCalculatorProps {
   onCalculate: (input: BatteryBackupInput) => void;
@@ -24,6 +27,9 @@ export function BatteryBackupCalculator({
   onSaveCalculation, 
   onGenerateProposal 
 }: BatteryBackupCalculatorProps) {
+  const navigate = useNavigate();
+  const { hasProducts, getAvailableProducts } = useBatteryProductCalculator();
+  
   const [showResults, setShowResults] = useState(false);
   const [input, setInput] = useState<BatteryBackupInput>({
     essentialLoads: {
@@ -101,6 +107,23 @@ export function BatteryBackupCalculator({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Product Warning */}
+        {(() => {
+          const availableProducts = getAvailableProducts();
+          const missingProducts: string[] = [];
+          
+          if (!availableProducts.batteries.length) missingProducts.push('Baterias');
+          if (!availableProducts.inverters.length) missingProducts.push('Inversores Híbridos');
+          
+          return (
+            <ProductWarning 
+              productType="Backup de Energia"
+              missingProducts={missingProducts}
+              onNavigateToProducts={() => navigate('/propostas/produtos')}
+            />
+          );
+        })()}
+        
         {/* Cargas Essenciais */}
         <div>
           <Label className="text-base font-semibold">Cargas Essenciais (Watts)</Label>

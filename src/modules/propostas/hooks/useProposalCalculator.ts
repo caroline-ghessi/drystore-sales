@@ -3,6 +3,9 @@ import { ProductType, ProposalItem } from '../types/proposal.types';
 import { CalculationInput, CalculationResult } from '../types/calculation.types';
 import { calculateSimpleSolarSystem } from '../utils/calculations/simpleSolarCalculations';
 import { calculateBatteryBackup } from '../utils/calculations/batteryBackupCalculations';
+import { calculateSolarWithProducts } from '../utils/calculations/productBasedSolarCalculations';
+import { calculateBatteryBackupWithProducts } from '../utils/calculations/productBasedBatteryBackupCalculations';
+import { useUnifiedProducts } from './useUnifiedProducts';
 import { calculateShingleInstallation } from '../utils/calculations/shingleCalculations';
 import { calculateDrywallInstallation } from '../utils/calculations/drywallCalculations';
 import { calculateForroDrywall } from '../utils/calculations/forroDrywallCalculations';
@@ -13,6 +16,14 @@ export function useProposalCalculator(productType: ProductType) {
   const [calculationResult, setCalculationResult] = useState<CalculationResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Buscar produtos baseado no tipo
+  const categoryMap: Record<string, any> = {
+    'solar': 'energia_solar' as const,
+    'battery_backup': 'battery_backup' as const
+  };
+  const category = categoryMap[productType];
+  const { products } = useUnifiedProducts(category);
 
   const calculate = useCallback(async (input: CalculationInput) => {
     setIsCalculating(true);
@@ -23,10 +34,20 @@ export function useProposalCalculator(productType: ProductType) {
       
       switch (productType) {
         case 'solar':
-          result = calculateSimpleSolarSystem(input as any);
+          // Usar cálculo baseado em produtos se disponível
+          if (products && products.length > 0) {
+            result = calculateSolarWithProducts(input as any, products);
+          } else {
+            result = calculateSimpleSolarSystem(input as any);
+          }
           break;
         case 'battery_backup':
-          result = calculateBatteryBackup(input as any);
+          // Usar cálculo baseado em produtos se disponível
+          if (products && products.length > 0) {
+            result = calculateBatteryBackupWithProducts(input as any, products);
+          } else {
+            result = calculateBatteryBackup(input as any);
+          }
           break;
         case 'shingle':
           result = calculateShingleInstallation(input as any);
@@ -51,7 +72,7 @@ export function useProposalCalculator(productType: ProductType) {
     } finally {
       setIsCalculating(false);
     }
-  }, [productType]);
+  }, [productType, products]);
 
   const generateProposalItems = useCallback((): ProposalItem[] => {
     if (!calculationResult) return [];

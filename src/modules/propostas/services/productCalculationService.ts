@@ -109,15 +109,19 @@ export class ProductCalculationService {
   }
 
   static getSolarProducts(products: UnifiedProduct[]) {
+    const solarProducts = this.findProductsByCategory(products, 'energia_solar');
     return {
-      panels: this.findProductsByCategory(products, 'energia_solar').filter(p => 
+      panels: solarProducts.filter(p => 
         p.solar_category === 'panel' || p.subcategory === 'painel'
       ),
-      inverters: this.findProductsByCategory(products, 'energia_solar').filter(p => 
+      inverters: solarProducts.filter(p => 
         p.solar_category === 'inverter' || p.subcategory === 'inversor'
       ),
-      structure: this.findProductsByCategory(products, 'energia_solar', 'estrutura'),
-      cables: this.findProductsByCategory(products, 'energia_solar', 'cabo')
+      batteries: solarProducts.filter(p => 
+        p.solar_category === 'battery' || p.subcategory === 'bateria'
+      ),
+      structure: solarProducts.filter(p => p.subcategory === 'estrutura'),
+      cables: solarProducts.filter(p => p.subcategory === 'cabo')
     };
   }
 

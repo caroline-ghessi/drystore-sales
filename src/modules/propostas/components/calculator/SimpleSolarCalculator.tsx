@@ -6,12 +6,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calculator, Sun, Zap, Receipt, Camera } from 'lucide-react';
 import { SimpleSolarCalculationInput } from '../../types/calculation.types';
+import { useSolarProductCalculator } from '../../hooks/useSolarProductCalculator';
+import { ProductWarning } from '../shared/ProductWarning';
+import { useNavigate } from 'react-router-dom';
 
 interface SimpleSolarCalculatorProps {
   onCalculate: (input: SimpleSolarCalculationInput) => void;
 }
 
 export function SimpleSolarCalculator({ onCalculate }: SimpleSolarCalculatorProps) {
+  const navigate = useNavigate();
+  const { hasProducts, getAvailableProducts } = useSolarProductCalculator();
+  
   const [input, setInput] = useState<SimpleSolarCalculationInput>({
     monthlyConsumption: 300,
     currentTariff: 0.75,
@@ -42,6 +48,13 @@ export function SimpleSolarCalculator({ onCalculate }: SimpleSolarCalculatorProp
     if (tariffError) return;
     onCalculate(input);
   };
+
+  // Verificar produtos disponíveis
+  const availableProducts = getAvailableProducts();
+  const missingProducts: string[] = [];
+  
+  if (!availableProducts.panels.length) missingProducts.push('Painéis Solares');
+  if (!availableProducts.inverters.length) missingProducts.push('Inversores');
 
   const monthlyBill = input.monthlyConsumption * input.currentTariff;
 
