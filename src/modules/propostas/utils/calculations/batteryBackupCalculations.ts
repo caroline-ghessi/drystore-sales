@@ -86,13 +86,13 @@ export function calculateBatteryBackup(input: BatteryBackupInput): BatteryBackup
     }
   }
   
-  // Calcular custos
+  // Calcular custos (apenas produtos)
   const batteryCost = finalBatteryQuantity * batterySpecs.price;
   const inverterCost = inverterSpecs.price;
-  const installationCost = (batteryCost + inverterCost) * 0.15; // 15% do equipamento
   const accessoriesCost = totalPowerKW * 500; // Cabos, disjuntores, etc.
   
-  const totalCost = batteryCost + inverterCost + installationCost + accessoriesCost;
+  // Total apenas dos produtos (sem instalação automática)
+  const totalCost = batteryCost + inverterCost + accessoriesCost;
   
   // Calcular economia/valor
   const monthlyGridCost = calculateMonthlyChargingCost(totalCapacityKwh);
@@ -119,7 +119,7 @@ export function calculateBatteryBackup(input: BatteryBackupInput): BatteryBackup
     itemizedCosts: {
       batteries: batteryCost,
       inverters: inverterCost,
-      installation: installationCost,
+      installation: 0, // Não incluído automaticamente
       monitoring: accessoriesCost * 0.3,
       protection: accessoriesCost * 0.7
     },

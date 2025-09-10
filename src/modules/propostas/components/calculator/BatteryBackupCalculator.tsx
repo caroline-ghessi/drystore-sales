@@ -7,14 +7,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Battery, Zap, Shield, Clock } from 'lucide-react';
-import { BatteryBackupInput } from '../../types/calculation.types';
+import { BatteryBackupInput, BatteryBackupResult } from '../../types/calculation.types';
 import { validateEssentialLoads } from '../../utils/calculations/batteryBackupCalculations';
+import { BatteryBackupResults } from './BatteryBackupResults';
 
 interface BatteryBackupCalculatorProps {
   onCalculate: (input: BatteryBackupInput) => void;
+  calculationResult?: BatteryBackupResult;
+  onSaveCalculation?: () => void;
+  onGenerateProposal?: () => void;
 }
 
-export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculatorProps) {
+export function BatteryBackupCalculator({ 
+  onCalculate, 
+  calculationResult, 
+  onSaveCalculation, 
+  onGenerateProposal 
+}: BatteryBackupCalculatorProps) {
+  const [showResults, setShowResults] = useState(false);
   const [input, setInput] = useState<BatteryBackupInput>({
     essentialLoads: {
       lighting: 300,
@@ -60,7 +70,24 @@ export function BatteryBackupCalculator({ onCalculate }: BatteryBackupCalculator
 
   const handleCalculate = () => {
     onCalculate(input);
+    setShowResults(true);
   };
+
+  const handleRecalculate = () => {
+    setShowResults(false);
+  };
+
+  // Show results if calculation is complete
+  if (showResults && calculationResult) {
+    return (
+      <BatteryBackupResults
+        result={calculationResult}
+        onRecalculate={handleRecalculate}
+        onSave={onSaveCalculation}
+        onGenerateProposal={onGenerateProposal}
+      />
+    );
+  }
 
   return (
     <Card>
