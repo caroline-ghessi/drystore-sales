@@ -113,7 +113,13 @@ export function useUnifiedProducts(category?: UnifiedProductCategory) {
           description: `${equipment.category === 'panel' ? 'Painel Solar' : 
                         equipment.category === 'inverter' ? 'Inversor Solar' : 
                         'Bateria'} - ${equipment.brand}`,
-          category: (equipment.category === 'battery' ? 'battery_backup' : 'energia_solar') as UnifiedProductCategory,
+          category: (equipment.category === 'battery' ? 'battery_backup' : 
+                    equipment.category === 'inverter' && 
+                    (equipment.model?.toLowerCase().includes('híbrido') || 
+                     equipment.model?.toLowerCase().includes('hibrido') ||
+                     equipment.model?.toLowerCase().includes('hybrid') ||
+                     equipment.brand?.toLowerCase().includes('growatt') ||
+                     equipment.brand?.toLowerCase().includes('deye')) ? 'battery_backup' : 'energia_solar') as UnifiedProductCategory,
           unit: equipment.category === 'panel' ? 'unidade' : 
                 equipment.category === 'inverter' ? 'unidade' : 
                 'unidade',
