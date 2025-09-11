@@ -80,6 +80,9 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const requestData: ProposalGenerationRequest = await req.json();
+    console.log('=== GENERATE PROPOSAL FUNCTION STARTED ===');
+    console.log('Request method:', req.method);
+    console.log('Raw request received:', JSON.stringify(requestData, null, 2));
     console.log('Generating proposal for calculation:', requestData.calculationId || 'direct calculation');
 
     let calculation: any = null;
@@ -151,37 +154,65 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Failed to create proposal: ${proposalError.message}`);
     }
 
-    // Create proposal items apenas se há pricing definido
-    if (requestData.pricing?.items) {
-      const proposalItems = requestData.pricing.items.map((item, index) => ({
-      proposal_id: proposal.id,
-      custom_name: item.name,
-      description: `${item.name} - ${item.category}`,
-      quantity: item.quantity,
-      unit_price: item.unitPrice,
-      total_price: item.totalPrice,
-      specifications: {
-        unit: item.unit,
-        category: item.category,
-        originalId: item.id
-      },
-      sort_order: index
-    }));
-
-    const { error: itemsError } = await supabase
-      .from('proposal_items')
-      .insert(proposalItems);
-
-    if (itemsError) {
-      throw new Error(`Failed to create proposal items: ${itemsError.message}`);
-    }
+    console.log('=== PROPOSAL GENERATION DEBUG ===');
+    console.log('Client Data:', JSON.stringify(requestData.clientData, null, 2));
+    console.log('Product Type:', requestData.productType);
+    console.log('Calculation Input:', JSON.stringify(requestData.calculationInput, null, 2));
+    console.log('Pricing data received:', JSON.stringify(requestData.pricing, null, 2));
+    console.log('Pricing items array:', requestData.pricing?.items);
+    console.log('Pricing items length:', requestData.pricing?.items?.length || 0);
+    
+    // Validar se temos dados de pricing válidos
+    if (!requestData.pricing) {
+      throw new Error('Pricing data is missing from request');
     }
 
-     // Debug log dos dados recebidos
-     console.log('Pricing data received:', JSON.stringify(requestData.pricing, null, 2));
-     
-     // Generate HTML content for the proposal
-     const htmlContent = generateProposalHTML({
+    // Create proposal items com logs detalhados
+    console.log('=== INSERTING PROPOSAL ITEMS ===');
+    console.log('Pricing items available:', !!requestData.pricing?.items);
+    console.log('Items array length:', requestData.pricing?.items?.length || 0);
+    
+    if (requestData.pricing?.items && Array.isArray(requestData.pricing.items)) {
+      console.log('Items to insert:', JSON.stringify(requestData.pricing.items, null, 2));
+      
+      const proposalItems = requestData.pricing.items.map((item, index) => {
+        const mappedItem = {
+          proposal_id: proposal.id,
+          custom_name: item.name || 'Item sem nome',
+          description: `${item.name || 'Item'} - ${item.category || 'Categoria'}`,
+          quantity: Number(item.quantity) || 0,
+          unit_price: Number(item.unitPrice) || 0,
+          total_price: Number(item.totalPrice) || 0,
+          specifications: {
+            unit: item.unit,
+            category: item.category,
+            originalId: item.id,
+            specifications: item.specifications || {}
+          },
+          sort_order: index
+        };
+        
+        console.log(`Mapped item ${index + 1}:`, JSON.stringify(mappedItem, null, 2));
+        return mappedItem;
+      });
+
+      const { error: itemsError } = await supabase
+        .from('proposal_items')
+        .insert(proposalItems);
+
+      if (itemsError) {
+        console.error('Error inserting proposal items:', itemsError);
+        throw new Error(`Failed to create proposal items: ${itemsError.message}`);
+      }
+      
+      console.log(`Successfully inserted ${proposalItems.length} proposal items`);
+    } else {
+      console.warn('No valid pricing items found to insert');
+      console.log('Available pricing data:', Object.keys(requestData.pricing || {}));
+    }
+
+    // Generate HTML content for the proposal
+    const htmlContent = generateProposalHTML({
       proposal,
       items: requestData.pricing?.items || [],
       clientData: requestData.clientData,
