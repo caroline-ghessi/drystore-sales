@@ -12,21 +12,17 @@ export function ConversationsPage() {
   useRealtimeConversations();
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
-      <ConversationsHeader />
+    <div className="flex h-full bg-background overflow-hidden">
+      <WhatsAppConversationList 
+        onSelect={setSelectedConversationId}
+        selectedId={selectedConversationId}
+      />
       
-      <div className="flex flex-1 overflow-hidden">
-        <WhatsAppConversationList 
-          onSelect={setSelectedConversationId}
-          selectedId={selectedConversationId}
-        />
-        
-        {selectedConversationId ? (
-          <WhatsAppChatArea conversationId={selectedConversationId} />
-        ) : (
-          <WhatsAppEmptyState />
-        )}
-      </div>
+      {selectedConversationId ? (
+        <WhatsAppChatArea conversationId={selectedConversationId} />
+      ) : (
+        <WhatsAppEmptyState />
+      )}
     </div>
   );
 }

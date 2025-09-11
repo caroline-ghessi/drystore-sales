@@ -56,7 +56,9 @@ export function WhatsAppChatArea({ conversationId }: WhatsAppChatAreaProps) {
   }, [messages]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   };
 
   const handleScroll = () => {
@@ -180,9 +182,9 @@ export function WhatsAppChatArea({ conversationId }: WhatsAppChatAreaProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-chat-background overflow-hidden">
+    <div className="flex-1 flex flex-col bg-chat-background overflow-hidden min-h-0">
       {/* Header */}
-      <div className="bg-chat-header px-4 py-3 border-b border-border flex items-center justify-between">
+      <div className="bg-chat-header px-4 py-3 border-b border-border flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <Avatar className="w-10 h-10">
             <AvatarImage 
@@ -297,7 +299,7 @@ export function WhatsAppChatArea({ conversationId }: WhatsAppChatAreaProps) {
       {/* Messages Area */}
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-2"
+        className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0 scroll-smooth"
         onScroll={handleScroll}
       >
         {messagesLoading ? (
@@ -345,7 +347,7 @@ export function WhatsAppChatArea({ conversationId }: WhatsAppChatAreaProps) {
       )}
 
       {/* Input Area */}
-      <div className="bg-chat-header px-4 py-3 border-t border-border">
+      <div className="bg-chat-header px-4 py-3 border-t border-border flex-shrink-0">
         <div className="flex items-end gap-2">
           <Button variant="ghost" size="sm" className="flex-shrink-0">
             <Smile size={20} />

@@ -50,9 +50,9 @@ export function WhatsAppConversationList({ onSelect, selectedId }: WhatsAppConve
   const hasActiveFilters = Object.values(filters).some(v => v !== undefined) || searchTerm;
 
   return (
-    <div className="w-[400px] bg-chat-list-background border-r border-border flex flex-col h-full">
+    <div className="w-[400px] bg-chat-list-background border-r border-border flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="bg-chat-header px-4 py-3 border-b border-border">
+      <div className="bg-chat-header px-4 py-3 border-b border-border flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-foreground">
             Conversas {showArchived && '(Arquivadas)'}
@@ -96,7 +96,7 @@ export function WhatsAppConversationList({ onSelect, selectedId }: WhatsAppConve
 
       {/* Filters Panel */}
       {showFilters && (
-        <div className="bg-primary/5 p-4 border-b border-border space-y-3">
+        <div className="bg-primary/5 p-4 border-b border-border space-y-3 flex-shrink-0">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
@@ -173,7 +173,7 @@ export function WhatsAppConversationList({ onSelect, selectedId }: WhatsAppConve
       )}
 
       {/* Conversations List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {isLoading ? (
           <div className="space-y-1">
             {Array.from({ length: 8 }).map((_, i) => (
