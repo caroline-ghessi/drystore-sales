@@ -134,28 +134,28 @@ export function QuickActions() {
   const getButtonColorClass = (color: string) => {
     switch (color) {
       case 'blue':
-        return 'bg-blue-600 text-white hover:bg-blue-700 border-0';
+        return 'bg-blue-600 text-white hover:bg-blue-700 border-0 shadow-lg shadow-blue-600/20';
       case 'green':
-        return 'bg-green-600 text-white hover:bg-green-700 border-0';
+        return 'bg-emerald-600 text-white hover:bg-emerald-700 border-0 shadow-lg shadow-emerald-600/20';
       case 'red':
-        return 'bg-red-600 text-white hover:bg-red-700 border-0';
+        return 'bg-red-600 text-white hover:bg-red-700 border-0 shadow-lg shadow-red-600/20';
       case 'purple':
-        return 'bg-purple-600 text-white hover:bg-purple-700 border-0';
+        return 'bg-violet-600 text-white hover:bg-violet-700 border-0 shadow-lg shadow-violet-600/20';
       case 'gray':
-        return 'bg-gray-600 text-white hover:bg-gray-700 border-0';
+        return 'bg-slate-600 text-white hover:bg-slate-700 border-0 shadow-lg shadow-slate-600/20';
       default:
         return '';
     }
   };
 
   return (
-    <Card className="border-0 shadow-lg">
-      <CardHeader>
-        <CardTitle className="text-xl text-foreground flex items-center">
-          <BarChart3 className="mr-2 h-5 w-5 text-drystore-orange" />
+    <Card className="border-0 shadow-sm bg-white">
+      <CardHeader className="pb-6">
+        <CardTitle className="text-2xl font-bold text-drystore-dark-gray flex items-center">
+          <BarChart3 className="mr-3 h-6 w-6 text-drystore-orange" />
           Ações Rápidas
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-drystore-medium-gray text-base">
           {isAdmin 
             ? 'Acesse rapidamente as funcionalidades de administração'
             : 'Acesse rapidamente as funcionalidades mais utilizadas'
@@ -163,9 +163,9 @@ export function QuickActions() {
         </CardDescription>
       </CardHeader>
       
-      <CardContent className="p-8">
+      <CardContent className="p-6">
         <div className={cn(
-          "grid gap-6",
+          "grid gap-4",
           isAdmin ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
         )}>
           {actions.map((action, index) => (
@@ -173,15 +173,15 @@ export function QuickActions() {
               key={index}
               variant={getButtonVariant(action.color)}
               className={cn(
-                "h-28 flex-col p-6 text-center min-w-0 transition-all duration-200 hover:scale-105",
+                "h-32 flex-col p-6 text-center min-w-0 transition-all duration-300 hover:scale-[1.02] rounded-xl",
                 action.color !== 'orange' && getButtonColorClass(action.color)
               )}
               onClick={action.onClick}
             >
-              <action.icon className="h-8 w-8 mb-3 mx-auto flex-shrink-0" />
-              <span className="text-sm font-medium mb-1 leading-tight">{action.title}</span>
+              <action.icon className="h-10 w-10 mb-4 mx-auto flex-shrink-0" />
+              <span className="text-sm font-semibold mb-2 leading-tight">{action.title}</span>
               {action.description && (
-                <span className="text-xs opacity-75 leading-tight">{action.description}</span>
+                <span className="text-xs opacity-90 leading-tight">{action.description}</span>
               )}
             </DryStoreButton>
           ))}
