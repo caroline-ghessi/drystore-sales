@@ -62,10 +62,12 @@ function AppContent() {
           </ProtectedRoute>
         } />
         
-        {/* WhatsApp Conversations - Using WhatsApp Layout */}
+        {/* WhatsApp Conversations - Using Main Layout (Dark Sidebar) */}
         <Route path="/conversas" element={
           <ProtectedRoute>
-            <WhatsAppLayout />
+            <Layout>
+              <ConversationsPage />
+            </Layout>
           </ProtectedRoute>
         } />
         
