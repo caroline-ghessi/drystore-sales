@@ -31,12 +31,15 @@ export interface ProjectContext {
 
 export interface ProposalItem {
   id: string;
+  name: string;
   product: ProductType;
-  description: string;
+  description?: string;
   specifications: Record<string, any>;
   quantity: number;
+  unit: string;
   unitPrice: number;
   totalPrice: number;
+  category: string;
   materialCost?: number;
 }
 

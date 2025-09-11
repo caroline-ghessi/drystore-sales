@@ -127,73 +127,77 @@ export function useProposalCalculator(productType: ProductType) {
         const panelQuantity = solarResult.panelQuantity || Math.ceil((solarResult.systemPower || 0) / 0.55);
         const inverterQuantity = solarResult.inverterQuantity || 1;
 
-        // Painéis Solares - APENAS preço do produto cadastrado
+        // Painéis Solares - campos padronizados para edge function
         items.push({
           id: '1',
-          product: 'solar',
-          description: selectedPanel?.name || `Painéis Solares Fotovoltaicos`,
+          name: selectedPanel?.name || `Painéis Solares Fotovoltaicos`,
+          product: 'solar' as ProductType,
+          quantity: panelQuantity,
+          unit: 'unidade',
+          unitPrice: selectedPanel?.base_price || 0,
+          totalPrice: (selectedPanel?.base_price || 0) * panelQuantity,
+          category: 'Energia Solar',
           specifications: {
             power: selectedPanel?.specifications?.power || solarResult.panelSpecs?.power || '550W',
             model: selectedPanel?.model || solarResult.panelSpecs?.model || 'Painel Solar',
             brand: selectedPanel?.brand || solarResult.panelSpecs?.brand || 'N/A',
             efficiency: selectedPanel?.specifications?.efficiency || solarResult.panelSpecs?.efficiency || 'N/A'
-          },
-          quantity: panelQuantity,
-          unitPrice: selectedPanel?.base_price || 0,
-          totalPrice: (selectedPanel?.base_price || 0) * panelQuantity,
-          materialCost: (selectedPanel?.base_price || 0) * panelQuantity
+          }
         });
 
-        // Inversor - APENAS preço do produto cadastrado
+        // Inversor - campos padronizados para edge function
         items.push({
           id: '2',
-          product: 'solar',
-          description: selectedInverter?.name || `Inversor Solar`,
+          name: selectedInverter?.name || `Inversor Solar`,
+          product: 'solar' as ProductType,
+          quantity: inverterQuantity,
+          unit: 'unidade',
+          unitPrice: selectedInverter?.base_price || 0,
+          totalPrice: (selectedInverter?.base_price || 0) * inverterQuantity,
+          category: 'Energia Solar',
           specifications: {
             power: selectedInverter?.specifications?.power || `${solarResult.systemPower?.toFixed(1) || '0.0'} kW`,
             model: selectedInverter?.model || solarResult.inverterSpecs?.model || 'Inversor String',
             brand: selectedInverter?.brand || solarResult.inverterSpecs?.brand || 'N/A',
             efficiency: selectedInverter?.specifications?.efficiency || solarResult.inverterSpecs?.efficiency || 'N/A'
-          },
-          quantity: inverterQuantity,
-          unitPrice: selectedInverter?.base_price || 0,
-          totalPrice: (selectedInverter?.base_price || 0) * inverterQuantity,
-          materialCost: (selectedInverter?.base_price || 0) * inverterQuantity
+          }
         });
 
-        // Estrutura de Fixação - APENAS preço do produto cadastrado
+        // Estrutura de Fixação - campos padronizados para edge function
         items.push({
           id: '3',
-          product: 'solar',
-          description: selectedStructure?.name || `Estrutura de Fixação`,
+          name: selectedStructure?.name || `Estrutura de Fixação`,
+          product: 'solar' as ProductType,
+          quantity: panelQuantity,
+          unit: 'kit',
+          unitPrice: selectedStructure?.base_price || 0,
+          totalPrice: (selectedStructure?.base_price || 0) * panelQuantity,
+          category: 'Energia Solar',
           specifications: {
             material: selectedStructure?.specifications?.material || 'Alumínio Anodizado',
             type: selectedStructure?.description || 'Estrutura para Telhado',
             panels: panelQuantity
-          },
-          quantity: panelQuantity,
-          unitPrice: selectedStructure?.base_price || 0,
-          totalPrice: (selectedStructure?.base_price || 0) * panelQuantity,
-          materialCost: (selectedStructure?.base_price || 0) * panelQuantity
+          }
         });
 
-        // Material Elétrico - APENAS preço do produto cadastrado
+        // Material Elétrico - campos padronizados para edge function
         items.push({
           id: '4',
-          product: 'solar',
-          description: selectedElectrical?.name || `Material Elétrico`,
+          name: selectedElectrical?.name || `Material Elétrico`,
+          product: 'solar' as ProductType,
+          quantity: 1,
+          unit: 'kit',
+          unitPrice: selectedElectrical?.base_price || 0,
+          totalPrice: selectedElectrical?.base_price || 0,
+          category: 'Energia Solar',
           specifications: {
             includes: selectedElectrical?.description || 'String Box, Cabos, Conectores MC4, DPS',
             type: 'Kit Completo',
             system: `${solarResult.systemPower?.toFixed(1) || '0.0'} kWp`
-          },
-          quantity: 1,
-          unitPrice: selectedElectrical?.base_price || 0,
-          totalPrice: selectedElectrical?.base_price || 0,
-          materialCost: selectedElectrical?.base_price || 0
+          }
         });
 
-        // Documentação e Homologação - sempre com preço zero se não houver produto específico
+        // Documentação e Homologação - campos padronizados para edge function
         const documentationProducts = availableProducts.filter(p => 
           p.subcategory === 'documentacao' || 
           p.subcategory === 'homologacao' || 
@@ -204,18 +208,19 @@ export function useProposalCalculator(productType: ProductType) {
 
         items.push({
           id: '5',
-          product: 'solar',
-          description: selectedDocumentation?.name || `Projeto e Homologação`,
+          name: selectedDocumentation?.name || `Projeto e Homologação`,
+          product: 'solar' as ProductType,
+          quantity: 1,
+          unit: 'serviço',
+          unitPrice: selectedDocumentation?.base_price || 0,
+          totalPrice: selectedDocumentation?.base_price || 0,
+          category: 'Energia Solar',
           specifications: {
             includes: selectedDocumentation?.description || 'Projeto Executivo, ART, Homologação na Concessionária',
             project: 'Projeto Elétrico Executivo com ART',
             approval: 'Processo de Homologação na Distribuidora',
             documentation: 'Documentação Técnica Completa'
-          },
-          quantity: 1,
-          unitPrice: selectedDocumentation?.base_price || 0,
-          totalPrice: selectedDocumentation?.base_price || 0,
-          materialCost: selectedDocumentation?.base_price || 0
+          }
         });
 
         break;
@@ -224,18 +229,19 @@ export function useProposalCalculator(productType: ProductType) {
         const batteryResult = calculationResult as any;
         items.push({
           id: '1',
-          product: 'battery_backup',
-          description: `Sistema de Backup ${batteryResult.totalPowerRequired.toFixed(2)} kW`,
+          name: `Sistema de Backup ${batteryResult.totalPowerRequired.toFixed(2)} kW`,
+          product: 'battery_backup' as ProductType,
+          quantity: 1,
+          unit: 'sistema',
+          unitPrice: batteryResult.totalCost,
+          totalPrice: batteryResult.totalCost,
+          category: 'Battery Backup',
           specifications: {
             power: batteryResult.totalPowerRequired,
             batteries: batteryResult.batteryConfiguration.batteryQuantity,
             inverters: batteryResult.inverterQuantity,
             autonomy: batteryResult.batteryConfiguration.autonomyHours
-          },
-          quantity: 1,
-          unitPrice: batteryResult.totalCost,
-          totalPrice: batteryResult.totalCost,
-          materialCost: batteryResult.totalCost
+          }
         });
         break;
         
@@ -246,8 +252,13 @@ export function useProposalCalculator(productType: ProductType) {
         
         items.push({
           id: '1',
-          product: 'shingle',
-          description: `Telhado Shingle ${estimatedArea.toFixed(0)} m²`,
+          name: `Telhado Shingle ${estimatedArea.toFixed(0)} m²`,
+          product: 'shingle' as ProductType,
+          quantity: estimatedArea,
+          unit: 'm²',
+          unitPrice: estimatedArea > 0 ? shingleResult.totalCost / estimatedArea : 0,
+          totalPrice: shingleResult.totalCost,
+          category: 'Telha Shingle',
           specifications: {
             area: estimatedArea,
             bundles: shingleResult.totalShingleBundles,
@@ -257,11 +268,7 @@ export function useProposalCalculator(productType: ProductType) {
             stepFlashing: shingleResult.stepFlashingPieces,
             ridges: shingleResult.ridgeBundles + shingleResult.espigaoBundles,
             sealing: shingleResult.monopolAsphalticTubes
-          },
-          quantity: estimatedArea,
-          unitPrice: estimatedArea > 0 ? shingleResult.totalCost / estimatedArea : 0,
-          totalPrice: shingleResult.totalCost,
-          materialCost: shingleResult.totalCost
+          }
         });
         break;
         
@@ -270,18 +277,19 @@ export function useProposalCalculator(productType: ProductType) {
         
         items.push({
           id: '1',
-          product: 'drywall',
-          description: `Drywall ${drywallResult.plateQuantity.toFixed(0)} m²`,
+          name: `Drywall ${drywallResult.plateQuantity.toFixed(0)} m²`,
+          product: 'drywall' as ProductType,
+          quantity: drywallResult.plateQuantity,
+          unit: 'm²',
+          unitPrice: drywallResult.plateQuantity > 0 ? drywallResult.totalCost / drywallResult.plateQuantity : 0,
+          totalPrice: drywallResult.totalCost,
+          category: 'Drywall',
           specifications: {
             area: drywallResult.plateQuantity,
             profiles: drywallResult.profileQuantity,
             screws: drywallResult.screwQuantity,
             jointCompound: drywallResult.jointCompoundQuantity
-          },
-          quantity: drywallResult.plateQuantity,
-          unitPrice: drywallResult.plateQuantity > 0 ? drywallResult.totalCost / drywallResult.plateQuantity : 0,
-          totalPrice: drywallResult.totalCost,
-          materialCost: drywallResult.totalCost
+          }
         });
         break;
         
@@ -290,19 +298,20 @@ export function useProposalCalculator(productType: ProductType) {
           
           items.push({
             id: '1',
-            product: 'forro_drywall',
-            description: `Forro Drywall ${forroDrywallResult.plateArea.toFixed(0)} m²`,
+            name: `Forro Drywall ${forroDrywallResult.plateArea.toFixed(0)} m²`,
+            product: 'forro_drywall' as ProductType,
+            quantity: forroDrywallResult.plateArea,
+            unit: 'm²',
+            unitPrice: forroDrywallResult.plateArea > 0 ? forroDrywallResult.totalCost / forroDrywallResult.plateArea : 0,
+            totalPrice: forroDrywallResult.totalCost,
+            category: 'Forro Drywall',
             specifications: {
               area: forroDrywallResult.plateArea,
               plates: forroDrywallResult.plateQuantity,
               profiles: forroDrywallResult.profileBars,
               suspension: forroDrywallResult.suspensionBars,
               screws: forroDrywallResult.screwQuantity
-            },
-            quantity: forroDrywallResult.plateArea,
-            unitPrice: forroDrywallResult.plateArea > 0 ? forroDrywallResult.totalCost / forroDrywallResult.plateArea : 0,
-            totalPrice: forroDrywallResult.totalCost,
-            materialCost: forroDrywallResult.totalCost
+            }
         });
         break;
         
@@ -310,8 +319,13 @@ export function useProposalCalculator(productType: ProductType) {
         const acousticResult = calculationResult as any;
         items.push({
           id: '1',
-          product: 'acoustic_mineral_ceiling',
-          description: `Forro Mineral Acústico ${acousticResult.areas.useful.toFixed(0)} m² - ${acousticResult.selectedModel.name}`,
+          name: `Forro Mineral Acústico ${acousticResult.areas.useful.toFixed(0)} m² - ${acousticResult.selectedModel.name}`,
+          product: 'acoustic_mineral_ceiling' as ProductType,
+          quantity: acousticResult.areas.useful,
+          unit: 'm²',
+          unitPrice: acousticResult.areas.useful > 0 ? acousticResult.totalCost / acousticResult.areas.useful : 0,
+          totalPrice: acousticResult.totalCost,
+          category: 'Forro Mineral Acústico',
           specifications: {
             area: acousticResult.areas.useful,
             plates: acousticResult.plates.totalPlates,
@@ -320,11 +334,7 @@ export function useProposalCalculator(productType: ProductType) {
             modulation: acousticResult.selectedModel.modulation,
             nrc: acousticResult.selectedModel.nrc,
             edgeType: acousticResult.selectedModel.edgeType
-          },
-          quantity: acousticResult.areas.useful,
-          unitPrice: acousticResult.areas.useful > 0 ? acousticResult.totalCost / acousticResult.areas.useful : 0,
-          totalPrice: acousticResult.totalCost,
-          materialCost: acousticResult.totalCost
+          }
         });
         break;
     }
