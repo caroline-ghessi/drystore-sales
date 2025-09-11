@@ -5,7 +5,9 @@ import {
   Plus, 
   Layers, 
   Settings, 
-  Home
+  Home,
+  Building2,
+  CircleCheck
 } from 'lucide-react';
 import {
   Sidebar,
@@ -18,6 +20,8 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
   useSidebar,
+  SidebarHeader,
+  SidebarFooter,
 } from '@/components/ui/sidebar';
 
 const propostasItems = [
@@ -46,6 +50,21 @@ export function PropostasSidebar() {
   return (
     <Sidebar className={collapsed ? 'w-14' : 'w-60'}>
       <SidebarTrigger className="m-2 self-end" />
+      
+      {/* Logo Header */}
+      {!collapsed && (
+        <SidebarHeader className="p-4 border-b border-sidebar-border">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-orange-500" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-sidebar-foreground">DryStore</h1>
+              <p className="text-xs text-sidebar-muted-foreground">Sistema de Propostas</p>
+            </div>
+          </div>
+        </SidebarHeader>
+      )}
       
       <SidebarContent>
         {/* Back to Home */}
@@ -85,6 +104,16 @@ export function PropostasSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      {/* Footer Status */}
+      {!collapsed && (
+        <SidebarFooter className="p-4 border-t border-sidebar-border">
+          <div className="flex items-center text-xs text-sidebar-muted-foreground">
+            <CircleCheck className="h-3 w-3 mr-2 text-green-500" />
+            Sistema Online
+          </div>
+        </SidebarFooter>
+      )}
     </Sidebar>
   );
 }
