@@ -72,25 +72,9 @@ export function calculateBatteryBackupWithProducts(
     const specs = ProductCalculationService.getProductSpecs(selectedInverter);
     inverterSpecs = {
       efficiency: specs.efficiency || FALLBACK_SPECS.inverter.efficiency,
-      peak_factor: specs.power_rating ? (specs.power_rating * 1.5) / specs.power_rating : FALLBACK_SPECS.inverter.peak_factor
+      peak_factor: 2.0 // Inversores suportam até 100% acima da capacidade (2x)
     };
     inverterPrice = selectedInverter.base_price;
-  }
-  
-  // Verificar potência de pico
-  const peakPowerW = totalPowerW * 1.5;
-  const inverterPowerW = simultaneousPower * 1000;
-  const canHandlePeakPower = peakPowerW <= (inverterPowerW * inverterSpecs.peak_factor);
-  
-  // Se não pode lidar com pico, usar inversor maior (fallback)
-  if (!canHandlePeakPower) {
-    console.warn('⚠️ Potência de pico excede capacidade do inversor disponível, usando fallback');
-    
-    // Calcular inversor necessário baseado na potência de pico
-    const requiredInverterKW = Math.ceil(peakPowerW / 1000 / inverterSpecs.peak_factor);
-    
-    // Preço baseado na potência necessária
-    inverterPrice = requiredInverterKW <= 3 ? 4500 : requiredInverterKW <= 5 ? 7200 : 12000;
   }
   
   // Calcular custos usando preços reais dos produtos
