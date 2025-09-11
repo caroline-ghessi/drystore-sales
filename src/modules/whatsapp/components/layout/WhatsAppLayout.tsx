@@ -21,11 +21,10 @@ export default function WhatsAppLayout() {
           <main className="flex-1 overflow-hidden min-h-0">
             <Routes>
               <Route index element={<ConversationsPage />} />
-              <Route path="/conversas" element={<ConversationsPage />} />
-              <Route path="/bot" element={<BotPage />} />
-              <Route path="/vendedores" element={<VendedoresPage />} />
-              <Route path="/atendentes" element={<AtendentesPage />} />
-              <Route path="/analytics" element={<Analytics />} />
+              <Route path="bot" element={<BotPage />} />
+              <Route path="vendedores" element={<VendedoresPage />} />
+              <Route path="atendentes" element={<AtendentesPage />} />
+              <Route path="analytics" element={<Analytics />} />
             </Routes>
           </main>
         </div>

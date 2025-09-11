@@ -15,6 +15,7 @@ import PublicProposal from "@/pages/PublicProposal";
 // Module Layouts
 import CRMLayout from "@/modules/crm/components/layout/CRMLayout";
 import PropostasLayout from "@/modules/propostas/components/layout/PropostasLayout";
+import WhatsAppLayout from "@/modules/whatsapp/components/layout/WhatsAppLayout";
 import { Layout } from "@/components/layout/Layout";
 
 // WhatsApp Module Pages
@@ -61,10 +62,10 @@ function AppContent() {
           </ProtectedRoute>
         } />
         
-        {/* WhatsApp Conversations - Special Layout (Full Screen) */}
+        {/* WhatsApp Conversations - Using WhatsApp Layout */}
         <Route path="/conversas" element={
           <ProtectedRoute>
-            <ConversationsPage />
+            <WhatsAppLayout />
           </ProtectedRoute>
         } />
         
