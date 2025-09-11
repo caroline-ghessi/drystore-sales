@@ -177,8 +177,11 @@ const handler = async (req: Request): Promise<Response> => {
     }
     }
 
-    // Generate HTML content for the proposal
-    const htmlContent = generateProposalHTML({
+     // Debug log dos dados recebidos
+     console.log('Pricing data received:', JSON.stringify(requestData.pricing, null, 2));
+     
+     // Generate HTML content for the proposal
+     const htmlContent = generateProposalHTML({
       proposal,
       items: requestData.pricing?.items || [],
       clientData: requestData.clientData,
@@ -386,8 +389,8 @@ function generateProposalHTML(data: {
                     <td>${item.name}<br><small style="color: #666;">${item.category}</small></td>
                     <td>${item.quantity}</td>
                     <td>${item.unit}</td>
-                    <td>R$ ${item.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                    <td>R$ ${item.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                     <td>R$ ${(item.unitPrice ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                     <td>R$ ${(item.totalPrice ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                 </tr>
             `).join('')}
         </tbody>
@@ -396,17 +399,17 @@ function generateProposalHTML(data: {
     <div class="totals">
         <div class="total-line">
             <span class="total-label">Subtotal:</span>
-            <span class="total-value">R$ ${pricing.subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            <span class="total-value">R$ ${(pricing.subtotal ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
         </div>
         ${pricing.discount ? `
         <div class="total-line">
             <span class="total-label">Desconto:</span>
-            <span class="total-value">- R$ ${pricing.discount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            <span class="total-value">- R$ ${(pricing.discount ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
         </div>
         ` : ''}
         <div class="total-line final-total">
             <span class="total-label">TOTAL GERAL:</span>
-            <span class="total-value">R$ ${pricing.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            <span class="total-value">R$ ${(pricing.total ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
         </div>
     </div>
 
