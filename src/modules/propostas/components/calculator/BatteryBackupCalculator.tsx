@@ -15,7 +15,7 @@ import { ProductWarning } from '../shared/ProductWarning';
 import { useNavigate } from 'react-router-dom';
 
 interface BatteryBackupCalculatorProps {
-  onCalculate: (input: BatteryBackupInput) => void;
+  onCalculate: (input: BatteryBackupInput) => Promise<void>;
   calculationResult?: BatteryBackupResult;
   onSaveCalculation?: () => void;
   onGenerateProposal?: () => void;
@@ -31,6 +31,7 @@ export function BatteryBackupCalculator({
   const { hasProducts, getAvailableProducts } = useBatteryProductCalculator();
   
   const [showResults, setShowResults] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
   const [input, setInput] = useState<BatteryBackupInput>({
     essentialLoads: {
       lighting: 300,
@@ -73,19 +74,23 @@ export function BatteryBackupCalculator({
     }));
   };
 
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
     console.log('🔋 BatteryBackupCalculator.handleCalculate chamado');
     console.log('🔋 Input atual:', input);
     console.log('🔋 hasProducts:', hasProducts);
     
+    setIsCalculating(true);
+    
     try {
       console.log('🔋 Chamando onCalculate...');
-      onCalculate(input);
+      await onCalculate(input); // AGUARDAR a Promise ser resolvida
       console.log('✅ onCalculate executado com sucesso');
       setShowResults(true);
     } catch (error) {
       console.error('❌ Erro no cálculo do BatteryBackupCalculator:', error);
       alert(`Erro no cálculo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    } finally {
+      setIsCalculating(false);
     }
   };
 
@@ -431,10 +436,10 @@ export function BatteryBackupCalculator({
         <Button 
           onClick={handleCalculate} 
           className="w-full" 
-          disabled={totalPower === 0 || totalPower > 10000}
+          disabled={totalPower === 0 || totalPower > 10000 || isCalculating}
         >
           <Battery className="mr-2 h-4 w-4" />
-          Calcular Sistema de Backup
+          {isCalculating ? 'Calculando...' : 'Calcular Sistema de Backup'}
         </Button>
       </CardContent>
     </Card>
