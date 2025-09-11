@@ -135,7 +135,7 @@ const handler = async (req: Request): Promise<Response> => {
         title: `Proposta - ${requestData.clientData.name}`,
         description: `Proposta para ${mappedProductType} - ${requestData.clientData.name}`,
         project_type: mappedProductType,
-        status: 'generated',
+        status: 'sent',
         total_value: requestData.pricing?.total || 0,
         discount_value: requestData.pricing?.discount || 0,
         discount_percentage: requestData.pricing?.discountPercentage || 0,
