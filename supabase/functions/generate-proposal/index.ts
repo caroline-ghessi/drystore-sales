@@ -178,14 +178,14 @@ const handler = async (req: Request): Promise<Response> => {
       const proposalItems = requestData.pricing.items.map((item, index) => {
         const mappedItem = {
           proposal_id: proposal.id,
-          custom_name: item.name || 'Item sem nome',
-          description: `${item.name || 'Item'} - ${item.category || 'Categoria'}`,
+          custom_name: item.description || 'Item sem nome',
+          description: item.description || 'Item - Categoria',
           quantity: Number(item.quantity) || 0,
           unit_price: Number(item.unitPrice) || 0,
           total_price: Number(item.totalPrice) || 0,
           specifications: {
             unit: item.unit,
-            category: item.category,
+            category: item.product,
             originalId: item.id,
             specifications: item.specifications || {}
           },
