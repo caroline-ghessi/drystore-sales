@@ -163,7 +163,6 @@ export interface BatteryBackupInput extends BaseCalculationInput {
   
   // Usage patterns
   usagePattern: {
-    dailyUsageHours: number;
     peakUsageHours: number;
     weeklyUsageDays: number;
   };

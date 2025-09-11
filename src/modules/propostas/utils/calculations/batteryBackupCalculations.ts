@@ -49,8 +49,7 @@ export function calculateBatteryBackup(input: BatteryBackupInput): BatteryBackup
   const simultaneousPower = totalPowerKW * simultaneousFactor;
   
   // Calcular energia necessária para autonomia desejada
-  const dailyUsageHours = input.usagePattern?.dailyUsageHours || input.desiredAutonomy;
-  const energyRequired = simultaneousPower * dailyUsageHours;
+  const energyRequired = simultaneousPower * input.desiredAutonomy;
   
   // Selecionar tipo de bateria
   const batteryType = input.batteryType || 'lifepo4';

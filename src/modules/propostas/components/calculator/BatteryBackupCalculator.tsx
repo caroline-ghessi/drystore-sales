@@ -55,7 +55,6 @@ export function BatteryBackupCalculator({
     },
     
     usagePattern: {
-      dailyUsageHours: 12,
       peakUsageHours: 4,
       weeklyUsageDays: 7
     }
@@ -361,25 +360,6 @@ export function BatteryBackupCalculator({
             </Select>
           </div>
 
-          <div>
-            <Label>Horas de Uso Diário</Label>
-            <Input
-              type="number"
-              min="1"
-              max="24"
-              value={input.usagePattern.dailyUsageHours}
-              onChange={(e) => setInput({
-                ...input,
-                usagePattern: {
-                  ...input.usagePattern,
-                  dailyUsageHours: Number(e.target.value)
-                }
-              })}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Horas de funcionamento por dia
-            </p>
-          </div>
 
 
         </div>

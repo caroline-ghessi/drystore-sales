@@ -30,8 +30,7 @@ export function calculateBatteryBackupWithProducts(
   const simultaneousPower = totalPowerKW * simultaneousFactor;
   
   // Calcular energia necessária para autonomia desejada
-  const dailyUsageHours = input.usagePattern?.dailyUsageHours || input.desiredAutonomy;
-  const energyRequired = simultaneousPower * dailyUsageHours;
+  const energyRequired = simultaneousPower * input.desiredAutonomy;
   
   // BUSCAR PRODUTOS REAIS DO CADASTRO
   const batteryProducts = ProductCalculationService.getBatteryProducts(products);
