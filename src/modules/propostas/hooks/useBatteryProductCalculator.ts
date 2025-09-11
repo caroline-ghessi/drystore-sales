@@ -8,20 +8,12 @@ export function useBatteryProductCalculator() {
   const { products, isLoading, error } = useUnifiedProducts('battery_backup');
 
   const calculate = useCallback((input: BatteryBackupInput): BatteryBackupResult => {
-    console.log('🔄 Executando cálculo de backup:', { 
-      hasProducts: products && products.length > 0, 
-      productCount: products?.length || 0,
-      input
-    });
-
     // Se há produtos cadastrados, usar cálculo baseado em produtos
     if (products && products.length > 0) {
-      console.log('✅ Usando cálculo com produtos cadastrados');
       return calculateBatteryBackupWithProducts(input, products);
     }
     
     // Fallback: usar cálculo padrão sem produtos específicos
-    console.log('⚠️ Usando cálculo padrão (sem produtos cadastrados)');
     return calculateBatteryBackup(input);
   }, [products]);
 

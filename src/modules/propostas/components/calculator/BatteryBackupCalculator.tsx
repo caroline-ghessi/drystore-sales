@@ -62,14 +62,6 @@ export function BatteryBackupCalculator({
 
   const validation = validateEssentialLoads(input.essentialLoads);
   const totalPower = Object.values(input.essentialLoads).reduce((sum, power) => sum + power, 0);
-  
-  // Debug logs para identificar problema do botão
-  console.log('🔍 DEBUG - Battery Calculator:', {
-    totalPower,
-    validation,
-    hasProducts,
-    input: input.essentialLoads
-  });
 
   const handleLoadChange = (loadType: keyof typeof input.essentialLoads, value: number) => {
     setInput(prev => ({
@@ -82,20 +74,11 @@ export function BatteryBackupCalculator({
   };
 
   const handleCalculate = () => {
-    console.log('🚀 Executando cálculo com:', { input, validation, hasProducts });
-    
     try {
       onCalculate(input);
-      console.log('✅ onCalculate executado, aguardando resultado...');
       setShowResults(true);
     } catch (error) {
       console.error('❌ Erro no cálculo:', error);
-      // Se não há produtos, ainda assim permitir cálculo básico
-      if (!hasProducts) {
-        console.log('⚠️ Tentando cálculo sem produtos cadastrados...');
-        onCalculate(input);
-        setShowResults(true);
-      }
     }
   };
 
@@ -104,14 +87,7 @@ export function BatteryBackupCalculator({
   };
 
   // Show results if calculation is complete
-  console.log('🔍 Verificando se deve mostrar resultados:', { 
-    showResults, 
-    hasCalculationResult: !!calculationResult,
-    calculationResult 
-  });
-  
   if (showResults && calculationResult) {
-    console.log('✅ Exibindo resultados do cálculo');
     return (
       <BatteryBackupResults
         result={calculationResult}

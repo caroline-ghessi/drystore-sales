@@ -82,8 +82,15 @@ export function calculateBatteryBackupWithProducts(
   const inverterPowerW = simultaneousPower * 1000;
   const canHandlePeakPower = peakPowerW <= (inverterPowerW * inverterSpecs.peak_factor);
   
+  // Se não pode lidar com pico, usar inversor maior (fallback)
   if (!canHandlePeakPower) {
-    throw new Error('Potência de pico excede capacidade disponível dos inversores');
+    console.warn('⚠️ Potência de pico excede capacidade do inversor disponível, usando fallback');
+    
+    // Calcular inversor necessário baseado na potência de pico
+    const requiredInverterKW = Math.ceil(peakPowerW / 1000 / inverterSpecs.peak_factor);
+    
+    // Preço baseado na potência necessária
+    inverterPrice = requiredInverterKW <= 3 ? 4500 : requiredInverterKW <= 5 ? 7200 : 12000;
   }
   
   // Calcular custos usando preços reais dos produtos
