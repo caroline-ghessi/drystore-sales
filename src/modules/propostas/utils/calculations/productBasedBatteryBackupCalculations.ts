@@ -35,23 +35,33 @@ export function calculateBatteryBackupWithProducts(
   // BUSCAR PRODUTOS REAIS DO CADASTRO
   const batteryProducts = ProductCalculationService.getBatteryProducts(products);
   
+  // VALIDAÇÃO: Verificar se há produtos necessários cadastrados
+  if (!batteryProducts.batteries || batteryProducts.batteries.length === 0) {
+    throw new Error('Nenhuma bateria cadastrada encontrada. Cadastre baterias em /propostas/produtos');
+  }
+  
+  if (!batteryProducts.inverters || batteryProducts.inverters.length === 0) {
+    throw new Error('Nenhum inversor cadastrado encontrado. Cadastre inversores em /propostas/produtos');
+  }
+  
   // Selecionar bateria baseada na capacidade necessária
   const selectedBattery = selectBatteryFromProducts(energyRequired, batteryProducts.batteries);
-  let batterySpecs = FALLBACK_SPECS.battery;
-  let batteryPrice = 12800; // Fallback
-  let capacityKwh = 5.12;
-  
-  if (selectedBattery) {
-    const specs = ProductCalculationService.getProductSpecs(selectedBattery);
-    batterySpecs = {
-      voltage: specs.voltage || FALLBACK_SPECS.battery.voltage,
-      dod: specs.efficiency || FALLBACK_SPECS.battery.dod,
-      cycles: specs.capacity || FALLBACK_SPECS.battery.cycles,
-      max_parallel: specs.compatibility?.length || FALLBACK_SPECS.battery.max_parallel
-    };
-    capacityKwh = specs.capacity || capacityKwh;
-    batteryPrice = selectedBattery.base_price;
+  if (!selectedBattery) {
+    throw new Error('Nenhuma bateria adequada encontrada nos produtos cadastrados');
   }
+  
+  const specs = ProductCalculationService.getProductSpecs(selectedBattery);
+  const batterySpecs = {
+    voltage: specs.voltage || FALLBACK_SPECS.battery.voltage,
+    dod: specs.efficiency || FALLBACK_SPECS.battery.dod,
+    cycles: specs.capacity || FALLBACK_SPECS.battery.cycles,
+    max_parallel: specs.compatibility?.length || FALLBACK_SPECS.battery.max_parallel
+  };
+  const capacityKwh = specs.capacity;
+  if (!capacityKwh) {
+    throw new Error(`Bateria ${selectedBattery.name} não possui capacidade especificada`);
+  }
+  const batteryPrice = selectedBattery.base_price;
   
   // Calcular quantidade de baterias necessárias
   const totalCapacityNeeded = energyRequired / batterySpecs.dod;
@@ -65,31 +75,29 @@ export function calculateBatteryBackupWithProducts(
   
   // Selecionar inversor híbrido baseado na potência
   const selectedInverter = selectInverterFromProducts(simultaneousPower, batteryProducts.inverters);
-  let inverterSpecs = FALLBACK_SPECS.inverter;
-  let inverterPrice = simultaneousPower <= 3 ? 4500 : 7200; // Fallback
-  
-  if (selectedInverter) {
-    const specs = ProductCalculationService.getProductSpecs(selectedInverter);
-    inverterSpecs = {
-      efficiency: specs.efficiency || FALLBACK_SPECS.inverter.efficiency,
-      peak_factor: 2.0 // Inversores suportam até 100% acima da capacidade (2x)
-    };
-    inverterPrice = selectedInverter.base_price;
+  if (!selectedInverter) {
+    throw new Error('Nenhum inversor adequado encontrado nos produtos cadastrados');
   }
+  
+  const inverterSpecs = {
+    efficiency: ProductCalculationService.getProductSpecs(selectedInverter).efficiency || FALLBACK_SPECS.inverter.efficiency,
+    peak_factor: 2.0 // Inversores suportam até 100% acima da capacidade (2x)
+  };
+  const inverterPrice = selectedInverter.base_price;
   
   // Calcular custos usando preços reais dos produtos
   const batteryCost = finalBatteryQuantity * batteryPrice;
   const inverterCost = inverterPrice;
   
-  // Proteção e monitoramento - buscar produtos se disponíveis
-  let protectionCost = totalPowerKW * 350; // Fallback
-  let monitoringCost = totalPowerKW * 150; // Fallback
+  // Proteção e monitoramento - usar apenas produtos cadastrados
+  let protectionCost = 0;
+  let monitoringCost = 0;
   
-  if (batteryProducts.protection && batteryProducts.protection[0]) {
+  if (batteryProducts.protection && batteryProducts.protection.length > 0) {
     protectionCost = batteryProducts.protection[0].base_price * finalBatteryQuantity;
   }
   
-  if (batteryProducts.monitoring && batteryProducts.monitoring[0]) {
+  if (batteryProducts.monitoring && batteryProducts.monitoring.length > 0) {
     monitoringCost = batteryProducts.monitoring[0].base_price;
   }
   
@@ -146,15 +154,21 @@ function selectBatteryFromProducts(energyRequired: number, batteries: UnifiedPro
   // Buscar bateria com capacidade adequada
   const suitableBattery = batteries.find(battery => {
     const specs = ProductCalculationService.getProductSpecs(battery);
-    const capacity = specs.capacity || 5.12;
-    const dod = specs.efficiency || 0.9;
+    const capacity = specs.capacity;
+    const dod = specs.efficiency;
+    
+    // Verificar se há especificações válidas
+    if (!capacity || !dod) return false;
     
     // Bateria deve ter capacidade útil suficiente
     return (capacity * dod) >= (energyRequired * 0.8); // Margem de 20%
   });
   
-  // Se não encontrar adequada, usar a primeira disponível
-  return suitableBattery || batteries[0];
+  // Se não encontrar adequada, usar a primeira disponível que tenha specs válidas
+  return suitableBattery || batteries.find(battery => {
+    const specs = ProductCalculationService.getProductSpecs(battery);
+    return specs.capacity && specs.efficiency;
+  });
 }
 
 function selectInverterFromProducts(powerKW: number, inverters: UnifiedProduct[]) {
@@ -167,8 +181,11 @@ function selectInverterFromProducts(powerKW: number, inverters: UnifiedProduct[]
     return inverterPower >= powerKW && inverterPower <= powerKW * 2;
   });
   
-  // Se não encontrar, pegar o primeiro disponível
-  return suitableInverter || inverters[0];
+  // Se não encontrar adequado, usar primeiro disponível que tenha power_rating válido
+  return suitableInverter || inverters.find(inverter => {
+    const specs = ProductCalculationService.getProductSpecs(inverter);
+    return specs.power_rating && specs.power_rating > 0;
+  });
 }
 
 function calculateMonthlyChargingCost(batteryCapacityKwh: number): number {
