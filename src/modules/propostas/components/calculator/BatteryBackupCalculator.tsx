@@ -27,8 +27,21 @@ export function BatteryBackupCalculator({
   onSaveCalculation, 
   onGenerateProposal 
 }: BatteryBackupCalculatorProps) {
+  // DIAGNÓSTICO EMERGENCIAL - Log de inicialização
+  console.log('🔋 BatteryBackupCalculator INICIALIZADO');
+  console.log('🔋 Props recebidas:', { 
+    onCalculate: typeof onCalculate, 
+    calculationResult: !!calculationResult, 
+    onSaveCalculation: typeof onSaveCalculation, 
+    onGenerateProposal: typeof onGenerateProposal 
+  });
+  
   const navigate = useNavigate();
+  
+  // DIAGNÓSTICO - Hook de produtos
+  console.log('🔋 Chamando useBatteryProductCalculator...');
   const { hasProducts, getAvailableProducts } = useBatteryProductCalculator();
+  console.log('🔋 useBatteryProductCalculator retornou:', { hasProducts });
   
   const [showResults, setShowResults] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -75,23 +88,42 @@ export function BatteryBackupCalculator({
   };
 
   const handleCalculate = async () => {
-    console.log('🔋 BatteryBackupCalculator.handleCalculate chamado');
-    console.log('🔋 Input atual:', input);
+    // DIAGNÓSTICO CRÍTICO - Este log DEVE aparecer ao clicar no botão
+    console.log('🚨 CLIQUE NO BOTÃO DETECTADO - handleCalculate chamado');
+    console.log('🔋 Timestamp:', new Date().toISOString());
+    console.log('🔋 Input atual:', JSON.stringify(input, null, 2));
     console.log('🔋 hasProducts:', hasProducts);
+    console.log('🔋 onCalculate type:', typeof onCalculate);
+    console.log('🔋 onCalculate:', onCalculate);
+    
+    if (typeof onCalculate !== 'function') {
+      console.error('❌ ERRO CRÍTICO: onCalculate não é uma função!');
+      alert('ERRO CRÍTICO: onCalculate não é uma função válida');
+      return;
+    }
     
     setIsCalculating(true);
+    console.log('🔋 isCalculating definido como true');
     
     try {
-      console.log('🔋 Chamando onCalculate...');
-      await onCalculate(input); // AGUARDAR a Promise ser resolvida
-      console.log('✅ onCalculate executado com sucesso');
+      console.log('🔋 Chamando onCalculate(input)...');
+      await onCalculate(input);
+      console.log('✅ onCalculate executado com SUCESSO');
       setShowResults(true);
+      console.log('✅ showResults definido como true');
     } catch (error) {
-      console.error('❌ Erro no cálculo do BatteryBackupCalculator:', error);
+      console.error('❌ ERRO no cálculo do BatteryBackupCalculator:', error);
       alert(`Erro no cálculo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setIsCalculating(false);
+      console.log('🔋 isCalculating definido como false');
     }
+  };
+
+  // FUNÇÃO DE TESTE PARA DEBUGGING
+  const testButtonClick = () => {
+    console.log('🧪 TESTE: Botão de teste clicado!');
+    alert('Botão funciona! O problema é no handleCalculate');
   };
 
   const handleRecalculate = () => {
@@ -433,14 +465,28 @@ export function BatteryBackupCalculator({
           </Card>
         </div>
 
-        <Button 
-          onClick={handleCalculate} 
-          className="w-full" 
-          disabled={totalPower === 0 || totalPower > 10000 || isCalculating}
-        >
-          <Battery className="mr-2 h-4 w-4" />
-          {isCalculating ? 'Calculando...' : 'Calcular Sistema de Backup'}
-        </Button>
+        <div className="space-y-2">
+          {/* BOTÃO DE TESTE PARA DEBUGGING */}
+          <Button 
+            onClick={testButtonClick} 
+            variant="outline" 
+            className="w-full"
+          >
+            🧪 TESTE: Clique Aqui (Se este botão funcionar, o problema é específico)
+          </Button>
+
+          <Button 
+            onClick={() => {
+              console.log('🚨 CLIQUE DIRETO NO BOTÃO PRINCIPAL DETECTADO');
+              handleCalculate();
+            }} 
+            className="w-full" 
+            disabled={totalPower === 0 || totalPower > 10000 || isCalculating}
+          >
+            <Battery className="mr-2 h-4 w-4" />
+            {isCalculating ? 'Calculando...' : 'Calcular Sistema de Backup'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
