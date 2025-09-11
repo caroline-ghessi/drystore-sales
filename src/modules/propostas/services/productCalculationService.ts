@@ -130,7 +130,9 @@ export class ProductCalculationService {
       batteries: this.findProductsByCategory(products, 'battery_backup').filter(p => 
         p.solar_category === 'battery' || p.subcategory === 'bateria'
       ),
-      inverters: this.findProductsByCategory(products, 'battery_backup', 'inversor'),
+      inverters: this.findProductsByCategory(products, 'battery_backup').filter(p => 
+        p.solar_category === 'inverter' || p.subcategory === 'inversor'
+      ),
       protection: this.findProductsByCategory(products, 'battery_backup', 'protecao'),
       monitoring: this.findProductsByCategory(products, 'battery_backup', 'monitoramento')
     };

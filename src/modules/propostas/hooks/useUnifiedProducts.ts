@@ -73,7 +73,7 @@ export function useUnifiedProducts(category?: UnifiedProductCategory) {
       if (category === 'energia_solar') {
         solarQuery = solarQuery.in('category', ['panel', 'inverter']);
       } else if (category === 'battery_backup') {
-        solarQuery = solarQuery.eq('category', 'battery');
+        solarQuery = solarQuery.in('category', ['battery', 'inverter']);
       } else if (!category) {
         // Include all solar equipment when no specific category
       } else {
