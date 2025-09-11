@@ -86,7 +86,10 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
     try {
       setIsGeneratingProposal(true);
       
-      // Simplificar - usar a edge function diretamente sem salvar primeiro
+      // Gerar itens da proposta usando a função do calculator
+      const proposalItems = calculator.generateProposalItems();
+      console.log('Itens da proposta gerados:', proposalItems);
+      
       const request = {
         calculationId: undefined, // Edge function precisará ser ajustada para lidar com isso
         clientData,
@@ -98,7 +101,10 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
           includeTestimonials: false,
           includeTechnicalSpecs: true
         },
-        pricing: calculator.calculationResult
+        pricing: {
+          ...calculator.calculationResult,
+          items: proposalItems
+        }
       };
 
       console.log('Enviando request para edge function:', request);
