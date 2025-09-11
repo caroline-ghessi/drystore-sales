@@ -175,16 +175,18 @@ function selectInverterFromProducts(powerKW: number, inverters: UnifiedProduct[]
   // Buscar inversor híbrido adequado para a potência
   const suitableInverter = inverters.find(inverter => {
     const specs = ProductCalculationService.getProductSpecs(inverter);
-    const inverterPower = specs.power_rating ? specs.power_rating / 1000 : 0;
+    // Usar power_continuous primeiro, depois power_peak como fallback
+    const inverterPower = (specs.power_continuous || specs.power_peak || specs.power_rating || 0) / 1000;
     
     // Inversor deve suportar a potência contínua + margem
     return inverterPower >= powerKW && inverterPower <= powerKW * 2;
   });
   
-  // Se não encontrar adequado, usar primeiro disponível que tenha power_rating válido
+  // Se não encontrar adequado, usar primeiro disponível que tenha potência válida
   return suitableInverter || inverters.find(inverter => {
     const specs = ProductCalculationService.getProductSpecs(inverter);
-    return specs.power_rating && specs.power_rating > 0;
+    const power = specs.power_continuous || specs.power_peak || specs.power_rating || 0;
+    return power > 0;
   });
 }
 

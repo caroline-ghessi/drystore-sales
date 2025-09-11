@@ -6,6 +6,8 @@ export interface ProductCalculationSpecs {
   yield_per_unit?: number; // Rendimento específico
   efficiency?: number;     // Eficiência (0-1)
   power_rating?: number;   // Potência (kW, W)
+  power_continuous?: number; // Potência contínua (W)
+  power_peak?: number;     // Potência de pico (W)
   capacity?: number;       // Capacidade (kWh, Ah)
   voltage?: number;        // Voltagem
   dimensions?: {
