@@ -56,29 +56,16 @@ export default function DryStoreDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-drystore-light-gray min-h-full">
-      {/* Dynamic Header */}
-      <div className="bg-gradient-to-r from-drystore-orange to-drystore-dark-gray rounded-2xl p-8 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Dashboard de Propostas</h1>
-            <p className="text-lg opacity-90">{getSubtitle()}</p>
-          </div>
-          <div className="hidden md:block">
-            <DryStoreButton 
-              variant="drystore-secondary"
-              className="bg-white text-drystore-orange hover:bg-white/90"
-            >
-              <FileText className="mr-2 h-5 w-5" />
-              Nova Proposta
-            </DryStoreButton>
-          </div>
-        </div>
+    <div className="p-6 space-y-8 bg-drystore-light-gray min-h-full">
+      {/* Simplified Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard de Propostas</h1>
+        <p className="text-lg text-muted-foreground">{getSubtitle()}</p>
       </div>
 
       {/* KPIs Section */}
-      <div>
-        <h2 className="text-2xl font-bold text-foreground mb-6">
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-foreground">
           {isAdmin ? 'Métricas Gerais' : 'Sua Performance'}
         </h2>
         

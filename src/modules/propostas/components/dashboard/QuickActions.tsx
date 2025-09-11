@@ -70,6 +70,13 @@ export function QuickActions() {
 
   const adminActions: QuickAction[] = [
     {
+      title: 'Nova Proposta',
+      description: 'Criar proposta personalizada',
+      icon: FileText,
+      onClick: () => navigate('/propostas/nova'),
+      color: 'orange'
+    },
+    {
       title: 'Gerenciar Equipe',
       description: 'Vendedores e metas',
       icon: Users,
@@ -127,15 +134,15 @@ export function QuickActions() {
   const getButtonColorClass = (color: string) => {
     switch (color) {
       case 'blue':
-        return 'border-blue-200 text-blue-700 hover:bg-blue-50';
+        return 'border-2 border-blue-200/80 text-blue-700 hover:bg-blue-50/80 hover:border-blue-300';
       case 'green':
-        return 'border-green-200 text-green-700 hover:bg-green-50';
+        return 'border-2 border-green-200/80 text-green-700 hover:bg-green-50/80 hover:border-green-300';
       case 'red':
-        return 'border-red-200 text-red-700 hover:bg-red-50';
+        return 'border-2 border-red-200/80 text-red-700 hover:bg-red-50/80 hover:border-red-300';
       case 'purple':
-        return 'border-purple-200 text-purple-700 hover:bg-purple-50';
+        return 'border-2 border-purple-200/80 text-purple-700 hover:bg-purple-50/80 hover:border-purple-300';
       case 'gray':
-        return 'border-gray-200 text-gray-700 hover:bg-gray-50';
+        return 'border-2 border-gray-200/80 text-gray-700 hover:bg-gray-50/80 hover:border-gray-300';
       default:
         return '';
     }
@@ -156,25 +163,25 @@ export function QuickActions() {
         </CardDescription>
       </CardHeader>
       
-      <CardContent>
+      <CardContent className="p-8">
         <div className={cn(
-          "grid gap-4",
-          isAdmin ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-6" : "grid-cols-2 md:grid-cols-5"
+          "grid gap-6",
+          isAdmin ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
         )}>
           {actions.map((action, index) => (
             <DryStoreButton
               key={index}
               variant={getButtonVariant(action.color)}
               className={cn(
-                "h-20 flex-col p-4 text-center",
+                "h-28 flex-col p-6 text-center min-w-0 transition-all duration-200 hover:scale-105",
                 action.color !== 'orange' && getButtonColorClass(action.color)
               )}
               onClick={action.onClick}
             >
-              <action.icon className="h-6 w-6 mb-2" />
-              <span className="text-sm font-medium">{action.title}</span>
+              <action.icon className="h-8 w-8 mb-3 mx-auto flex-shrink-0" />
+              <span className="text-sm font-medium mb-1 leading-tight">{action.title}</span>
               {action.description && (
-                <span className="text-xs opacity-70 mt-1">{action.description}</span>
+                <span className="text-xs opacity-75 leading-tight">{action.description}</span>
               )}
             </DryStoreButton>
           ))}
