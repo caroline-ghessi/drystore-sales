@@ -8,14 +8,27 @@ export function useBatteryProductCalculator() {
   const { products, isLoading, error } = useUnifiedProducts('battery_backup');
 
   const calculate = useCallback((input: BatteryBackupInput): BatteryBackupResult => {
-    // Se há produtos cadastrados, usar cálculo baseado em produtos
-    if (products && products.length > 0) {
-      return calculateBatteryBackupWithProducts(input, products);
+    console.log('🔋 useBatteryProductCalculator.calculate chamado com:', input);
+    console.log('🔋 Produtos disponíveis:', products);
+    console.log('🔋 Quantidade de produtos:', products?.length || 0);
+    console.log('🔋 Erro na busca de produtos:', error);
+    console.log('🔋 Loading produtos:', isLoading);
+
+    try {
+      // Se há produtos cadastrados, usar cálculo baseado em produtos
+      if (products && products.length > 0) {
+        console.log('✅ Usando cálculo baseado em produtos cadastrados');
+        return calculateBatteryBackupWithProducts(input, products);
+      }
+      
+      // Fallback: usar cálculo padrão sem produtos específicos
+      console.log('⚠️ Usando cálculo fallback (sem produtos específicos)');
+      return calculateBatteryBackup(input);
+    } catch (calcError) {
+      console.error('❌ Erro no cálculo de battery backup:', calcError);
+      throw calcError;
     }
-    
-    // Fallback: usar cálculo padrão sem produtos específicos
-    return calculateBatteryBackup(input);
-  }, [products]);
+  }, [products, error, isLoading]);
 
   const getAvailableProducts = useCallback(() => {
     if (!products) return { batteries: [], inverters: [], protection: [], monitoring: [] };

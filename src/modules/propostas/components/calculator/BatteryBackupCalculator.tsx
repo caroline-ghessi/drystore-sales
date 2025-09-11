@@ -74,11 +74,18 @@ export function BatteryBackupCalculator({
   };
 
   const handleCalculate = () => {
+    console.log('🔋 BatteryBackupCalculator.handleCalculate chamado');
+    console.log('🔋 Input atual:', input);
+    console.log('🔋 hasProducts:', hasProducts);
+    
     try {
+      console.log('🔋 Chamando onCalculate...');
       onCalculate(input);
+      console.log('✅ onCalculate executado com sucesso');
       setShowResults(true);
     } catch (error) {
-      console.error('❌ Erro no cálculo:', error);
+      console.error('❌ Erro no cálculo do BatteryBackupCalculator:', error);
+      alert(`Erro no cálculo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 

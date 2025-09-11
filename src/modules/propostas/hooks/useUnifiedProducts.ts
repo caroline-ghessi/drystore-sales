@@ -30,12 +30,14 @@ export interface UnifiedProduct {
 }
 
 export function useUnifiedProducts(category?: UnifiedProductCategory) {
+  console.log('📦 useUnifiedProducts chamado com categoria:', category);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: unifiedProducts = [], isLoading, error } = useQuery({
     queryKey: ['unified-products', category],
     queryFn: async () => {
+      console.log('📦 useUnifiedProducts.queryFn executando para categoria:', category);
       const results: UnifiedProduct[] = [];
       
       // Fetch regular products
@@ -44,9 +46,14 @@ export function useUnifiedProducts(category?: UnifiedProductCategory) {
         productsQuery = productsQuery.eq('category', category);
       }
       
+      console.log('📦 Buscando produtos da tabela products...');
       const { data: products, error: productsError } = await productsQuery.order('name');
-      if (productsError) throw productsError;
-      
+      if (productsError) {
+        console.error('❌ Erro ao buscar products:', productsError);
+        throw productsError;
+      }
+      console.log('📦 Produtos encontrados na tabela products:', products?.length || 0);
+
       // Convert products to unified format
       if (products) {
         results.push(...products.map(product => ({
@@ -72,24 +79,35 @@ export function useUnifiedProducts(category?: UnifiedProductCategory) {
       let solarQuery = supabase.from('solar_equipment').select('*').eq('is_active', true);
       if (category === 'energia_solar') {
         solarQuery = solarQuery.in('category', ['panel', 'inverter']);
+        console.log('📦 Filtrando solar_equipment para energia_solar: [panel, inverter]');
       } else if (category === 'battery_backup') {
         solarQuery = solarQuery.in('category', ['battery', 'inverter']);
+        console.log('📦 Filtrando solar_equipment para battery_backup: [battery, inverter]');
       } else if (!category) {
+        console.log('📦 Buscando todos os solar_equipment (sem filtro de categoria)');
         // Include all solar equipment when no specific category
       } else {
+        console.log('📦 Não buscando solar_equipment para categoria:', category);
         // Don't fetch solar equipment for other categories
         solarQuery = solarQuery.eq('id', '00000000-0000-0000-0000-000000000000'); // Non-existent ID
       }
       
+      console.log('📦 Executando query solar_equipment...');
       const { data: solarEquipment, error: solarError } = await solarQuery
         .order('brand', { ascending: true })
         .order('model', { ascending: true });
         
-      if (solarError) throw solarError;
+      if (solarError) {
+        console.error('❌ Erro ao buscar solar_equipment:', solarError);
+        throw solarError;
+      }
       
+      console.log('📦 Solar equipment encontrado:', solarEquipment?.length || 0);
+      console.log('📦 Solar equipment data:', solarEquipment);
+
       // Convert solar equipment to unified format
       if (solarEquipment) {
-        results.push(...solarEquipment.map(equipment => ({
+        const convertedSolarEquipment = solarEquipment.map(equipment => ({
           id: equipment.id,
           name: `${equipment.brand} ${equipment.model}`,
           description: `${equipment.category === 'panel' ? 'Painel Solar' : 
@@ -107,9 +125,14 @@ export function useUnifiedProducts(category?: UnifiedProductCategory) {
           brand: equipment.brand,
           model: equipment.model,
           solar_category: equipment.category as 'panel' | 'inverter' | 'battery'
-        })));
+        }));
+        
+        console.log('📦 Solar equipment convertido:', convertedSolarEquipment);
+        results.push(...convertedSolarEquipment);
       }
       
+      console.log('📦 Total de produtos unificados:', results.length);
+      console.log('📦 Produtos finais:', results);
       return results;
     }
   });
