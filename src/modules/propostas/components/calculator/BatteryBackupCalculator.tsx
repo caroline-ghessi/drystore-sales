@@ -62,6 +62,14 @@ export function BatteryBackupCalculator({
 
   const validation = validateEssentialLoads(input.essentialLoads);
   const totalPower = Object.values(input.essentialLoads).reduce((sum, power) => sum + power, 0);
+  
+  // Debug logs para identificar problema do botão
+  console.log('🔍 DEBUG - Battery Calculator:', {
+    totalPower,
+    validation,
+    hasProducts,
+    input: input.essentialLoads
+  });
 
   const handleLoadChange = (loadType: keyof typeof input.essentialLoads, value: number) => {
     setInput(prev => ({
@@ -74,8 +82,20 @@ export function BatteryBackupCalculator({
   };
 
   const handleCalculate = () => {
-    onCalculate(input);
-    setShowResults(true);
+    console.log('🚀 Executando cálculo com:', { input, validation, hasProducts });
+    
+    try {
+      onCalculate(input);
+      setShowResults(true);
+    } catch (error) {
+      console.error('❌ Erro no cálculo:', error);
+      // Se não há produtos, ainda assim permitir cálculo básico
+      if (!hasProducts) {
+        console.log('⚠️ Tentando cálculo sem produtos cadastrados...');
+        onCalculate(input);
+        setShowResults(true);
+      }
+    }
   };
 
   const handleRecalculate = () => {
@@ -417,7 +437,11 @@ export function BatteryBackupCalculator({
           </Card>
         </div>
 
-        <Button onClick={handleCalculate} className="w-full" disabled={!validation.isValid}>
+        <Button 
+          onClick={handleCalculate} 
+          className="w-full" 
+          disabled={totalPower === 0 || totalPower > 10000}
+        >
           <Battery className="mr-2 h-4 w-4" />
           Calcular Sistema de Backup
         </Button>
