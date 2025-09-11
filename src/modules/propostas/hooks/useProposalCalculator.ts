@@ -68,12 +68,18 @@ export function useProposalCalculator(productType: ProductType) {
           result = calculateSolarWithProducts(solarInput, products);
           break;
         case 'battery_backup':
+          console.log('🔄 Iniciando cálculo de battery_backup:', { products: products?.length || 0, input });
+          
           // Usar cálculo baseado em produtos se disponível
           if (products && products.length > 0) {
+            console.log('✅ Usando cálculo com produtos');
             result = calculateBatteryBackupWithProducts(input as any, products);
           } else {
+            console.log('⚠️ Usando cálculo padrão');
             result = calculateBatteryBackup(input as any);
           }
+          
+          console.log('✅ Resultado do cálculo:', result);
           break;
         case 'shingle':
           result = calculateShingleInstallation(input as any);
@@ -91,12 +97,18 @@ export function useProposalCalculator(productType: ProductType) {
           throw new Error(`Cálculo não implementado para o produto: ${productType}`);
       }
       
+      console.log('🎯 Resultado final calculado:', { productType, result });
+      
       setCalculationInput(input);
       setCalculationResult(result);
+      
+      console.log('✅ Estado atualizado - input e result salvos');
     } catch (err) {
+      console.error('❌ Erro durante cálculo:', err);
       setError(err instanceof Error ? err.message : 'Erro no cálculo');
     } finally {
       setIsCalculating(false);
+      console.log('🏁 Finalizando cálculo');
     }
   }, [productType, products]);
 

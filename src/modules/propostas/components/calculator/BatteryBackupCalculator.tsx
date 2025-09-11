@@ -86,6 +86,7 @@ export function BatteryBackupCalculator({
     
     try {
       onCalculate(input);
+      console.log('✅ onCalculate executado, aguardando resultado...');
       setShowResults(true);
     } catch (error) {
       console.error('❌ Erro no cálculo:', error);
@@ -103,7 +104,14 @@ export function BatteryBackupCalculator({
   };
 
   // Show results if calculation is complete
+  console.log('🔍 Verificando se deve mostrar resultados:', { 
+    showResults, 
+    hasCalculationResult: !!calculationResult,
+    calculationResult 
+  });
+  
   if (showResults && calculationResult) {
+    console.log('✅ Exibindo resultados do cálculo');
     return (
       <BatteryBackupResults
         result={calculationResult}
