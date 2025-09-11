@@ -466,6 +466,24 @@ export function BatteryBackupCalculator({
         </div>
 
         <div className="space-y-2">
+          {/* DIAGNÓSTICO DAS CONDIÇÕES DO BOTÃO */}
+          {(() => {
+            const isPowerZero = totalPower === 0;
+            const isPowerHigh = totalPower > 10000;
+            const isDisabled = isPowerZero || isPowerHigh || isCalculating;
+            
+            console.log('🔧 DIAGNÓSTICO BOTÃO - Condições:', {
+              totalPower,
+              isPowerZero,
+              isPowerHigh,
+              isCalculating,
+              isDisabled,
+              timestamp: new Date().toISOString()
+            });
+            
+            return null;
+          })()}
+
           {/* BOTÃO DE TESTE PARA DEBUGGING */}
           <Button 
             onClick={testButtonClick} 
@@ -476,9 +494,22 @@ export function BatteryBackupCalculator({
           </Button>
 
           <Button 
-            onClick={() => {
-              console.log('🚨 CLIQUE DIRETO NO BOTÃO PRINCIPAL DETECTADO');
-              handleCalculate();
+            onClick={(e) => {
+              try {
+                console.log('🚨 EVENTO ONCLICK DISPARADO');
+                console.log('🚨 Event object:', e);
+                console.log('🚨 Event type:', e.type);
+                console.log('🚨 Target:', e.target);
+                console.log('🚨 CurrentTarget:', e.currentTarget);
+                console.log('🚨 Timestamp:', new Date().toISOString());
+                
+                console.log('🚨 Chamando handleCalculate...');
+                handleCalculate();
+                console.log('🚨 handleCalculate chamado com sucesso');
+              } catch (error) {
+                console.error('❌ ERRO NO ONCLICK:', error);
+                alert(`ERRO NO ONCLICK: ${error.message}`);
+              }
             }} 
             className="w-full" 
             disabled={totalPower === 0 || totalPower > 10000 || isCalculating}
