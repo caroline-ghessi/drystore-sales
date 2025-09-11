@@ -33,12 +33,14 @@ export function WhatsAppHeader() {
   };
 
   return (
-    <header className="h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-14 items-center justify-between px-4">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5 text-green-600" />
-            <span className="font-semibold text-green-600">WhatsApp</span>
+    <header className="h-16 border-b border-border bg-background">
+      <div className="flex h-16 items-center justify-between px-6">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-100 rounded-xl">
+              <MessageCircle className="h-5 w-5 text-emerald-600" />
+            </div>
+            <span className="font-semibold text-foreground text-lg">WhatsApp Business</span>
           </div>
           
           <Breadcrumb>
@@ -46,7 +48,7 @@ export function WhatsAppHeader() {
               <BreadcrumbItem>
                 <BreadcrumbLink 
                   onClick={() => navigate('/home')}
-                  className="cursor-pointer hover:text-primary"
+                  className="cursor-pointer hover:text-drystore-orange transition-colors"
                 >
                   <Home className="h-4 w-4" />
                 </BreadcrumbLink>
@@ -55,14 +57,14 @@ export function WhatsAppHeader() {
               <BreadcrumbItem>
                 <BreadcrumbLink 
                   onClick={() => navigate('/whatsapp')}
-                  className="cursor-pointer hover:text-primary"
+                  className="cursor-pointer hover:text-drystore-orange transition-colors"
                 >
                   WhatsApp
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage>{getPageTitle()}</BreadcrumbPage>
+                <BreadcrumbPage className="text-foreground font-medium">{getPageTitle()}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -70,7 +72,7 @@ export function WhatsAppHeader() {
 
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-sm font-medium">{user?.email}</p>
+            <p className="text-sm font-medium text-foreground">{user?.email}</p>
           </div>
           <Button variant="outline" size="sm" onClick={handleSignOut}>
             <LogOut className="w-4 h-4 mr-2" />

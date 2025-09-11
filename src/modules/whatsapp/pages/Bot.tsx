@@ -31,10 +31,10 @@ function TabButton({ active, onClick, icon, label }: TabButtonProps) {
     <button
       onClick={onClick}
       className={`
-        flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm font-medium
+        flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm font-medium
         ${active 
-          ? 'bg-card text-primary shadow-sm' 
-          : 'text-muted-foreground hover:text-foreground'
+          ? 'bg-background text-drystore-orange shadow-sm border border-border' 
+          : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
         }
       `}
     >
@@ -58,25 +58,25 @@ export default function BotPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-muted/30 to-muted/50">
+    <div className="min-h-screen bg-background">
       {/* Header Principal com Navegação */}
-      <div className="bg-card border-b sticky top-0 z-40">
+      <div className="bg-background border-b border-border sticky top-0 z-40">
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Bot className="w-6 h-6 text-primary" />
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-purple-100 rounded-xl">
+                    <Bot className="w-6 h-6 text-purple-600" />
                   </div>
                   <div>
                     <h1 className="text-xl font-bold text-foreground">Bot Inteligente</h1>
-                    <p className="text-xs text-muted-foreground">Sistema de IA para atendimento</p>
+                    <p className="text-sm text-muted-foreground">Sistema de IA para atendimento WhatsApp</p>
                   </div>
                 </div>
               </div>
 
             {/* Tabs de Navegação */}
-            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+            <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
               <TabButton
                 active={activeTab === 'overview'}
                 onClick={() => setActiveTab('overview')}
@@ -111,14 +111,14 @@ export default function BotPage() {
 
             {/* Actions */}
             <div className="flex items-center gap-3">
-              <button className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <History className="w-4 h-4 inline mr-2" />
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                <History className="w-4 h-4 mr-2" />
                 Histórico
-              </button>
-              <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
-                <Save className="w-4 h-4" />
+              </Button>
+              <Button className="bg-drystore-orange hover:bg-drystore-orange/90 shadow-sm">
+                <Save className="w-4 h-4 mr-2" />
                 Salvar Alterações
-              </button>
+              </Button>
             </div>
           </div>
         </div>

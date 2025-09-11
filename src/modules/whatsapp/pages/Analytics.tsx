@@ -36,21 +36,21 @@ export default function Analytics() {
   const [selectedTab, setSelectedTab] = useState('overview');
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-8 bg-background">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
-            <p className="text-muted-foreground">
-              Monitoramento de KPIs e métricas de performance
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-foreground">Analytics WhatsApp</h1>
+            <p className="text-muted-foreground text-base">
+              Monitoramento de KPIs e métricas de performance do atendimento
             </p>
           </div>
         </div>
         
         <div className="flex items-center gap-3">
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-48 shadow-none">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -62,71 +62,79 @@ export default function Analytics() {
             </SelectContent>
           </Select>
           
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="shadow-none">
             <Download className="w-4 h-4 mr-2" />
             Exportar
           </Button>
         </div>
       </div>
 
-      {/* Quick Stats Cards */}
+      {/* KPIs Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+        <Card className="border-border shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground">
               Total de Conversas
             </CardTitle>
-            <MessageCircle className="w-4 h-4 text-muted-foreground" />
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <MessageCircle className="w-5 h-5 text-blue-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">1,247</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-primary">+12%</span> vs. período anterior
+            <div className="text-3xl font-bold text-foreground mb-1">1,247</div>
+            <p className="text-sm text-muted-foreground">
+              <span className="text-drystore-orange font-medium">+12%</span> vs. período anterior
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+        <Card className="border-border shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground">
               Leads Quentes
             </CardTitle>
-            <Flame className="w-4 h-4 text-lead-hot" />
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <Flame className="w-5 h-5 text-drystore-orange" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">89</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-primary">+8%</span> vs. período anterior
+            <div className="text-3xl font-bold text-drystore-orange mb-1">89</div>
+            <p className="text-sm text-muted-foreground">
+              <span className="text-drystore-orange font-medium">+8%</span> vs. período anterior
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+        <Card className="border-border shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground">
               Tempo Médio Resposta
             </CardTitle>
-            <Clock className="w-4 h-4 text-muted-foreground" />
+            <div className="p-2 bg-amber-100 rounded-lg">
+              <Clock className="w-5 h-5 text-amber-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">2.3m</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-destructive">+15s</span> vs. período anterior
+            <div className="text-3xl font-bold text-foreground mb-1">2.3m</div>
+            <p className="text-sm text-muted-foreground">
+              <span className="text-red-600 font-medium">+15s</span> vs. período anterior
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+        <Card className="border-border shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground">
               Taxa de Conversão
             </CardTitle>
-            <Target className="w-4 h-4 text-muted-foreground" />
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <Target className="w-5 h-5 text-emerald-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">7.2%</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-primary">+0.5%</span> vs. período anterior
+            <div className="text-3xl font-bold text-foreground mb-1">7.2%</div>
+            <p className="text-sm text-muted-foreground">
+              <span className="text-drystore-orange font-medium">+0.5%</span> vs. período anterior
             </p>
           </CardContent>
         </Card>
@@ -134,12 +142,12 @@ export default function Analytics() {
 
       {/* Main Analytics Tabs */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-          <TabsTrigger value="conversations">Conversas</TabsTrigger>
-          <TabsTrigger value="vendors">Vendedores</TabsTrigger>
-          <TabsTrigger value="leads">Leads</TabsTrigger>
-          <TabsTrigger value="quality">Qualidade</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5 h-12 bg-muted rounded-lg p-1">
+          <TabsTrigger value="overview" className="font-medium">Visão Geral</TabsTrigger>
+          <TabsTrigger value="conversations" className="font-medium">Conversas</TabsTrigger>
+          <TabsTrigger value="vendors" className="font-medium">Vendedores</TabsTrigger>
+          <TabsTrigger value="leads" className="font-medium">Leads</TabsTrigger>
+          <TabsTrigger value="quality" className="font-medium">Qualidade</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
