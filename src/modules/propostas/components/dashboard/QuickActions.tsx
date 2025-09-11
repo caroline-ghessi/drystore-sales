@@ -134,15 +134,15 @@ export function QuickActions() {
   const getButtonColorClass = (color: string) => {
     switch (color) {
       case 'blue':
-        return 'border-2 border-blue-200/80 text-blue-700 hover:bg-blue-50/80 hover:border-blue-300';
+        return 'bg-blue-600 text-white hover:bg-blue-700 border-0';
       case 'green':
-        return 'border-2 border-green-200/80 text-green-700 hover:bg-green-50/80 hover:border-green-300';
+        return 'bg-green-600 text-white hover:bg-green-700 border-0';
       case 'red':
-        return 'border-2 border-red-200/80 text-red-700 hover:bg-red-50/80 hover:border-red-300';
+        return 'bg-red-600 text-white hover:bg-red-700 border-0';
       case 'purple':
-        return 'border-2 border-purple-200/80 text-purple-700 hover:bg-purple-50/80 hover:border-purple-300';
+        return 'bg-purple-600 text-white hover:bg-purple-700 border-0';
       case 'gray':
-        return 'border-2 border-gray-200/80 text-gray-700 hover:bg-gray-50/80 hover:border-gray-300';
+        return 'bg-gray-600 text-white hover:bg-gray-700 border-0';
       default:
         return '';
     }
