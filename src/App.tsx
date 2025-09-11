@@ -71,54 +71,12 @@ function AppContent() {
           </ProtectedRoute>
         } />
         
-        {/* WhatsApp Module Routes - General Layout */}
-        <Route path="/whatsapp" element={
+        {/* WhatsApp Module Routes */}
+        <Route path="/whatsapp/*" element={
           <ProtectedRoute>
-            <Layout />
+            <WhatsAppLayout />
           </ProtectedRoute>
-        }>
-          <Route index element={<WhatsAppDashboard />} />
-        </Route>
-        
-        <Route path="/whatsapp/bot" element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }>
-          <Route index element={<BotPage />} />
-        </Route>
-        
-        <Route path="/whatsapp/vendedores" element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }>
-          <Route index element={<VendedoresPage />} />
-        </Route>
-        
-        <Route path="/whatsapp/atendentes" element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }>
-          <Route index element={<AtendentesPage />} />
-        </Route>
-        
-        <Route path="/whatsapp/analytics" element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }>
-          <Route index element={<Analytics />} />
-        </Route>
-        
-        <Route path="/whatsapp/leads-quentes" element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }>
-          <Route index element={<LeadsQuentes />} />
-        </Route>
+        } />
         
         {/* CRM Module Routes */}
         <Route path="/crm/*" element={
