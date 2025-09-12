@@ -240,6 +240,15 @@ export function useProposalCalculator(productType: ProductType) {
       case 'battery_backup':
         const batteryResult = calculationResult as any;
         
+        // Função auxiliar para obter nome do produto com fallbacks robustos
+        const getProductName = (product: any, fallbackName: string) => {
+          console.log('🔍 getProductName - produto:', product);
+          if (product?.name) return product.name;
+          if (product?.model) return product.model;
+          if (product?.description) return product.description;
+          return fallbackName;
+        };
+
         // DEBUG: Verificar produtos selecionados
         console.log('🔍 DEBUG generateProposalItems - batteryResult completo:', batteryResult);
         console.log('🔍 DEBUG generateProposalItems - selectedBattery:', batteryResult.selectedBattery);
@@ -248,63 +257,82 @@ export function useProposalCalculator(productType: ProductType) {
         console.log('🔍 DEBUG generateProposalItems - selectedInverter?.name:', batteryResult.selectedInverter?.name);
         console.log('🔍 DEBUG generateProposalItems - itemizedCosts:', batteryResult.itemizedCosts);
         
-        // Baterias - usando produto real selecionado
+        // Baterias - usando produto real selecionado com múltiplos fallbacks
+        const batteryName = getProductName(
+          batteryResult.selectedBattery, 
+          `Bateria Lítio ${batteryResult.batteryConfiguration?.totalCapacityKwh?.toFixed(1) || 0} kWh`
+        );
+        
         items.push({
           id: '1',
-          name: batteryResult.selectedBattery?.name || `Baterias ${batteryResult.batteryConfiguration.totalCapacityKwh.toFixed(1)} kWh`,
+          name: batteryName,
           product: 'battery_backup' as ProductType,
-          quantity: batteryResult.batteryConfiguration.batteryQuantity || 1,
+          quantity: batteryResult.batteryConfiguration?.batteryQuantity || 1,
           unit: 'unidade',
           unitPrice: batteryResult.itemizedCosts?.batteries ? 
-            batteryResult.itemizedCosts.batteries / (batteryResult.batteryConfiguration.batteryQuantity || 1) : 0,
+            batteryResult.itemizedCosts.batteries / (batteryResult.batteryConfiguration?.batteryQuantity || 1) : 0,
           totalPrice: batteryResult.itemizedCosts?.batteries || 0,
-          category: 'Battery Backup',
+          category: 'Armazenamento de Energia',
           specifications: {
-            capacity: batteryResult.selectedBattery?.specifications?.capacity || `${batteryResult.batteryConfiguration.totalCapacityKwh.toFixed(1)} kWh`,
-            model: batteryResult.selectedBattery?.model || batteryResult.selectedBattery?.name || 'Bateria Litio',
+            capacity: batteryResult.selectedBattery?.specifications?.capacity || 
+                     `${batteryResult.batteryConfiguration?.totalCapacityKwh?.toFixed(1) || 0} kWh`,
+            model: batteryResult.selectedBattery?.model || 
+                   batteryResult.selectedBattery?.name || 
+                   batteryName,
             brand: batteryResult.selectedBattery?.brand || 'N/A',
-            dod: batteryResult.selectedBattery?.specifications?.dod || 'N/A',
-            cycles: batteryResult.selectedBattery?.specifications?.cycles || 'N/A'
+            dod: batteryResult.selectedBattery?.specifications?.dod || '95%',
+            cycles: batteryResult.selectedBattery?.specifications?.cycles || '6000+'
           }
         });
 
-        // Inversor Híbrido - usando produto real selecionado
+        // Inversor Híbrido - usando produto real selecionado com múltiplos fallbacks
+        const inverterName = getProductName(
+          batteryResult.selectedInverter,
+          `Inversor Híbrido ${batteryResult.totalPowerRequired?.toFixed(1) || 0} kW`
+        );
+        
         items.push({
           id: '2',
-          name: batteryResult.selectedInverter?.name || `Inversor Híbrido ${batteryResult.totalPowerRequired.toFixed(2)} kW`,
+          name: inverterName,
           product: 'battery_backup' as ProductType,
           quantity: batteryResult.inverterQuantity || 1,
           unit: 'unidade',
           unitPrice: batteryResult.itemizedCosts?.inverters ? 
             batteryResult.itemizedCosts.inverters / (batteryResult.inverterQuantity || 1) : 0,
           totalPrice: batteryResult.itemizedCosts?.inverters || 0,
-          category: 'Battery Backup',
+          category: 'Conversão de Energia',
           specifications: {
-            power: batteryResult.selectedInverter?.specifications?.power || `${batteryResult.totalPowerRequired.toFixed(2)} kW`,
-            model: batteryResult.selectedInverter?.model || batteryResult.selectedInverter?.name || 'Inversor Híbrido',
+            power: batteryResult.selectedInverter?.specifications?.power_continuous ||
+                   batteryResult.selectedInverter?.specifications?.power_peak ||
+                   `${batteryResult.totalPowerRequired?.toFixed(1) || 0} kW`,
+            model: batteryResult.selectedInverter?.model || 
+                   batteryResult.selectedInverter?.name || 
+                   inverterName,
             brand: batteryResult.selectedInverter?.brand || 'N/A',
-            efficiency: batteryResult.selectedInverter?.specifications?.efficiency || 'N/A'
+            efficiency: batteryResult.selectedInverter?.specifications?.efficiency || '95%',
+            type: 'Híbrido com backup'
           }
         });
 
-        // Sistema de Proteção
-        if (batteryResult.itemizedCosts?.protection > 0) {
-          items.push({
-            id: '3',
-            name: `Sistema de Proteção`,
-            product: 'battery_backup' as ProductType,
-            quantity: 1,
-            unit: 'kit',
-            unitPrice: batteryResult.itemizedCosts.protection,
-            totalPrice: batteryResult.itemizedCosts.protection,
-            category: 'Battery Backup',
-            specifications: {
-              includes: 'DPS, Disjuntores, String Box DC/AC',
-              type: 'Kit de Proteção Completo',
-              system: `${batteryResult.totalPowerRequired.toFixed(2)} kW`
-            }
-          });
-        }
+        // Sistema de Proteção e Monitoramento
+        items.push({
+          id: '3',
+          name: 'Sistema de Proteção CC/CA',
+          product: 'battery_backup' as ProductType,
+          quantity: 1,
+          unit: 'conjunto',
+          unitPrice: batteryResult.itemizedCosts?.protection || 0,
+          totalPrice: batteryResult.itemizedCosts?.protection || 0,
+          category: 'Proteção e Segurança',
+          specifications: {
+            includes: 'Disjuntores CC/CA, DPS, Aterramento',
+            protection: 'Sobrecarga, Curto-circuito, Surtos',
+            monitoring: 'Sistema de Monitoramento Remoto',
+            safety: 'Normas NBR e IEC'
+          }
+        });
+
+        break;
 
         // Sistema de Monitoramento
         if (batteryResult.itemizedCosts?.monitoring > 0) {
