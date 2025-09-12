@@ -877,7 +877,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                   )}
 
                   {/* Original Summary Card for non-solar/non-shingle/non-battery or when no proposalItems */}
-                  {((productType !== 'solar' && productType !== 'solar_advanced' && productType !== 'shingle' && productType !== 'battery_backup') || !calculator.calculationSummary?.proposalItems) && (
+                  {(productType !== 'solar' && productType !== 'solar_advanced' && productType !== 'shingle' && productType !== 'battery_backup') && !calculator.calculationSummary?.proposalItems && (
                     <Card>
                       <CardHeader>
                         <CardTitle>Resumo dos Cálculos</CardTitle>
