@@ -735,7 +735,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                       </CardHeader>
                       <CardContent className="space-y-6">
                         {calculator.calculationSummary.proposalItems
-                          .filter(item => item.category === 'batteries' || item.name?.toLowerCase().includes('bateria'))
+                          .filter(item => item.category === 'Armazenamento de Energia' || item.name?.toLowerCase().includes('bateria'))
                           .map((battery, idx) => (
                             <div key={idx} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                               <div className="flex items-center mb-2">
@@ -766,7 +766,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                           ))}
 
                         {calculator.calculationSummary.proposalItems
-                          .filter(item => item.category === 'inverters' || item.name?.toLowerCase().includes('inversor'))
+                          .filter(item => item.category === 'Conversão de Energia' || item.name?.toLowerCase().includes('inversor'))
                           .map((inverter, idx) => (
                             <div key={idx} className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                               <div className="flex items-center mb-2">
@@ -797,7 +797,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                           ))}
 
                         {calculator.calculationSummary.proposalItems
-                          .filter(item => item.category === 'protection' || item.name?.toLowerCase().includes('proteção'))
+                          .filter(item => item.category === 'Proteção e Segurança' || item.name?.toLowerCase().includes('proteção'))
                           .map((protection, idx) => (
                             <div key={idx} className="bg-red-50 p-4 rounded-lg border border-red-200">
                               <div className="flex items-center mb-2">
