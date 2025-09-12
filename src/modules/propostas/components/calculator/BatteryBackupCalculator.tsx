@@ -467,7 +467,13 @@ export function BatteryBackupCalculator({
 
         <div className="space-y-2">
           <Button 
-            onClick={() => handleCalculate()}
+            onClick={() => {
+              console.log('🚨 BOTÃO CLICADO - BatteryBackupCalculator');
+              console.log('🔋 totalPower:', totalPower);
+              console.log('🔋 isCalculating:', isCalculating);
+              console.log('🔋 Button disabled:', totalPower === 0 || totalPower > 10000 || isCalculating);
+              handleCalculate();
+            }}
             className="w-full" 
             disabled={totalPower === 0 || totalPower > 10000 || isCalculating}
           >

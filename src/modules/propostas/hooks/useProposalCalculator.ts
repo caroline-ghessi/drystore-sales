@@ -40,6 +40,8 @@ export function useProposalCalculator(productType: ProductType) {
     'battery_backup': 'battery_backup' as const
   };
   const category = categoryMap[productType];
+  console.log('🎯 useProposalCalculator - productType:', productType);
+  console.log('🎯 useProposalCalculator - category mapeada:', category);
   const { products } = useUnifiedProducts(category);
 
   const calculate = useCallback(async (input: CalculationInput) => {
