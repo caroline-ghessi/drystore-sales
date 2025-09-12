@@ -431,20 +431,25 @@ export function useProposalCalculator(productType: ProductType) {
       case 'drywall':
         const drywallResult = calculationResult as any;
         
+        // Debug logging para drywall
+        console.log('🧱 DEBUG Drywall Result:', drywallResult);
+        console.log('🧱 plateQuantity:', drywallResult.plateQuantity);
+        console.log('🧱 profileQuantity:', drywallResult.profileQuantity);
+        
         items.push({
           id: '1',
-          name: `Drywall ${drywallResult.plateQuantity.toFixed(0)} m²`,
+          name: `Drywall ${(drywallResult.plateQuantity || 0).toFixed(0)} m²`,
           product: 'drywall' as ProductType,
-          quantity: drywallResult.plateQuantity,
+          quantity: drywallResult.plateQuantity || 0,
           unit: 'm²',
-          unitPrice: drywallResult.plateQuantity > 0 ? drywallResult.totalCost / drywallResult.plateQuantity : 0,
-          totalPrice: drywallResult.totalCost,
+          unitPrice: (drywallResult.plateQuantity || 0) > 0 ? (drywallResult.totalCost || 0) / (drywallResult.plateQuantity || 1) : 0,
+          totalPrice: drywallResult.totalCost || 0,
           category: 'Drywall',
           specifications: {
-            area: drywallResult.plateQuantity,
-            profiles: drywallResult.profileQuantity,
-            screws: drywallResult.screwQuantity,
-            jointCompound: drywallResult.jointCompoundQuantity
+            area: drywallResult.plateQuantity || 0,
+            profiles: drywallResult.profileQuantity || 0,
+            screws: drywallResult.screwQuantity || 0,
+            jointCompound: drywallResult.jointCompoundQuantity || 0
           }
         });
         break;
@@ -558,14 +563,18 @@ export function useProposalCalculator(productType: ProductType) {
         
       case 'drywall':
         const drywall = calculationResult as any;
-        const totalPlates = Math.ceil(drywall.plateQuantity / 3); // Placas de 3m²
+        
+        // Debug logging para drywall summary
+        console.log('🧱 DEBUG Drywall Summary:', drywall);
+        
+        const totalPlates = Math.ceil((drywall.plateQuantity || 0) / 3); // Placas de 3m²
         return {
-          totalCost: drywall.totalCost,
+          totalCost: drywall.totalCost || 0,
           keyMetrics: [
-            { label: 'Área Total', value: `${drywall.plateQuantity.toFixed(0)} m²` },
+            { label: 'Área Total', value: `${(drywall.plateQuantity || 0).toFixed(0)} m²` },
             { label: 'Placas Drywall', value: `${totalPlates} unidades` },
-            { label: 'Perfis Metálicos', value: `${drywall.profileQuantity.toFixed(0)} ml` },
-            { label: 'Parafusos', value: `${drywall.screwQuantity.toFixed(0)} unidades` }
+            { label: 'Perfis Metálicos', value: `${(drywall.profileQuantity || 0).toFixed(0)} ml` },
+            { label: 'Parafusos', value: `${(drywall.screwQuantity || 0).toFixed(0)} unidades` }
           ]
         };
         
