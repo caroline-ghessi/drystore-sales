@@ -10,6 +10,7 @@ import { calculateShingleWithProducts } from '../utils/calculations/productBased
 import { calculateDrywallInstallation } from '../utils/calculations/drywallCalculations';
 import { calculateForroDrywall } from '../utils/calculations/forroDrywallCalculations';
 import { calculateAcousticMineralCeiling } from '../utils/calculations/acousticMineralCeilingCalculations';
+import { calculateImprovedDrywall } from '../utils/calculations/improvedDrywallCalculations';
 
 // Função para detectar se o input é do tipo SimpleSolarCalculationInput
 function isSimpleSolarInput(input: any): input is SimpleSolarCalculationInput {
@@ -51,14 +52,24 @@ export function useProposalCalculator(productType: ProductType) {
   console.log('🎯 useProposalCalculator - produtos retornados:', products?.length || 0);
   console.log('🎯 useProposalCalculator - primeiros 2 produtos:', products?.slice(0, 2));
 
-  const calculate = useCallback(async (input: CalculationInput) => {
+  const calculate = useCallback(async (inputOrResult: CalculationInput | any) => {
     setIsCalculating(true);
     setError(null);
     
     try {
       let result: CalculationResult | any;
+      let input: CalculationInput;
       
-      switch (productType) {
+      // Check if we received a complete calculation result (from DrywallCalculatorWrapper)
+      if (inputOrResult && typeof inputOrResult === 'object' && inputOrResult.quantified_items) {
+        // This is already a calculation result, use it directly
+        result = inputOrResult;
+        input = inputOrResult.input || inputOrResult;
+      } else {
+        // This is input data, perform calculation
+        input = inputOrResult;
+      
+        switch (productType) {
         case 'solar':
           if (isSimpleSolarInput(input)) {
             // Calculadora simples: usar produtos cadastrados, mesmo com preço zero
@@ -95,7 +106,7 @@ export function useProposalCalculator(productType: ProductType) {
           result = calculateShingleWithProducts(input as any, products);
           break;
         case 'drywall':
-          result = calculateDrywallInstallation(input as any);
+          result = await calculateImprovedDrywall(input as any);
           break;
         case 'forro_drywall':
           result = calculateForroDrywall(input as any);
@@ -103,8 +114,9 @@ export function useProposalCalculator(productType: ProductType) {
         case 'acoustic_mineral_ceiling':
           result = await calculateAcousticMineralCeiling(input as any);
           break;
-        default:
-          throw new Error(`Cálculo não implementado para o produto: ${productType}`);
+          default:
+            throw new Error(`Cálculo não implementado para o produto: ${productType}`);
+        }
       }
       
       setCalculationInput(input);

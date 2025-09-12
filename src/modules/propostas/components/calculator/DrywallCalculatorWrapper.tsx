@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Shield, Info } from 'lucide-react';
 
 interface DrywallCalculatorWrapperProps {
-  onCalculate?: (input: DrywallCalculationInput) => void;
+  onCalculate?: (result: any) => void;
 }
 
 export function DrywallCalculatorWrapper({ onCalculate }: DrywallCalculatorWrapperProps) {
@@ -35,8 +35,9 @@ export function DrywallCalculatorWrapper({ onCalculate }: DrywallCalculatorWrapp
       setResult(calculationResult);
       
       // Call external onCalculate if provided (for ProposalGenerator integration)
+      // Pass the complete result, not just input
       if (onCalculate) {
-        onCalculate(input);
+        onCalculate(calculationResult);
       }
     } catch (error) {
       console.error('Erro no cálculo de drywall:', error);
