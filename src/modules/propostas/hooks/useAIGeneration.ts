@@ -102,7 +102,8 @@ export function useAIGeneration() {
             netProfit25Years: 0,
             monthlyROI: 0,
             breakEvenMonth: 0
-          }
+          },
+          quantified_items: [] // Lista vazia para manter compatibilidade
         },
         confidence: 85,
         suggestions: ['Considere manutenção preventiva', 'Aproveite condições especiais de pagamento'],

@@ -144,7 +144,8 @@ export function calculateSolarWithProducts(
     batteryConfiguration: batteryConfig,
     performanceMetrics,
     itemizedCosts,
-    totalCost
+    totalCost,
+    quantified_items: [] // Lista vazia - será preenchida por calculadoras baseadas em produtos
   };
 }
 

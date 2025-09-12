@@ -96,6 +96,87 @@ export function calculateSimpleSolarSystem(input: SimpleSolarCalculationInput): 
   const monthlyROI = (monthlySavings / totalCost) * 100;
   const breakEvenMonth = Math.ceil(paybackPeriod);
   
+  // 9. Lista quantificada para propostas
+  const quantified_items = [
+    {
+      name: `Painéis Solares Fotovoltaicos 550W`,
+      description: `Kit com ${panelQuantity} painéis solares monocristalinos de 550W cada, alta eficiência com garantia de 25 anos de potência`,
+      quantity: panelQuantity,
+      unit: 'unidade' as const,
+      unit_price: itemizedCosts.panels / panelQuantity,
+      total_price: itemizedCosts.panels,
+      category: 'Painéis Solares',
+      specifications: {
+        power_per_panel: '550W',
+        technology: 'Monocristalino',
+        efficiency: '21%+',
+        warranty: '25 anos',
+        total_power: `${(panelQuantity * 0.55).toFixed(2)} kWp`
+      }
+    },
+    {
+      name: `Inversor String Trifásico`,
+      description: `Kit com ${inverterQuantity} inversor(es) string trifásico(s) de alta eficiência para conexão à rede elétrica`,
+      quantity: inverterQuantity,
+      unit: 'unidade' as const,
+      unit_price: itemizedCosts.inverters / inverterQuantity,
+      total_price: itemizedCosts.inverters,
+      category: 'Inversores',
+      specifications: {
+        power_rating: `${Math.ceil(systemPower / inverterQuantity)} kW`,
+        type: 'String Grid-Tie',
+        phases: '3',
+        efficiency: '97%+',
+        warranty: '10 anos'
+      }
+    },
+    {
+      name: `Estrutura de Fixação`,
+      description: `Sistema completo de fixação em alumínio para telhado cerâmico/concreto, incluindo trilhos, ganchos e fixadores`,
+      quantity: 1,
+      unit: 'conjunto' as const,
+      unit_price: itemizedCosts.structure,
+      total_price: itemizedCosts.structure,
+      category: 'Estrutura',
+      specifications: {
+        material: 'Alumínio anodizado',
+        roof_type: 'Cerâmico/Concreto',
+        wind_load: '150 km/h',
+        panels_supported: panelQuantity
+      }
+    },
+    {
+      name: `Instalação e Comissionamento`,
+      description: `Serviço completo de instalação, cabeamento, configuração e comissionamento do sistema solar fotovoltaico`,
+      quantity: 1,
+      unit: 'serviço' as const,
+      unit_price: itemizedCosts.installation,
+      total_price: itemizedCosts.installation,
+      category: 'Serviços',
+      specifications: {
+        service_type: 'Instalação completa',
+        includes: 'Montagem, cabeamento, configuração',
+        warranty_service: '5 anos',
+        system_power: `${systemPower.toFixed(2)} kWp`
+      }
+    },
+    {
+      name: `Documentação e Legalização`,
+      description: `Projeto elétrico, ART, solicitação de acesso junto à distribuidora e homologação do sistema`,
+      quantity: 1,
+      unit: 'conjunto' as const,
+      unit_price: itemizedCosts.documentation,
+      total_price: itemizedCosts.documentation,
+      category: 'Documentação',
+      specifications: {
+        includes: 'Projeto, ART, Solicitação de acesso',
+        engineering: 'Engenheiro responsável',
+        compliance: 'ANEEL/Distribuidora',
+        delivery: '30-45 dias'
+      }
+    }
+  ];
+
   return {
     systemPower,
     panelQuantity,
@@ -115,7 +196,8 @@ export function calculateSimpleSolarSystem(input: SimpleSolarCalculationInput): 
       netProfit25Years,
       monthlyROI,
       breakEvenMonth
-    }
+    },
+    quantified_items
   };
 }
 

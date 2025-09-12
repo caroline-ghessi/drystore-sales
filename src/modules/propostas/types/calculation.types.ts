@@ -107,6 +107,9 @@ export interface SolarCalculationResult {
     documentation: number;
   };
   totalCost: number;
+  
+  // Lista quantificada para propostas
+  quantified_items: QuantifiedItem[];
 }
 
 // Resultado do Sistema Solar Simplificado
@@ -138,6 +141,9 @@ export interface SimpleSolarCalculationResult {
     monthlyROI: number;
     breakEvenMonth: number;
   };
+  
+  // Lista quantificada para propostas
+  quantified_items: QuantifiedItem[];
 }
 
 // ============= Battery Backup System =============

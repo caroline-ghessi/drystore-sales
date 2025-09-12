@@ -116,11 +116,29 @@ export function useProposalCalculator(productType: ProductType) {
   const generateProposalItems = useCallback((): ProposalItem[] => {
     if (!calculationResult) return [];
     
+    // PRIORIDADE 1: Usar quantified_items se disponível (dados calculados)
+    const result = calculationResult as any;
+    if (result.quantified_items && Array.isArray(result.quantified_items)) {
+      return result.quantified_items.map((item: any, index: number) => ({
+        id: (index + 1).toString(),
+        name: item.name,
+        product: productType,
+        quantity: item.quantity,
+        unit: item.unit,
+        unitPrice: item.unit_price,
+        totalPrice: item.total_price,
+        category: item.category,
+        description: item.description,
+        specifications: item.specifications
+      }));
+    }
+    
+    // PRIORIDADE 2: Lógica antiga (fallback para calculadoras ainda não migradas)
     const items: ProposalItem[] = [];
     
     switch (productType) {
       case 'solar':
-        const solarResult = calculationResult as any;
+        const solarResult = result;
         
         // Usar APENAS produtos reais cadastrados
         const availableProducts = products || [];
