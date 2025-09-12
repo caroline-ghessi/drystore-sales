@@ -109,6 +109,30 @@ export function calculateForroDrywall(input: ForroDrywallCalculationInput): Forr
 
   const totalCost = Object.values(itemizedCosts).reduce((sum, cost) => sum + cost, 0);
 
+  // Generate quantified items for proposal
+  const quantified_items = [
+    {
+      name: 'Placas de Forro Drywall',
+      description: `Placas ${plateType} para forro`,
+      quantity: plateQuantity,
+      unit: 'un',
+      unit_price: BASE_PRICES.plates[plateType] * totalMultiplier,
+      total_price: platesCost,
+      category: 'Estrutura',
+      specifications: { plate_type: plateType }
+    },
+    {
+      name: 'Mão de Obra',
+      description: 'Instalação completa do forro de drywall',
+      quantity: ceilingArea,
+      unit: 'm²',
+      unit_price: 25,
+      total_price: laborCost,
+      category: 'Serviços',
+      specifications: {}
+    }
+  ];
+
   return {
     plateQuantity,
     profileQuantity,
@@ -121,5 +145,6 @@ export function calculateForroDrywall(input: ForroDrywallCalculationInput): Forr
     accessoriesQuantity: accessories,
     itemizedCosts,
     totalCost,
+    quantified_items,
   };
 }

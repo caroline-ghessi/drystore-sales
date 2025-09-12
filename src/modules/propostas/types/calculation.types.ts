@@ -1,3 +1,15 @@
+// Interface for quantified items in proposals
+export interface QuantifiedItem {
+  name: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  total_price: number;
+  category: string;
+  specifications?: Record<string, any>;
+}
+
 export interface BaseCalculationInput {
   area?: number;
   quantity?: number;
@@ -283,6 +295,9 @@ export interface ShingleCalculationResult {
     equipment: number;
   };
   totalCost: number;
+
+  // Quantified items for proposal generation
+  quantified_items: QuantifiedItem[];
 }
 
 // ============= Drywall =============
@@ -473,6 +488,9 @@ export interface DrywallCalculationResult {
     timelineMultiplier?: number;
     estimatedDays?: number;
   };
+
+  // Quantified items for proposal generation
+  quantified_items: QuantifiedItem[];
 }
 
 // ============= Steel Frame =============
@@ -602,6 +620,9 @@ export interface ForroDrywallCalculationResult {
     labor: number;
   };
   totalCost: number;
+
+  // Quantified items for proposal generation
+  quantified_items: QuantifiedItem[];
 }
 
 // ============= Acoustic Mineral Ceiling =============
@@ -790,6 +811,9 @@ export interface AcousticMineralCeilingResult {
     modelSuitable: boolean;
     warnings: string[];
   };
+
+  // Quantified items for proposal generation
+  quantified_items: QuantifiedItem[];
 }
 
 // ============= Union Types =============

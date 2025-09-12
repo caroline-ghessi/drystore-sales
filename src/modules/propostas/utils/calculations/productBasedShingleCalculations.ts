@@ -163,6 +163,64 @@ export function calculateShingleWithProducts(
 
   const totalCost = Object.values(itemizedCosts).reduce((sum, cost) => sum + cost, 0);
 
+  // Generate quantified items for proposal
+  const quantified_items = [
+    {
+      name: shingleProduct?.name || 'Telhas Shingle',
+      description: `Telhas shingle ${shingleType}`,
+      quantity: shingleQuantity,
+      unit: 'un',
+      unit_price: shinglePrice,
+      total_price: shinglesCost,
+      category: 'Cobertura',
+      specifications: { coverage_area: FALLBACK_SPECS.shingle.coverage_area }
+    },
+    {
+      name: osbProduct?.name || 'Placa OSB',
+      description: 'Placa OSB estrutural',
+      quantity: osbQuantity,
+      unit: 'un',
+      unit_price: osbPrice,
+      total_price: osbCost,
+      category: 'Estrutura',
+      specifications: { coverage_area: FALLBACK_SPECS.osb.coverage_area }
+    },
+    {
+      name: underlaymentProduct?.name || 'Subcobertura RhinoRoof',
+      description: 'Manta subcobertura impermeável',
+      quantity: underlaymentQuantity,
+      unit: 'un',
+      unit_price: underlaymentPrice,
+      total_price: underlaymentCost,
+      category: 'Impermeabilização',
+      specifications: { coverage_area: FALLBACK_SPECS.rhinoroof.coverage_area }
+    },
+    {
+      name: ridgeCapProduct?.name || 'Cumeeira',
+      description: 'Peças de cumeeira para acabamento',
+      quantity: ridgeCapQuantity,
+      unit: 'un',
+      unit_price: ridgeCapPrice,
+      total_price: ridgeCapQuantity * ridgeCapPrice,
+      category: 'Acabamento',
+      specifications: { coverage_area: FALLBACK_SPECS.ridgeCap.coverage_area }
+    }
+  ];
+
+  // Add labor if configured
+  if (laborConfig?.includeLabor && itemizedCosts.labor > 0) {
+    quantified_items.push({
+      name: 'Mão de Obra',
+      description: 'Instalação completa do sistema de telhas shingle',
+      quantity: totalArea,
+      unit: 'm²',
+      unit_price: itemizedCosts.labor / totalArea,
+      total_price: itemizedCosts.labor,
+      category: 'Serviços',
+      specifications: {}
+    });
+  }
+
   return {
     // Material quantities
     shingleQuantity,
@@ -182,5 +240,6 @@ export function calculateShingleWithProducts(
     // Cost breakdown
     itemizedCosts,
     totalCost,
+    quantified_items
   };
 }

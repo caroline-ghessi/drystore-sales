@@ -186,6 +186,88 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
   const totalMaterialCost = Object.values(materialCosts).reduce((sum, cost) => sum + cost, 0);
   const totalLaborCost = Object.values(laborCosts).reduce((sum, cost) => sum + cost, 0);
   
+  // Generate quantified items for proposal
+  const quantified_items = [
+    {
+      name: 'Placas Drywall',
+      description: `Placas drywall para ${input.wallConfiguration || 'divisórias'}`,
+      quantity: plateQuantity,
+      unit: 'un',
+      unit_price: materialCosts.plates / plateQuantity,
+      total_price: materialCosts.plates,
+      category: 'Estrutura',
+      specifications: { area_coverage: plateArea }
+    },
+    {
+      name: 'Perfis Metálicos',
+      description: 'Montantes e guias metálicos',
+      quantity: totalMontantes + Math.ceil(guiaLength / 3),
+      unit: 'un',
+      unit_price: materialCosts.profiles / (totalMontantes + Math.ceil(guiaLength / 3)),
+      total_price: materialCosts.profiles,
+      category: 'Estrutura',
+      specifications: {}
+    },
+    {
+      name: 'Massa para Juntas',
+      description: 'Massa para tratamento de juntas',
+      quantity: jointMassQuantity,
+      unit: 'kg',
+      unit_price: productPrices.massaJuntas?.price || 8,
+      total_price: materialCosts.jointMass,
+      category: 'Acabamento',
+      specifications: {}
+    },
+    {
+      name: 'Massa de Acabamento',
+      description: `Massa de acabamento ${finishType}`,
+      quantity: finishMassQuantity,
+      unit: 'kg',
+      unit_price: productPrices.massaAcabamento?.price || 12,
+      total_price: materialCosts.finishMass,
+      category: 'Acabamento',
+      specifications: { finish_level: finishType }
+    },
+    {
+      name: 'Fita para Juntas',
+      description: 'Fita de papel para juntas',
+      quantity: tapeQuantity,
+      unit: 'm',
+      unit_price: productPrices.fita?.price || 0.80,
+      total_price: materialCosts.tape,
+      category: 'Acabamento',
+      specifications: {}
+    }
+  ];
+
+  // Add insulation if specified
+  if (features.insulation && insulationQuantity) {
+    quantified_items.push({
+      name: 'Isolamento Termoacústico',
+      description: 'Lã de vidro ou rocha para isolamento',
+      quantity: insulationQuantity,
+      unit: 'm²',
+      unit_price: productPrices.isolamento?.price || 15,
+      total_price: materialCosts.insulation,
+      category: 'Isolamento',
+      specifications: {}
+    });
+  }
+
+  // Add labor if not "no_finish"
+  if (finishType !== 'no_finish' && totalLaborCost > 0) {
+    quantified_items.push({
+      name: 'Mão de Obra',
+      description: `Instalação completa com acabamento ${finishType}`,
+      quantity: netArea,
+      unit: 'm²',
+      unit_price: totalLaborCost / netArea,
+      total_price: totalLaborCost,
+      category: 'Serviços',
+      specifications: { finish_level: finishType }
+    });
+  }
+
   return {
     plateQuantity,
     plateArea: plateQuantity, // Compatibilidade
@@ -246,7 +328,8 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
       extraMaterials: extraMaterials,
       timelineMultiplier: levelConfig.timeline,
       estimatedDays: Math.ceil((netArea / 20) * levelConfig.timeline) // Base: 20m²/dia
-    }
+    },
+    quantified_items
   };
 }
 
