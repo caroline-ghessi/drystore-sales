@@ -239,22 +239,83 @@ export function useProposalCalculator(productType: ProductType) {
         
       case 'battery_backup':
         const batteryResult = calculationResult as any;
+        
+        // Baterias - usando produto real selecionado
         items.push({
           id: '1',
-          name: `Sistema de Backup ${batteryResult.totalPowerRequired.toFixed(2)} kW`,
+          name: batteryResult.selectedBattery?.name || `Baterias ${batteryResult.batteryConfiguration.totalCapacityKwh.toFixed(1)} kWh`,
           product: 'battery_backup' as ProductType,
-          quantity: 1,
-          unit: 'sistema',
-          unitPrice: batteryResult.totalCost,
-          totalPrice: batteryResult.totalCost,
+          quantity: batteryResult.batteryConfiguration.batteryQuantity || 1,
+          unit: 'unidade',
+          unitPrice: batteryResult.itemizedCosts?.batteries ? 
+            batteryResult.itemizedCosts.batteries / (batteryResult.batteryConfiguration.batteryQuantity || 1) : 0,
+          totalPrice: batteryResult.itemizedCosts?.batteries || 0,
           category: 'Battery Backup',
           specifications: {
-            power: batteryResult.totalPowerRequired,
-            batteries: batteryResult.batteryConfiguration.batteryQuantity,
-            inverters: batteryResult.inverterQuantity,
-            autonomy: batteryResult.batteryConfiguration.autonomyHours
+            capacity: batteryResult.selectedBattery?.specifications?.capacity || `${batteryResult.batteryConfiguration.totalCapacityKwh.toFixed(1)} kWh`,
+            model: batteryResult.selectedBattery?.model || batteryResult.selectedBattery?.name || 'Bateria Litio',
+            brand: batteryResult.selectedBattery?.brand || 'N/A',
+            dod: batteryResult.selectedBattery?.specifications?.dod || 'N/A',
+            cycles: batteryResult.selectedBattery?.specifications?.cycles || 'N/A'
           }
         });
+
+        // Inversor Híbrido - usando produto real selecionado
+        items.push({
+          id: '2',
+          name: batteryResult.selectedInverter?.name || `Inversor Híbrido ${batteryResult.totalPowerRequired.toFixed(2)} kW`,
+          product: 'battery_backup' as ProductType,
+          quantity: batteryResult.inverterQuantity || 1,
+          unit: 'unidade',
+          unitPrice: batteryResult.itemizedCosts?.inverters ? 
+            batteryResult.itemizedCosts.inverters / (batteryResult.inverterQuantity || 1) : 0,
+          totalPrice: batteryResult.itemizedCosts?.inverters || 0,
+          category: 'Battery Backup',
+          specifications: {
+            power: batteryResult.selectedInverter?.specifications?.power || `${batteryResult.totalPowerRequired.toFixed(2)} kW`,
+            model: batteryResult.selectedInverter?.model || batteryResult.selectedInverter?.name || 'Inversor Híbrido',
+            brand: batteryResult.selectedInverter?.brand || 'N/A',
+            efficiency: batteryResult.selectedInverter?.specifications?.efficiency || 'N/A'
+          }
+        });
+
+        // Sistema de Proteção
+        if (batteryResult.itemizedCosts?.protection > 0) {
+          items.push({
+            id: '3',
+            name: `Sistema de Proteção`,
+            product: 'battery_backup' as ProductType,
+            quantity: 1,
+            unit: 'kit',
+            unitPrice: batteryResult.itemizedCosts.protection,
+            totalPrice: batteryResult.itemizedCosts.protection,
+            category: 'Battery Backup',
+            specifications: {
+              includes: 'DPS, Disjuntores, String Box DC/AC',
+              type: 'Kit de Proteção Completo',
+              system: `${batteryResult.totalPowerRequired.toFixed(2)} kW`
+            }
+          });
+        }
+
+        // Sistema de Monitoramento
+        if (batteryResult.itemizedCosts?.monitoring > 0) {
+          items.push({
+            id: '4',
+            name: `Sistema de Monitoramento`,
+            product: 'battery_backup' as ProductType,
+            quantity: 1,
+            unit: 'sistema',
+            unitPrice: batteryResult.itemizedCosts.monitoring,
+            totalPrice: batteryResult.itemizedCosts.monitoring,
+            category: 'Battery Backup',
+            specifications: {
+              features: 'Monitoramento Wi-Fi/App, Controle Remoto',
+              compatibility: 'iOS/Android',
+              monitoring: 'Tempo Real - Estado da Bateria, Consumo, Autonomia'
+            }
+          });
+        }
         break;
         
       case 'shingle':
@@ -380,7 +441,8 @@ export function useProposalCalculator(productType: ProductType) {
             { label: 'Capacidade', value: `${battery.batteryConfiguration.totalCapacityKwh.toFixed(1)} kWh` },
             { label: 'Autonomia', value: `${battery.batteryConfiguration.autonomyHours.toFixed(0)} horas` },
             { label: 'Payback', value: `${(battery.economicMetrics.paybackPeriod / 12).toFixed(1)} anos` }
-          ]
+          ],
+          proposalItems: generateProposalItems()
         };
         
       case 'shingle':
