@@ -10,6 +10,8 @@ export interface ProductCalculationSpecs {
   power_peak?: number;     // Potência de pico (W)
   capacity?: number;       // Capacidade (kWh, Ah)
   voltage?: number;        // Voltagem
+  dod?: number;           // Depth of Discharge (0-1)
+  cycles?: number;        // Ciclos de vida
   dimensions?: {
     width?: number;
     height?: number; 
@@ -52,9 +54,28 @@ export class ProductCalculationService {
     if (!product.specifications) return {};
     
     try {
-      return typeof product.specifications === 'string' 
+      let specs = typeof product.specifications === 'string' 
         ? JSON.parse(product.specifications)
         : product.specifications;
+      
+      // Mapear campos específicos para baterias
+      if (product.category === 'energia_solar' && product.subcategory === 'bateria') {
+        // Mapear capacity_kwh para capacity para compatibilidade
+        if (specs.capacity_kwh && !specs.capacity) {
+          specs.capacity = specs.capacity_kwh;
+        }
+        
+        // Garantir que dod e cycles estão disponíveis
+        if (!specs.dod && specs.depth_of_discharge) {
+          specs.dod = specs.depth_of_discharge;
+        }
+        
+        if (!specs.cycles && specs.life_cycles) {
+          specs.cycles = specs.life_cycles;
+        }
+      }
+      
+      return specs;
     } catch {
       return {};
     }
