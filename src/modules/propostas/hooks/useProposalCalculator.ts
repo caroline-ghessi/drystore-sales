@@ -348,8 +348,6 @@ export function useProposalCalculator(productType: ProductType) {
           }
         });
 
-        break;
-
         // Sistema de Monitoramento
         if (batteryResult.itemizedCosts?.monitoring > 0) {
           items.push({
