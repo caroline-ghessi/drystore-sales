@@ -128,16 +128,52 @@ export class ProductCalculationService {
   }
 
   static getBatteryProducts(products: UnifiedProduct[]) {
-    return {
-      batteries: this.findProductsByCategory(products, 'battery_backup').filter(p => 
-        p.solar_category === 'battery' || p.subcategory === 'bateria'
-      ),
-      inverters: this.findProductsByCategory(products, 'battery_backup').filter(p => 
-        p.solar_category === 'inverter' || p.subcategory === 'inversor'
-      ),
-      protection: this.findProductsByCategory(products, 'battery_backup', 'protecao'),
-      monitoring: this.findProductsByCategory(products, 'battery_backup', 'monitoramento')
+    console.log('🔋 ProductCalculationService.getBatteryProducts chamado');
+    console.log('🔋 Total de produtos recebidos:', products.length);
+    
+    const batteryBackupProducts = this.findProductsByCategory(products, 'battery_backup');
+    console.log('🔋 Produtos com categoria battery_backup:', batteryBackupProducts.length);
+    console.log('🔋 Produtos battery_backup:', batteryBackupProducts.map(p => ({
+      id: p.id,
+      name: p.name,
+      category: p.category,
+      solar_category: p.solar_category,
+      subcategory: p.subcategory
+    })));
+    
+    const batteries = batteryBackupProducts.filter(p => 
+      p.solar_category === 'battery' || p.subcategory === 'bateria'
+    );
+    console.log('🔋 Baterias filtradas:', batteries.length);
+    console.log('🔋 Baterias:', batteries.map(p => ({ name: p.name, solar_category: p.solar_category, subcategory: p.subcategory })));
+    
+    const inverters = batteryBackupProducts.filter(p => 
+      p.solar_category === 'inverter' || p.subcategory === 'inversor'
+    );
+    console.log('🔋 Inversores filtrados:', inverters.length);
+    console.log('🔋 Inversores:', inverters.map(p => ({ name: p.name, solar_category: p.solar_category, subcategory: p.subcategory })));
+    
+    const protection = this.findProductsByCategory(products, 'battery_backup', 'protecao');
+    console.log('🔋 Proteção encontrada:', protection.length);
+    
+    const monitoring = this.findProductsByCategory(products, 'battery_backup', 'monitoramento');
+    console.log('🔋 Monitoramento encontrado:', monitoring.length);
+    
+    const result = {
+      batteries,
+      inverters,
+      protection,
+      monitoring
     };
+    
+    console.log('🔋 Resultado final getBatteryProducts:', {
+      batteries: result.batteries.length,
+      inverters: result.inverters.length,
+      protection: result.protection.length,
+      monitoring: result.monitoring.length
+    });
+    
+    return result;
   }
 
   static getDrywallProducts(products: UnifiedProduct[]) {

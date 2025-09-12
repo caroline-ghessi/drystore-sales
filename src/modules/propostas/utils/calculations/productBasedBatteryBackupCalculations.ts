@@ -20,10 +20,17 @@ export function calculateBatteryBackupWithProducts(
   input: BatteryBackupInput,
   products: UnifiedProduct[]
 ): BatteryBackupResult {
+  console.log('🔋 calculateBatteryBackupWithProducts iniciado');
+  console.log('🔋 Input recebido:', input);
+  console.log('🔋 Total de produtos recebidos:', products.length);
+
   // Calcular potência total das cargas essenciais
   const essentialLoads = input.essentialLoads;
   const totalPowerW = Object.values(essentialLoads).reduce((sum, power) => sum + power, 0);
   const totalPowerKW = totalPowerW / 1000;
+  
+  console.log('🔋 Cargas essenciais:', essentialLoads);
+  console.log('🔋 Potência total:', totalPowerKW, 'kW');
   
   // Aplicar fator de simultaneidade
   const simultaneousFactor = 0.7;
@@ -32,23 +39,54 @@ export function calculateBatteryBackupWithProducts(
   // Calcular energia necessária para autonomia desejada
   const energyRequired = simultaneousPower * input.desiredAutonomy;
   
+  console.log('🔋 Energia necessária:', energyRequired, 'kWh para', input.desiredAutonomy, 'horas');
+  
   // BUSCAR PRODUTOS REAIS DO CADASTRO
   const batteryProducts = ProductCalculationService.getBatteryProducts(products);
   
+  console.log('🔋 Produtos encontrados após filtragem:', {
+    baterias: batteryProducts.batteries.length,
+    inversores: batteryProducts.inverters.length,
+    protecao: batteryProducts.protection.length,
+    monitoramento: batteryProducts.monitoring.length
+  });
+  
   // VALIDAÇÃO: Verificar se há produtos necessários cadastrados
   if (!batteryProducts.batteries || batteryProducts.batteries.length === 0) {
+    console.error('❌ Nenhuma bateria encontrada');
     throw new Error('Nenhuma bateria cadastrada encontrada. Cadastre baterias em /propostas/produtos');
   }
   
   if (!batteryProducts.inverters || batteryProducts.inverters.length === 0) {
+    console.error('❌ Nenhum inversor encontrado');
     throw new Error('Nenhum inversor cadastrado encontrado. Cadastre inversores em /propostas/produtos');
   }
   
   // Selecionar bateria baseada na capacidade necessária
+  console.log('🔋 Selecionando bateria para energia necessária:', energyRequired, 'kWh');
   const selectedBattery = selectBatteryFromProducts(energyRequired, batteryProducts.batteries);
   if (!selectedBattery) {
+    console.error('❌ Nenhuma bateria adequada encontrada');
     throw new Error('Nenhuma bateria adequada encontrada nos produtos cadastrados');
   }
+  console.log('✅ Bateria selecionada:', {
+    name: selectedBattery.name,
+    id: selectedBattery.id,
+    specifications: selectedBattery.specifications
+  });
+  
+  // Selecionar inversor baseado na potência necessária
+  console.log('🔋 Selecionando inversor para potência:', totalPowerKW, 'kW');
+  const selectedInverter = selectInverterFromProducts(totalPowerKW, batteryProducts.inverters);
+  if (!selectedInverter) {
+    console.error('❌ Nenhum inversor adequado encontrado');
+    throw new Error('Nenhum inversor adequado encontrado nos produtos cadastrados');
+  }
+  console.log('✅ Inversor selecionado:', {
+    name: selectedInverter.name,
+    id: selectedInverter.id,
+    specifications: selectedInverter.specifications
+  });
   
   const specs = ProductCalculationService.getProductSpecs(selectedBattery);
   const batterySpecs = {
@@ -73,12 +111,7 @@ export function calculateBatteryBackupWithProducts(
   const usefulCapacityKwh = totalCapacityKwh * batterySpecs.dod;
   const autonomyHours = usefulCapacityKwh / simultaneousPower;
   
-  // Selecionar inversor híbrido baseado na potência
-  const selectedInverter = selectInverterFromProducts(simultaneousPower, batteryProducts.inverters);
-  if (!selectedInverter) {
-    throw new Error('Nenhum inversor adequado encontrado nos produtos cadastrados');
-  }
-  
+  // Usar o inversor já selecionado anteriormente
   const inverterSpecs = {
     efficiency: ProductCalculationService.getProductSpecs(selectedInverter).efficiency || FALLBACK_SPECS.inverter.efficiency,
     peak_factor: 2.0 // Inversores suportam até 100% acima da capacidade (2x)
@@ -151,43 +184,98 @@ export function calculateBatteryBackupWithProducts(
 }
 
 function selectBatteryFromProducts(energyRequired: number, batteries: UnifiedProduct[]) {
+  console.log('🔋 selectBatteryFromProducts - Energia necessária:', energyRequired, 'kWh');
+  console.log('🔋 selectBatteryFromProducts - Baterias disponíveis:', batteries.length);
+  
+  batteries.forEach(battery => {
+    const specs = ProductCalculationService.getProductSpecs(battery);
+    console.log(`🔋 Bateria: ${battery.name}`, {
+      capacity: specs.capacity,
+      efficiency: specs.efficiency,
+      dod: specs.efficiency,
+      specifications: specs
+    });
+  });
+  
   // Buscar bateria com capacidade adequada
   const suitableBattery = batteries.find(battery => {
     const specs = ProductCalculationService.getProductSpecs(battery);
     const capacity = specs.capacity;
     const dod = specs.efficiency;
     
+    console.log(`🔋 Verificando ${battery.name}:`, { capacity, dod, valid: !!(capacity && dod) });
+    
     // Verificar se há especificações válidas
     if (!capacity || !dod) return false;
     
     // Bateria deve ter capacidade útil suficiente
-    return (capacity * dod) >= (energyRequired * 0.8); // Margem de 20%
+    const usableCapacity = capacity * dod;
+    const isAdequate = usableCapacity >= (energyRequired * 0.8); // Margem de 20%
+    console.log(`🔋 ${battery.name} - Capacidade útil: ${usableCapacity} kWh, adequada: ${isAdequate}`);
+    
+    return isAdequate;
   });
   
+  console.log('🔋 Bateria adequada encontrada:', suitableBattery?.name || 'nenhuma');
+  
   // Se não encontrar adequada, usar a primeira disponível que tenha specs válidas
-  return suitableBattery || batteries.find(battery => {
+  const fallbackBattery = batteries.find(battery => {
     const specs = ProductCalculationService.getProductSpecs(battery);
-    return specs.capacity && specs.efficiency;
+    const hasValidSpecs = specs.capacity && specs.efficiency;
+    console.log(`🔋 Fallback check ${battery.name}:`, { hasValidSpecs });
+    return hasValidSpecs;
   });
+  
+  const result = suitableBattery || fallbackBattery;
+  console.log('🔋 Bateria final selecionada:', result?.name || 'nenhuma');
+  
+  return result;
 }
 
 function selectInverterFromProducts(powerKW: number, inverters: UnifiedProduct[]) {
+  console.log('🔋 selectInverterFromProducts - Potência necessária:', powerKW, 'kW');
+  console.log('🔋 selectInverterFromProducts - Inversores disponíveis:', inverters.length);
+  
+  inverters.forEach(inverter => {
+    const specs = ProductCalculationService.getProductSpecs(inverter);
+    const power = (specs.power_continuous || specs.power_peak || specs.power_rating || 0) / 1000;
+    console.log(`🔋 Inversor: ${inverter.name}`, {
+      power_continuous: specs.power_continuous,
+      power_peak: specs.power_peak,
+      power_rating: specs.power_rating,
+      final_power: power,
+      specifications: specs
+    });
+  });
+  
   // Buscar inversor híbrido adequado para a potência
   const suitableInverter = inverters.find(inverter => {
     const specs = ProductCalculationService.getProductSpecs(inverter);
     // Usar power_continuous primeiro, depois power_peak como fallback
     const inverterPower = (specs.power_continuous || specs.power_peak || specs.power_rating || 0) / 1000;
     
+    const isAdequate = inverterPower >= powerKW && inverterPower <= powerKW * 2;
+    console.log(`🔋 ${inverter.name} - Potência: ${inverterPower} kW, adequada: ${isAdequate}`);
+    
     // Inversor deve suportar a potência contínua + margem
-    return inverterPower >= powerKW && inverterPower <= powerKW * 2;
+    return isAdequate;
   });
   
+  console.log('🔋 Inversor adequado encontrado:', suitableInverter?.name || 'nenhum');
+  
   // Se não encontrar adequado, usar primeiro disponível que tenha potência válida
-  return suitableInverter || inverters.find(inverter => {
+  const fallbackInverter = inverters.find(inverter => {
     const specs = ProductCalculationService.getProductSpecs(inverter);
     const power = specs.power_continuous || specs.power_peak || specs.power_rating || 0;
-    return power > 0;
+    const hasValidPower = power > 0;
+    console.log(`🔋 Fallback check ${inverter.name}:`, { power, hasValidPower });
+    return hasValidPower;
   });
+  
+  const result = suitableInverter || fallbackInverter;
+  console.log('🔋 Inversor final selecionado:', result?.name || 'nenhum');
+  
+  return result;
 }
 
 function calculateMonthlyChargingCost(batteryCapacityKwh: number): number {

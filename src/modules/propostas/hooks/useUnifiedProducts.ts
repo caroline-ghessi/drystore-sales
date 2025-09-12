@@ -107,33 +107,59 @@ export function useUnifiedProducts(category?: UnifiedProductCategory) {
 
       // Convert solar equipment to unified format
       if (solarEquipment) {
-        const convertedSolarEquipment = solarEquipment.map(equipment => ({
-          id: equipment.id,
-          name: `${equipment.brand} ${equipment.model}`,
-          description: `${equipment.category === 'panel' ? 'Painel Solar' : 
-                        equipment.category === 'inverter' ? 'Inversor Solar' : 
-                        'Bateria'} - ${equipment.brand}`,
-          category: (equipment.category === 'battery' ? 'battery_backup' : 
-                    equipment.category === 'inverter' && 
-                    (equipment.model?.toLowerCase().includes('híbrido') || 
-                     equipment.model?.toLowerCase().includes('hibrido') ||
-                     equipment.model?.toLowerCase().includes('hybrid') ||
-                     equipment.brand?.toLowerCase().includes('growatt') ||
-                     equipment.brand?.toLowerCase().includes('deye')) ? 'battery_backup' : 'energia_solar') as UnifiedProductCategory,
-          unit: equipment.category === 'panel' ? 'unidade' : 
-                equipment.category === 'inverter' ? 'unidade' : 
-                'unidade',
-          base_price: equipment.price,
-          specifications: equipment.specifications,
-          is_active: equipment.is_active,
-          created_at: equipment.created_at || new Date().toISOString(),
-          source: 'solar_equipment' as const,
-          brand: equipment.brand,
-          model: equipment.model,
-          solar_category: equipment.category as 'panel' | 'inverter' | 'battery'
-        }));
+        const convertedSolarEquipment = solarEquipment.map(equipment => {
+          const isHybridInverter = equipment.category === 'inverter' && 
+            (equipment.model?.toLowerCase().includes('híbrido') || 
+             equipment.model?.toLowerCase().includes('hibrido') ||
+             equipment.model?.toLowerCase().includes('hybrid') ||
+             equipment.brand?.toLowerCase().includes('growatt') ||
+             equipment.brand?.toLowerCase().includes('deye'));
+             
+          const convertedCategory = equipment.category === 'battery' ? 'battery_backup' : 
+                                   isHybridInverter ? 'battery_backup' : 'energia_solar';
+          
+          console.log(`📦 Convertendo ${equipment.brand} ${equipment.model}:`, {
+            original_category: equipment.category,
+            isHybridInverter,
+            final_category: convertedCategory,
+            solar_category: equipment.category
+          });
+          
+          return {
+            id: equipment.id,
+            name: `${equipment.brand} ${equipment.model}`,
+            description: `${equipment.category === 'panel' ? 'Painel Solar' : 
+                          equipment.category === 'inverter' ? 'Inversor Solar' : 
+                          'Bateria'} - ${equipment.brand}`,
+            category: convertedCategory as UnifiedProductCategory,
+            unit: equipment.category === 'panel' ? 'unidade' : 
+                  equipment.category === 'inverter' ? 'unidade' : 
+                  'unidade',
+            base_price: equipment.price,
+            specifications: equipment.specifications,
+            is_active: equipment.is_active,
+            created_at: equipment.created_at || new Date().toISOString(),
+            source: 'solar_equipment' as const,
+            brand: equipment.brand,
+            model: equipment.model,
+            solar_category: equipment.category as 'panel' | 'inverter' | 'battery'
+          };
+        });
         
         console.log('📦 Solar equipment convertido:', convertedSolarEquipment);
+        
+        // Log específico para battery_backup
+        if (category === 'battery_backup') {
+          const batteryProducts = convertedSolarEquipment.filter(p => p.category === 'battery_backup');
+          console.log('🔋 Produtos battery_backup encontrados:', batteryProducts.length);
+          console.log('🔋 Detalhes dos produtos battery_backup:', batteryProducts.map(p => ({
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            solar_category: p.solar_category
+          })));
+        }
+        
         results.push(...convertedSolarEquipment);
       }
       
