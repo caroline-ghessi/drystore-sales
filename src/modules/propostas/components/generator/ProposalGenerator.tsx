@@ -721,8 +721,163 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                     </Card>
                   )}
 
-                  {/* Original Summary Card for non-solar/non-shingle or when no proposalItems */}
-                  {((productType !== 'solar' && productType !== 'solar_advanced' && productType !== 'shingle') || !calculator.calculationSummary?.proposalItems) && (
+                  {/* Equipment List for Battery Backup Calculations */}
+                  {productType === 'battery_backup' && calculator.calculationSummary?.proposalItems && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center">
+                          <Zap className="mr-2 h-5 w-5 text-blue-500" />
+                          Lista de Equipamentos
+                        </CardTitle>
+                        <CardDescription>
+                          Sistema completo de backup de energia
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {calculator.calculationSummary.proposalItems
+                          .filter(item => item.category === 'batteries' || item.name?.toLowerCase().includes('bateria'))
+                          .map((battery, idx) => (
+                            <div key={idx} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                              <div className="flex items-center mb-2">
+                                <Zap className="h-4 w-4 text-blue-600 mr-2" />
+                                <h4 className="font-semibold text-blue-800">Bateria</h4>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <p className="text-sm text-gray-600">Modelo</p>
+                                  <p className="font-medium">{battery.name || 'Bateria de Lítio'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-gray-600">Quantidade</p>
+                                  <p className="font-medium">{battery.quantity} unidades</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-gray-600">Especificações</p>
+                                  <p className="text-sm">{typeof battery.specifications === 'string' ? battery.specifications : 'Lítio LiFePO4'}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm text-gray-600">Valor Total</p>
+                                  <p className="font-bold text-lg text-blue-600">
+                                    R$ {battery.totalPrice?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+
+                        {calculator.calculationSummary.proposalItems
+                          .filter(item => item.category === 'inverters' || item.name?.toLowerCase().includes('inversor'))
+                          .map((inverter, idx) => (
+                            <div key={idx} className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                              <div className="flex items-center mb-2">
+                                <Zap className="h-4 w-4 text-yellow-600 mr-2" />
+                                <h4 className="font-semibold text-yellow-800">Inversor</h4>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <p className="text-sm text-gray-600">Modelo</p>
+                                  <p className="font-medium">{inverter.name || 'Inversor Híbrido'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-gray-600">Quantidade</p>
+                                  <p className="font-medium">{inverter.quantity} unidades</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-gray-600">Especificações</p>
+                                  <p className="text-sm">{typeof inverter.specifications === 'string' ? inverter.specifications : 'Híbrido com MPPT'}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm text-gray-600">Valor Total</p>
+                                  <p className="font-bold text-lg text-yellow-600">
+                                    R$ {inverter.totalPrice?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+
+                        {calculator.calculationSummary.proposalItems
+                          .filter(item => item.category === 'protection' || item.name?.toLowerCase().includes('proteção'))
+                          .map((protection, idx) => (
+                            <div key={idx} className="bg-red-50 p-4 rounded-lg border border-red-200">
+                              <div className="flex items-center mb-2">
+                                <Zap className="h-4 w-4 text-red-600 mr-2" />
+                                <h4 className="font-semibold text-red-800">Sistema de Proteção</h4>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <p className="text-sm text-gray-600">Componentes</p>
+                                  <p className="font-medium">{protection.name || 'Sistema de Proteção'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-gray-600">Quantidade</p>
+                                  <p className="font-medium">{protection.quantity} conjunto</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-gray-600">Especificações</p>
+                                  <p className="text-sm">{typeof protection.specifications === 'string' ? protection.specifications : 'Disjuntores, DPS, Aterramento'}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm text-gray-600">Valor Total</p>
+                                  <p className="font-bold text-lg text-red-600">
+                                    R$ {protection.totalPrice?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+
+                        {calculator.calculationSummary.proposalItems
+                          .filter(item => item.category === 'monitoring' || item.name?.toLowerCase().includes('monitoramento'))
+                          .map((monitoring, idx) => (
+                            <div key={idx} className="bg-green-50 p-4 rounded-lg border border-green-200">
+                              <div className="flex items-center mb-2">
+                                <Zap className="h-4 w-4 text-green-600 mr-2" />
+                                <h4 className="font-semibold text-green-800">Sistema de Monitoramento</h4>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <p className="text-sm text-gray-600">Sistema</p>
+                                  <p className="font-medium">{monitoring.name || 'Monitoramento Wi-Fi'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-gray-600">Quantidade</p>
+                                  <p className="font-medium">{monitoring.quantity} unidade</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-gray-600">Especificações</p>
+                                  <p className="text-sm">{typeof monitoring.specifications === 'string' ? monitoring.specifications : 'Monitoramento via Wi-Fi'}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm text-gray-600">Valor Total</p>
+                                  <p className="font-bold text-lg text-green-600">
+                                    R$ {monitoring.totalPrice?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+
+                        <Separator />
+
+                        {/* Total for Battery Backup */}
+                        <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="font-semibold text-lg text-blue-800">VALOR TOTAL DO SISTEMA:</p>
+                              <p className="text-sm text-blue-600">Sistema completo de backup de energia</p>
+                            </div>
+                            <p className="font-bold text-3xl text-blue-700">
+                              R$ {calculator.calculationSummary.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Original Summary Card for non-solar/non-shingle/non-battery or when no proposalItems */}
+                  {((productType !== 'solar' && productType !== 'solar_advanced' && productType !== 'shingle' && productType !== 'battery_backup') || !calculator.calculationSummary?.proposalItems) && (
                     <Card>
                       <CardHeader>
                         <CardTitle>Resumo dos Cálculos</CardTitle>
