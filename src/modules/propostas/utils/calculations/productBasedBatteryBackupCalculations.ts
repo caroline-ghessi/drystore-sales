@@ -148,6 +148,10 @@ export function calculateBatteryBackupWithProducts(
     inverterPower: simultaneousPower,
     inverterQuantity: 1,
     inverterEfficiency: inverterSpecs.efficiency,
+
+    // Produtos selecionados incluídos no retorno
+    selectedBattery: selectedBattery,
+    selectedInverter: selectedInverter,
     
     batteryConfiguration: {
       batteryQuantity: finalBatteryQuantity,

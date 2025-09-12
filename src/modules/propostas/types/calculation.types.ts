@@ -168,7 +168,7 @@ export interface BatteryBackupInput extends BaseCalculationInput {
   };
 }
 
-// Battery backup system result
+// Battery backup system result  
 export interface BatteryBackupResult {
   // Power requirements
   totalPowerRequired: number; // kW
@@ -182,6 +182,10 @@ export interface BatteryBackupResult {
   inverterPower: number; // kW
   inverterQuantity: number;
   inverterEfficiency: number; // %
+
+  // Selected products
+  selectedBattery?: any; // UnifiedProduct
+  selectedInverter?: any; // UnifiedProduct
   
   // Battery configuration
   batteryConfiguration: {
