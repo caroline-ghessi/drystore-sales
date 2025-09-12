@@ -54,8 +54,8 @@ export function useProposalCalculator(productType: ProductType) {
       switch (productType) {
         case 'solar':
           if (isSimpleSolarInput(input)) {
-            // Calculadora simples: usar função com valores padrão e quantified_items populados
-            result = calculateSimpleSolarSystem(input);
+            // Calculadora simples: usar produtos cadastrados, mesmo com preço zero
+            result = calculateSimpleSolarSystem(input, products || []);
           } else {
             // Calculadora avançada: usar produtos do banco de dados
             const solarInput = input as SolarCalculationInput;

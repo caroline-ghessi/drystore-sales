@@ -1,4 +1,5 @@
 import { SimpleSolarCalculationInput, SimpleSolarCalculationResult } from '../../types/calculation.types';
+import { UnifiedProduct } from '../../hooks/useUnifiedProducts';
 
 // HSP médio por região (kWh/kWp/day) - valores médios anuais
 const SOLAR_IRRADIATION = {
@@ -12,15 +13,6 @@ const SOLAR_IRRADIATION = {
 // Fator de perda padrão do sistema (20% é típico da indústria)
 const SYSTEM_EFFICIENCY = 0.80;
 
-// Preços básicos por kWp (valores simplificados)
-const SOLAR_PRICES = {
-  panels: 3000,      // R$/kWp - painéis
-  inverters: 1200,   // R$/kWp - inversores
-  structure: 800,    // R$/kWp - estrutura
-  installation: 1000, // R$/kWp - instalação
-  documentation: 400  // R$/kWp - documentação
-};
-
 // Multiplicador regional (custo de instalação por região)
 const REGIONAL_COST_MULTIPLIERS = {
   north: 1.15,
@@ -33,7 +25,7 @@ const REGIONAL_COST_MULTIPLIERS = {
 // Taxa de inflação energética anual (para projeções)
 const ANNUAL_TARIFF_INCREASE = 0.05; // 5% ao ano
 
-export function calculateSimpleSolarSystem(input: SimpleSolarCalculationInput): SimpleSolarCalculationResult {
+export function calculateSimpleSolarSystem(input: SimpleSolarCalculationInput, products: UnifiedProduct[] = []): SimpleSolarCalculationResult {
   // 1. Cálculo da potência necessária do sistema (usando HSP padrão nacional)
   const dailyConsumption = input.monthlyConsumption / 30;
   const hsp = 4.8; // HSP médio nacional fixo para uniformidade
@@ -57,15 +49,28 @@ export function calculateSimpleSolarSystem(input: SimpleSolarCalculationInput): 
   const monthlySavings = monthlyBillBefore - monthlyBillAfter;
   const annualSavings = monthlySavings * 12;
   
-  // 5. Custos do sistema (sem variação regional)
+  // 5. Custos do sistema baseados nos produtos cadastrados
   const regionalMultiplier = 1.0; // Fixado para uniformidade nacional
   
+  // Buscar produtos por categoria para obter preços reais
+  const panelProducts = products.filter(p => p.solar_category === 'panel' && p.is_active);
+  const inverterProducts = products.filter(p => p.solar_category === 'inverter' && p.is_active);
+  const structureProducts = products.filter(p => 
+    (p.category === 'energia_solar' && p.name.toLowerCase().includes('estrutura')) ||
+    (p.subcategory?.toLowerCase().includes('estrutura'))
+  );
+  
+  // Usar preços dos produtos cadastrados (mesmo se forem zero)
+  const panelPrice = panelProducts.length > 0 ? panelProducts[0].base_price : 0;
+  const inverterPrice = inverterProducts.length > 0 ? inverterProducts[0].base_price : 0;
+  const structurePrice = structureProducts.length > 0 ? structureProducts[0].base_price : 0;
+  
   const itemizedCosts = {
-    panels: SOLAR_PRICES.panels * systemPower * regionalMultiplier,
-    inverters: SOLAR_PRICES.inverters * systemPower * regionalMultiplier,
-    structure: SOLAR_PRICES.structure * systemPower * regionalMultiplier,
-    installation: SOLAR_PRICES.installation * systemPower * regionalMultiplier,
-    documentation: SOLAR_PRICES.documentation * systemPower
+    panels: panelPrice * panelQuantity,
+    inverters: inverterPrice * inverterQuantity,
+    structure: structurePrice * panelQuantity, // Estrutura proporcional aos painéis
+    installation: 0, // Será definido via produtos de serviço
+    documentation: 0  // Será definido via produtos de documentação
   };
   
   const totalCost = Object.values(itemizedCosts).reduce((sum, cost) => sum + cost, 0);
