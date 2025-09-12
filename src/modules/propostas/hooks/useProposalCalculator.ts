@@ -109,7 +109,7 @@ export function useProposalCalculator(productType: ProductType) {
           result = await calculateImprovedDrywall(input as any);
           break;
         case 'forro_drywall':
-          result = calculateForroDrywall(input as any);
+          result = await calculateForroDrywall(input as any);
           break;
         case 'acoustic_mineral_ceiling':
           result = await calculateAcousticMineralCeiling(input as any);
@@ -485,28 +485,72 @@ export function useProposalCalculator(productType: ProductType) {
         break;
         
         case 'forro_drywall':
-          const forroDrywallResult = calculationResult as any;
-          
-          items.push({
-            id: '1',
-            name: `Forro Drywall ${forroDrywallResult.plateArea.toFixed(0)} m²`,
-            product: 'forro_drywall' as ProductType,
-            quantity: forroDrywallResult.plateArea,
-            unit: 'm²',
-            unitPrice: forroDrywallResult.plateArea > 0 ? forroDrywallResult.totalCost / forroDrywallResult.plateArea : 0,
-            totalPrice: forroDrywallResult.totalCost,
-            category: 'Forro Drywall',
-            specifications: {
-              area: forroDrywallResult.plateArea,
-              plates: forroDrywallResult.plateQuantity,
-              profiles: forroDrywallResult.profileBars,
-              suspension: forroDrywallResult.suspensionBars,
-              screws: forroDrywallResult.screwQuantity
-            }
-        });
+          // Use new quantified_items approach if available
+          if (result.quantified_items && Array.isArray(result.quantified_items)) {
+            result.quantified_items
+              .filter((item: any) => item.quantity > 0)
+              .forEach((item: any, index: number) => {
+                items.push({
+                  id: `forro-${index + 1}`,
+                  name: item.name,
+                  product: 'forro_drywall' as ProductType,
+                  quantity: Math.ceil(item.quantity),
+                  unit: item.unit,
+                  unitPrice: item.unit_price,
+                  totalPrice: item.total_price,
+                  category: item.category,
+                  description: item.description,
+                  specifications: item.specifications || {}
+                });
+              });
+          } else {
+            // Fallback for old result format
+            const forroDrywallResult = calculationResult as any;
+            
+            items.push({
+              id: '1',
+              name: `Forro Drywall ${(forroDrywallResult.plateQuantity || 0)} m²`,
+              product: 'forro_drywall' as ProductType,
+              quantity: forroDrywallResult.plateQuantity || 0,
+              unit: 'm²',
+              unitPrice: (forroDrywallResult.plateQuantity || 0) > 0 ? (forroDrywallResult.totalCost || 0) / (forroDrywallResult.plateQuantity || 1) : 0,
+              totalPrice: forroDrywallResult.totalCost || 0,
+              category: 'Forro Drywall',
+              specifications: {
+                area: forroDrywallResult.plateQuantity || 0,
+                plates: forroDrywallResult.plateQuantity || 0,
+                profiles: forroDrywallResult.profileQuantity || 0,
+                suspension: forroDrywallResult.suspensionSetQuantity || 0,
+                screws: forroDrywallResult.screwQuantity || 0
+              }
+            });
+          }
+        break;
         break;
         
-      case 'acoustic_mineral_ceiling':
+        case 'forro_drywall':
+          // Generate items from forro drywall calculation
+          if (result.quantified_items && Array.isArray(result.quantified_items)) {
+            result.quantified_items
+              .filter((item: any) => item.quantity > 0) // Safety filter for zero quantities
+              .forEach((item: any, index: number) => {
+                items.push({
+                  id: `forro-${index + 1}`,
+                  name: item.name,
+                  product: 'forro_drywall' as ProductType,
+                  quantity: Math.ceil(item.quantity), // Round quantities
+                  unit: item.unit,
+                  unitPrice: item.unit_price,
+                  totalPrice: item.total_price,
+                  category: item.category,
+                  description: item.description,
+                  specifications: item.specifications || {}
+                });
+              });
+          } else {
+            console.warn('Forro drywall result missing quantified_items');
+          }
+        break;
         const acousticResult = calculationResult as any;
         items.push({
           id: '1',
