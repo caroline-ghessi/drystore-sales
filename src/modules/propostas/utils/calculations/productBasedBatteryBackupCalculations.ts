@@ -89,10 +89,12 @@ export function calculateBatteryBackupWithProducts(
   });
   
   const specs = ProductCalculationService.getProductSpecs(selectedBattery);
+  // Acessar specifications originais para propriedades específicas de bateria
+  const batteryOriginalSpecs = selectedBattery.specifications;
   const batterySpecs = {
     voltage: specs.voltage || FALLBACK_SPECS.battery.voltage,
-    dod: specs.efficiency || FALLBACK_SPECS.battery.dod,
-    cycles: specs.capacity || FALLBACK_SPECS.battery.cycles,
+    dod: (batteryOriginalSpecs as any)?.dod || (batteryOriginalSpecs as any)?.depth_of_discharge || FALLBACK_SPECS.battery.dod,
+    cycles: (batteryOriginalSpecs as any)?.cycles || (batteryOriginalSpecs as any)?.life_cycles || FALLBACK_SPECS.battery.cycles,
     max_parallel: specs.compatibility?.length || FALLBACK_SPECS.battery.max_parallel
   };
   const capacityKwh = specs.capacity;
@@ -189,10 +191,12 @@ function selectBatteryFromProducts(energyRequired: number, batteries: UnifiedPro
   
   batteries.forEach(battery => {
     const specs = ProductCalculationService.getProductSpecs(battery);
+    const originalSpecs = battery.specifications as any;
     console.log(`🔋 Bateria: ${battery.name}`, {
       capacity: specs.capacity,
       efficiency: specs.efficiency,
-      dod: specs.efficiency,
+      dod: originalSpecs?.dod || originalSpecs?.depth_of_discharge,
+      cycles: originalSpecs?.cycles || originalSpecs?.life_cycles,
       specifications: specs
     });
   });
@@ -200,8 +204,9 @@ function selectBatteryFromProducts(energyRequired: number, batteries: UnifiedPro
   // Buscar bateria com capacidade adequada
   const suitableBattery = batteries.find(battery => {
     const specs = ProductCalculationService.getProductSpecs(battery);
+    const originalSpecs = battery.specifications as any;
     const capacity = specs.capacity;
-    const dod = specs.efficiency;
+    const dod = originalSpecs?.dod || originalSpecs?.depth_of_discharge;
     
     console.log(`🔋 Verificando ${battery.name}:`, { capacity, dod, valid: !!(capacity && dod) });
     
@@ -221,8 +226,10 @@ function selectBatteryFromProducts(energyRequired: number, batteries: UnifiedPro
   // Se não encontrar adequada, usar a primeira disponível que tenha specs válidas
   const fallbackBattery = batteries.find(battery => {
     const specs = ProductCalculationService.getProductSpecs(battery);
-    const hasValidSpecs = specs.capacity && specs.efficiency;
-    console.log(`🔋 Fallback check ${battery.name}:`, { hasValidSpecs });
+    const originalSpecs = battery.specifications as any;
+    const dod = originalSpecs?.dod || originalSpecs?.depth_of_discharge;
+    const hasValidSpecs = specs.capacity && dod;
+    console.log(`🔋 Fallback check ${battery.name}:`, { capacity: specs.capacity, dod, hasValidSpecs });
     return hasValidSpecs;
   });
   
