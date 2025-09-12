@@ -240,6 +240,14 @@ export function useProposalCalculator(productType: ProductType) {
       case 'battery_backup':
         const batteryResult = calculationResult as any;
         
+        // DEBUG: Verificar produtos selecionados
+        console.log('🔍 DEBUG generateProposalItems - batteryResult completo:', batteryResult);
+        console.log('🔍 DEBUG generateProposalItems - selectedBattery:', batteryResult.selectedBattery);
+        console.log('🔍 DEBUG generateProposalItems - selectedInverter:', batteryResult.selectedInverter);
+        console.log('🔍 DEBUG generateProposalItems - selectedBattery?.name:', batteryResult.selectedBattery?.name);
+        console.log('🔍 DEBUG generateProposalItems - selectedInverter?.name:', batteryResult.selectedInverter?.name);
+        console.log('🔍 DEBUG generateProposalItems - itemizedCosts:', batteryResult.itemizedCosts);
+        
         // Baterias - usando produto real selecionado
         items.push({
           id: '1',
