@@ -411,7 +411,41 @@ export function calculateAdvancedDrywall(input: DrywallCalculationInput): Drywal
     totalLaborCost,
     totalCost,
     
-    technicalData
+    technicalData,
+    
+    // Generate quantified items for proposal
+    quantified_items: [
+      {
+        name: 'Placas Drywall',
+        description: `Placas drywall face 1: ${face1Material}, face 2: ${face2Material}`,
+        quantity: plateQuantity,
+        unit: 'un',
+        unit_price: materialCosts.plates / plateQuantity,
+        total_price: materialCosts.plates,
+        category: 'Estrutura',
+        specifications: { configuration: wallConfiguration }
+      },
+      ...(osbQuantity ? [{
+        name: 'Placas OSB',
+        description: 'Placas OSB estrutural',
+        quantity: osbQuantity,
+        unit: 'un',
+        unit_price: materialCosts.osb / osbQuantity,
+        total_price: materialCosts.osb,
+        category: 'Estrutura',
+        specifications: {}
+      }] : []),
+      ...(totalLaborCost > 0 ? [{
+        name: 'Mão de Obra',
+        description: 'Instalação completa com acabamento',
+        quantity: netWallArea,
+        unit: 'm²',
+        unit_price: totalLaborCost / netWallArea,
+        total_price: totalLaborCost,
+        category: 'Serviços',
+        specifications: { finish_level: finishType }
+      }] : [])
+    ]
   };
 }
 

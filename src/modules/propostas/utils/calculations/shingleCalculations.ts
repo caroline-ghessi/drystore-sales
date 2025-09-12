@@ -169,5 +169,39 @@ export function calculateShingleInstallation(
     // Cost breakdown
     itemizedCosts,
     totalCost,
+    
+    // Generate quantified items for proposal
+    quantified_items: [
+      {
+        name: 'Telhas Shingle',
+        description: 'Telhas asfálticas tipo shingle',
+        quantity: shingleQuantity,
+        unit: 'm²',
+        unit_price: 25,
+        total_price: shingleQuantity * 25,
+        category: 'Cobertura',
+        specifications: {}
+      },
+      {
+        name: 'Placa OSB',
+        description: 'Placa OSB estrutural',
+        quantity: osbQuantity,
+        unit: 'un',
+        unit_price: 35,
+        total_price: osbQuantity * 35,
+        category: 'Estrutura',
+        specifications: {}
+      },
+      {
+        name: 'Mão de Obra',
+        description: 'Instalação completa do sistema de telhas shingle',
+        quantity: shingleQuantity,
+        unit: 'm²',
+        unit_price: 20,
+        total_price: laborCost,
+        category: 'Serviços',
+        specifications: {}
+      }
+    ]
   };
 }

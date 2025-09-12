@@ -91,6 +91,40 @@ export function calculateDrywallInstallation(input: DrywallCalculationInput): Dr
       face1Material: 'drywall padrão',
       face2Material: 'drywall padrão',
       recommendedUse: ['Divisórias internas', 'Uso geral']
-    }
+    },
+    
+    // Generate quantified items for proposal
+    quantified_items: [
+      {
+        name: 'Placas Drywall',
+        description: 'Placas drywall padrão',
+        quantity: plateQuantity,
+        unit: 'un',
+        unit_price: materialCosts.plates / plateQuantity,
+        total_price: materialCosts.plates,
+        category: 'Estrutura',
+        specifications: { configuration: wallConfiguration }
+      },
+      {
+        name: 'Perfis Metálicos',
+        description: 'Montantes e guias metálicos',
+        quantity: montanteQuantity + guiaQuantity,
+        unit: 'un',
+        unit_price: materialCosts.profiles / (montanteQuantity + guiaQuantity),
+        total_price: materialCosts.profiles,
+        category: 'Estrutura',
+        specifications: {}
+      },
+      ...(totalLaborCost > 0 ? [{
+        name: 'Mão de Obra',
+        description: 'Instalação completa',
+        quantity: wallArea,
+        unit: 'm²',
+        unit_price: totalLaborCost / wallArea,
+        total_price: totalLaborCost,
+        category: 'Serviços',
+        specifications: {}
+      }] : [])
+    ]
   };
 }

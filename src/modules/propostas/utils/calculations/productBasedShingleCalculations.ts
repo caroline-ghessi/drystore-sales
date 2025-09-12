@@ -217,7 +217,7 @@ export function calculateShingleWithProducts(
       unit_price: itemizedCosts.labor / totalArea,
       total_price: itemizedCosts.labor,
       category: 'Serviços',
-      specifications: {}
+      specifications: { coverage_area: totalArea }
     });
   }
 

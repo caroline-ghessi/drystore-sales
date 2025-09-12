@@ -518,7 +518,36 @@ export async function calculateAcousticMineralCeiling(input: AcousticMineralCeil
       moistureResistance: modelSpecs?.humidity_resistance ? 95 : 85,
       installationComplexity: selectedEdgeType === 'tegular' ? 'média' : 'simples'
     },
-    validations
+    validations,
+    
+    // Generate quantified items for proposal
+    quantified_items: [
+      {
+        name: selectedProduct.name,
+        description: `Placas de forro mineral acústico ${selectedModulation}`,
+        quantity: totalPlates,
+        unit: 'un',
+        unit_price: selectedProduct.base_price,
+        total_price: itemizedCosts.plates,
+        category: 'Forro',
+        specifications: {
+          modulation: selectedModulation,
+          edge_type: selectedEdgeType,
+          nrc: modelSpecs?.nrc || 0.7,
+          manufacturer: selectedProduct.supplier || 'Nacional'
+        }
+      },
+      ...(input.laborConfig?.includeLabor && itemizedCosts.labor > 0 ? [{
+        name: 'Mão de Obra',
+        description: 'Instalação completa do forro mineral acústico',
+        quantity: usefulArea,
+        unit: 'm²',
+        unit_price: itemizedCosts.labor / usefulArea,
+        total_price: itemizedCosts.labor,
+        category: 'Serviços',
+        specifications: {}
+      }] : [])
+    ]
   };
 }
 
@@ -654,6 +683,35 @@ export function calculateAcousticMineralCeilingSyncLegacy(input: AcousticMineral
       structureCompatible: true,
       modelSuitable: true,
       warnings: []
-    }
+    },
+    
+    // Generate quantified items for proposal (legacy function)
+    quantified_items: [
+      {
+        name: selectedModelName,
+        description: `Placas de forro mineral acústico ${selectedModulation}`,
+        quantity: totalPlates,
+        unit: 'un',
+        unit_price: 45 * modelData.costMultiplier,
+        total_price: totalPlates * plateArea * 45 * modelData.costMultiplier,
+        category: 'Forro',
+        specifications: {
+          modulation: selectedModulation,
+          edge_type: selectedEdgeType,
+          nrc: modelData.nrc,
+          manufacturer: modelData.manufacturer
+        }
+      },
+      {
+        name: 'Mão de Obra',
+        description: 'Instalação completa do forro mineral acústico',
+        quantity: usefulArea,
+        unit: 'm²',
+        unit_price: 35,
+        total_price: usefulArea * 35,
+        category: 'Serviços',
+        specifications: {}
+      }
+    ]
   };
 }
