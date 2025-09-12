@@ -645,8 +645,84 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                     </Card>
                   )}
 
-                  {/* Original Summary Card for non-solar or when no proposalItems */}
-                  {((productType !== 'solar' && productType !== 'solar_advanced') || !calculator.calculationSummary?.proposalItems) && (
+                  {/* Equipment List for Shingle Calculations */}
+                  {productType === 'shingle' && calculator.calculationSummary?.proposalItems && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center">
+                          <Badge className="mr-2 bg-amber-500 text-white">🏠</Badge>
+                          Lista de Materiais - Telhas Shingle
+                        </CardTitle>
+                        <CardDescription>
+                          Materiais quantificados para o sistema de cobertura
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {calculator.calculationSummary.proposalItems.map((item, index) => {
+                          // Determine category and styling based on item name/description
+                          let categoryInfo = { name: 'Material', color: 'gray', bgColor: 'gray-50', borderColor: 'gray-200' };
+                          
+                          if (item.name?.toLowerCase().includes('telha') || item.name?.toLowerCase().includes('shingle')) {
+                            categoryInfo = { name: 'Cobertura', color: 'red-700', bgColor: 'red-50', borderColor: 'red-200' };
+                          } else if (item.name?.toLowerCase().includes('osb') || item.name?.toLowerCase().includes('madeira')) {
+                            categoryInfo = { name: 'Estrutura', color: 'amber-700', bgColor: 'amber-50', borderColor: 'amber-200' };
+                          } else if (item.name?.toLowerCase().includes('subcobertura') || item.name?.toLowerCase().includes('manta')) {
+                            categoryInfo = { name: 'Impermeabilização', color: 'blue-700', bgColor: 'blue-50', borderColor: 'blue-200' };
+                          } else if (item.name?.toLowerCase().includes('cumeeira') || item.name?.toLowerCase().includes('acabamento')) {
+                            categoryInfo = { name: 'Acabamento', color: 'green-700', bgColor: 'green-50', borderColor: 'green-200' };
+                          } else if (item.name?.toLowerCase().includes('mão') || item.name?.toLowerCase().includes('instalação')) {
+                            categoryInfo = { name: 'Serviços', color: 'purple-700', bgColor: 'purple-50', borderColor: 'purple-200' };
+                          }
+
+                          return (
+                            <div key={`shingle-item-${index}`}>
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className={`font-semibold text-${categoryInfo.color}`}>{item.name}</h4>
+                                <Badge variant="secondary">{categoryInfo.name}</Badge>
+                              </div>
+                              <div className={`bg-${categoryInfo.bgColor} p-4 rounded-lg border-l-4 border-${categoryInfo.borderColor}`}>
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <p className="font-medium">
+                                      {item.quantity} {item.unit} - {item.description}
+                                    </p>
+                                    {item.unitPrice > 0 && (
+                                      <p className="text-sm text-muted-foreground mt-1">
+                                        Preço unitário: R$ {item.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / {item.unit}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-bold text-lg">
+                                      R$ {item.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        <Separator />
+
+                        {/* Total for Shingle */}
+                        <div className="bg-amber-50 p-6 rounded-lg border-2 border-amber-200">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="font-semibold text-lg text-amber-800">VALOR TOTAL DO SISTEMA:</p>
+                              <p className="text-sm text-amber-600">Materiais para cobertura</p>
+                            </div>
+                            <p className="font-bold text-3xl text-amber-700">
+                              R$ {calculator.calculationSummary.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Original Summary Card for non-solar/non-shingle or when no proposalItems */}
+                  {((productType !== 'solar' && productType !== 'solar_advanced' && productType !== 'shingle') || !calculator.calculationSummary?.proposalItems) && (
                     <Card>
                       <CardHeader>
                         <CardTitle>Resumo dos Cálculos</CardTitle>
