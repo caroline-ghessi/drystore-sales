@@ -10,6 +10,7 @@ import BotPage from "@/modules/whatsapp/pages/Bot";
 import AtendentesPage from "@/modules/whatsapp/pages/Atendentes";
 import { VendedoresPage } from "@/modules/whatsapp/pages/Vendedores";
 import { ConversationsPage } from "@/modules/whatsapp/pages/Conversations";
+import WhatsAppDashboard from "@/modules/whatsapp/pages/Dashboard";
 
 export default function WhatsAppLayout() {
   return (
@@ -20,7 +21,8 @@ export default function WhatsAppLayout() {
           <WhatsAppHeader />
           <main className="flex-1 overflow-hidden min-h-0">
             <Routes>
-              <Route index element={<ConversationsPage />} />
+              <Route index element={<WhatsAppDashboard />} />
+              <Route path="conversations" element={<ConversationsPage />} />
               <Route path="bot" element={<BotPage />} />
               <Route path="vendedores" element={<VendedoresPage />} />
               <Route path="atendentes" element={<AtendentesPage />} />
