@@ -108,12 +108,41 @@ export function useUnifiedProducts(category?: UnifiedProductCategory) {
       // Convert solar equipment to unified format
       if (solarEquipment) {
         const convertedSolarEquipment = solarEquipment.map(equipment => {
-          const isHybridInverter = equipment.category === 'inverter' && 
-            (equipment.model?.toLowerCase().includes('híbrido') || 
-             equipment.model?.toLowerCase().includes('hibrido') ||
-             equipment.model?.toLowerCase().includes('hybrid') ||
-             equipment.brand?.toLowerCase().includes('growatt') ||
-             equipment.brand?.toLowerCase().includes('deye'));
+          // Check if it's a hybrid inverter by multiple criteria
+          const isHybridInverter = equipment.category === 'inverter' && (() => {
+            // Check specifications for hybrid type
+            const specs = equipment.specifications;
+            let isHybridBySpecs = false;
+            
+            if (specs && typeof specs === 'object' && !Array.isArray(specs)) {
+              const specsObj = specs as { [key: string]: any };
+              isHybridBySpecs = specsObj.type === 'hybrid' || specsObj.tipo === 'híbrido';
+            }
+            
+            // Check model name for hybrid keywords
+            const modelLower = (equipment.model || '').toLowerCase();
+            const isHybridByModel = modelLower.includes('híbrido') || 
+                                   modelLower.includes('hibrido') ||
+                                   modelLower.includes('hybrid');
+            
+            // Check brand for known hybrid inverter manufacturers
+            const brandLower = (equipment.brand || '').toLowerCase();
+            const isHybridByBrand = brandLower.includes('growatt') ||
+                                   brandLower.includes('deye') ||
+                                   brandLower.includes('livoltek');
+            
+            const result = isHybridBySpecs || isHybridByModel || isHybridByBrand;
+            
+            console.log(`🔍 Hybrid Detection - ${equipment.brand} ${equipment.model}:`, {
+              isHybridBySpecs,
+              isHybridByModel, 
+              isHybridByBrand,
+              finalResult: result,
+              specs
+            });
+            
+            return result;
+          })();
              
           const convertedCategory = equipment.category === 'battery' ? 'battery_backup' : 
                                    isHybridInverter ? 'battery_backup' : 'energia_solar';
