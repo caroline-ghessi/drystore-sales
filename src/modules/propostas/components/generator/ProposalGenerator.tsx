@@ -36,11 +36,6 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   const [step, setStep] = useState(1);
   const [productType, setProductType] = useState<ProductType>('solar');
   
-  // 🚨 DIAGNÓSTICO CRÍTICO - Estado do componente
-  console.log('🎯 ProposalGenerator RENDER - step:', step);
-  console.log('🎯 ProposalGenerator RENDER - productType:', productType);
-  console.log('🎯 ProposalGenerator RENDER - projectContextId:', projectContextId);
-  
   // Installation cost management
   const [includeInstallation, setIncludeInstallation] = useState(false);
   const [installationCost, setInstallationCost] = useState(0);
@@ -317,10 +312,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                           ? 'ring-2 ring-primary bg-primary/5' 
                           : 'hover:bg-muted/50'
                       }`}
-                      onClick={() => {
-                        console.log('🎯 PRODUTO SELECIONADO:', product.value);
-                        setProductType(product.value as ProductType);
-                      }}
+                      onClick={() => setProductType(product.value as ProductType)}
                     >
                       <CardContent className="p-4">
                         <h4 className="font-semibold">{product.label}</h4>
@@ -399,12 +391,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
           {/* Step 3: Calculations */}
           {step === 3 && (
             <div className="space-y-4">
-              {(() => {
-                console.log('🚨 STEP 3 - Renderizando calculadora');
-                console.log('🚨 STEP 3 - productType:', productType);
-                console.log('🚨 STEP 3 - clientData:', clientData);
-                return renderCalculator();
-              })()}
+              {renderCalculator()}
               
               {calculator.calculationResult && (
                 <>

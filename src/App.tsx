@@ -11,6 +11,7 @@ import SetPasswordPage from "@/pages/SetPassword";
 import ResetPasswordPage from "@/pages/ResetPassword";
 import HomePage from "@/pages/Home";
 import PublicProposal from "@/pages/PublicProposal";
+import { useStorageCleanup } from "@/hooks/useStorageCleanup";
 
 // Module Layouts
 import CRMLayout from "@/modules/crm/components/layout/CRMLayout";
@@ -42,9 +43,14 @@ const queryClient = new QueryClient({
       retry: 1,
     },
   },
+  // 🚨 CORREÇÃO: Desabilitar persistência temporariamente para isolar erros de JSON
+  // persistQuery: false,
 });
 
 function AppContent() {
+  // Hook para limpeza automática de storage corrompido
+  useStorageCleanup();
+  
   return (
     <BrowserRouter>
       <Routes>

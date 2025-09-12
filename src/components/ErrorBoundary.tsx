@@ -1,4 +1,5 @@
 import React from 'react';
+import { SafeStorage } from '@/lib/storage';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -20,17 +21,33 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
+    console.error('🚨 ErrorBoundary capturou erro:', error, errorInfo);
+    
+    // Se for erro de JSON, limpar storage e tentar recuperar
+    if (error.message.includes('not valid JSON') || 
+        error.message.includes('JSON.parse') ||
+        error.message.includes('[object Object]')) {
+      console.log('🧹 Erro de JSON detectado, limpando storage...');
+      SafeStorage.cleanCorruptedData();
+      
+      // Recarregar página após limpar storage
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
   }
 
   render() {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-destructive mb-4">Algo deu errado</h1>
-            <p className="text-muted-foreground mb-4">
-              {this.state.error?.message || 'Erro desconhecido'}
+          <div className="text-center space-y-4 p-8 max-w-md mx-auto">
+            <h1 className="text-2xl font-bold text-destructive">Algo deu errado</h1>
+            <p className="text-muted-foreground">
+              {this.state.error?.message?.includes('JSON') 
+                ? 'Detectamos um problema com os dados armazenados. Limpando automaticamente...'
+                : (this.state.error?.message || 'Erro desconhecido')
+              }
             </p>
             <button 
               onClick={() => window.location.reload()} 
