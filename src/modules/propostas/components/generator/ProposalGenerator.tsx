@@ -36,6 +36,11 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   const [step, setStep] = useState(1);
   const [productType, setProductType] = useState<ProductType>('solar');
   
+  // 🚨 DIAGNÓSTICO CRÍTICO - Estado do componente
+  console.log('🎯 ProposalGenerator RENDER - step:', step);
+  console.log('🎯 ProposalGenerator RENDER - productType:', productType);
+  console.log('🎯 ProposalGenerator RENDER - projectContextId:', projectContextId);
+  
   // Installation cost management
   const [includeInstallation, setIncludeInstallation] = useState(false);
   const [installationCost, setInstallationCost] = useState(0);
@@ -177,12 +182,20 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   };
 
   const renderCalculator = () => {
+    console.log('🚨 renderCalculator() CHAMADO');
+    console.log('🚨 productType na renderização:', productType);
+    
     switch (productType) {
       case 'solar':
+        console.log('✅ Renderizando SimpleSolarCalculator');
         return <SimpleSolarCalculator onCalculate={calculator.calculate} clientData={clientData} />;
       case 'solar_advanced':
+        console.log('✅ Renderizando SolarCalculator');
         return <SolarCalculator onCalculate={calculator.calculate} />;
       case 'battery_backup':
+        console.log('🔋 Renderizando BatteryBackupCalculator');
+        console.log('🔋 calculator.calculate:', calculator.calculate);
+        console.log('🔋 calculator.calculationResult:', calculator.calculationResult);
         return <BatteryBackupCalculator 
           onCalculate={calculator.calculate}
           calculationResult={calculator.calculationResult as BatteryBackupResult}
@@ -190,14 +203,19 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
           onGenerateProposal={handleManualGeneration}
         />;
       case 'shingle':
+        console.log('✅ Renderizando ShingleCalculatorWrapper');
         return <ShingleCalculatorWrapper onCalculate={calculator.calculate} />;
       case 'drywall':
+        console.log('✅ Renderizando DrywallCalculatorWrapper');
         return <DrywallCalculatorWrapper onCalculate={calculator.calculate} />;
       case 'forro_drywall':
+        console.log('✅ Renderizando ForroDrywallCalculator');
         return <ForroDrywallCalculator onCalculate={calculator.calculate} />;
       case 'acoustic_mineral_ceiling':
+        console.log('✅ Renderizando AcousticMineralCeilingWrapper');
         return <AcousticMineralCeilingWrapper onCalculate={(data) => calculator.calculate(data.input)} />;
       default:
+        console.log('❌ ProductType não reconhecido:', productType);
         return (
           <Card>
             <CardContent className="p-6">
@@ -299,7 +317,10 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                           ? 'ring-2 ring-primary bg-primary/5' 
                           : 'hover:bg-muted/50'
                       }`}
-                      onClick={() => setProductType(product.value as ProductType)}
+                      onClick={() => {
+                        console.log('🎯 PRODUTO SELECIONADO:', product.value);
+                        setProductType(product.value as ProductType);
+                      }}
                     >
                       <CardContent className="p-4">
                         <h4 className="font-semibold">{product.label}</h4>
@@ -378,7 +399,12 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
           {/* Step 3: Calculations */}
           {step === 3 && (
             <div className="space-y-4">
-              {renderCalculator()}
+              {(() => {
+                console.log('🚨 STEP 3 - Renderizando calculadora');
+                console.log('🚨 STEP 3 - productType:', productType);
+                console.log('🚨 STEP 3 - clientData:', clientData);
+                return renderCalculator();
+              })()}
               
               {calculator.calculationResult && (
                 <>
