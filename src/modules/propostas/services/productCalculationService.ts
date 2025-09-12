@@ -59,7 +59,17 @@ export class ProductCalculationService {
         : product.specifications;
       
       // Mapear campos específicos para baterias
-      if (product.category === 'energia_solar' && product.subcategory === 'bateria') {
+      const isBattery = (product.category === 'energia_solar' && product.subcategory === 'bateria') ||
+                       (product.category === 'battery_backup' && product.solar_category === 'battery');
+      
+      if (isBattery) {
+        console.log(`📋 Aplicando mapeamento para bateria: ${product.name}`, { 
+          category: product.category, 
+          subcategory: product.subcategory,
+          solar_category: product.solar_category,
+          specs_before: specs 
+        });
+        
         // Mapear capacity_kwh para capacity para compatibilidade
         if (specs.capacity_kwh && !specs.capacity) {
           specs.capacity = specs.capacity_kwh;
@@ -73,6 +83,13 @@ export class ProductCalculationService {
         if (!specs.cycles && specs.life_cycles) {
           specs.cycles = specs.life_cycles;
         }
+        
+        console.log(`📋 Especificações mapeadas:`, { 
+          capacity: specs.capacity,
+          dod: specs.dod,
+          cycles: specs.cycles,
+          specs_after: specs 
+        });
       }
       
       return specs;
