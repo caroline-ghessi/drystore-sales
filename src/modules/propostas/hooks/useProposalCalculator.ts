@@ -538,7 +538,8 @@ export function useProposalCalculator(productType: ProductType) {
         
         return {
           totalCost: shingle.totalCost,
-          keyMetrics: metrics
+          keyMetrics: metrics,
+          proposalItems: generateProposalItems()
         };
         
       case 'drywall':
