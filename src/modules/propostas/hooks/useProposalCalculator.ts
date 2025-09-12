@@ -372,29 +372,46 @@ export function useProposalCalculator(productType: ProductType) {
         
       case 'shingle':
         const shingleResult = calculationResult as any;
-        // Calcular área total baseada nos fardos (cada fardo cobre ~3m²)
-        const estimatedArea = shingleResult.totalShingleBundles * 3;
         
-        items.push({
-          id: '1',
-          name: `Telhado Shingle ${estimatedArea.toFixed(0)} m²`,
-          product: 'shingle' as ProductType,
-          quantity: estimatedArea,
-          unit: 'm²',
-          unitPrice: estimatedArea > 0 ? shingleResult.totalCost / estimatedArea : 0,
-          totalPrice: shingleResult.totalCost,
-          category: 'Telha Shingle',
-          specifications: {
-            area: estimatedArea,
-            bundles: shingleResult.totalShingleBundles,
-            osbPlates: shingleResult.osbPlates,
-            underlayment: shingleResult.underlaymentRolls,
-            valleys: shingleResult.valleyRolls,
-            stepFlashing: shingleResult.stepFlashingPieces,
-            ridges: shingleResult.ridgeBundles + shingleResult.espigaoBundles,
-            sealing: shingleResult.monopolAsphalticTubes
-          }
-        });
+        // Usar quantified_items se disponível (nova implementação com produtos reais)
+        if (shingleResult.quantified_items && shingleResult.quantified_items.length > 0) {
+          shingleResult.quantified_items.forEach((item: any, index: number) => {
+            items.push({
+              id: `shingle-${index + 1}`,
+              name: item.name,
+              product: 'shingle' as ProductType,
+              quantity: item.quantity,
+              unit: item.unit,
+              unitPrice: item.unit_price,
+              totalPrice: item.total_price,
+              category: item.category,
+              specifications: {
+                description: item.description,
+                ...item.specifications
+              }
+            });
+          });
+        } else {
+          // Fallback para compatibilidade com resultado antigo
+          const estimatedArea = shingleResult.shingleQuantity * 3.33; // 3.33 m² por fardo
+          
+          items.push({
+            id: '1',
+            name: `Telhado Shingle ${estimatedArea.toFixed(0)} m²`,
+            product: 'shingle' as ProductType,
+            quantity: estimatedArea,
+            unit: 'm²',
+            unitPrice: estimatedArea > 0 ? shingleResult.totalCost / estimatedArea : 0,
+            totalPrice: shingleResult.totalCost,
+            category: 'Telha Shingle',
+            specifications: {
+              area: estimatedArea,
+              bundles: shingleResult.shingleQuantity,
+              osbPlates: shingleResult.osbQuantity,
+              underlayment: shingleResult.underlaymentQuantity
+            }
+          });
+        }
         break;
         
       case 'drywall':

@@ -15,11 +15,10 @@ const SLOPE_CORRECTION_FACTORS = {
 
 // Fallback para compatibilidade quando produtos não são encontrados
 const FALLBACK_SPECS = {
-  shingle: { coverage_area: 3.0, price: 40 },
-  osb: { coverage_area: 2.88, price: 35 },
-  rhinoroof: { coverage_area: 86, price: 180 },
-  ridgeCap: { coverage_area: 5.0, price: 45 },
-  accessories: { price_per_meter: 25 }
+  shingle: { coverage_area: 3.0 },
+  osb: { coverage_area: 2.88 },
+  rhinoroof: { coverage_area: 86 },
+  ridgeCap: { coverage_area: 5.0 }
 };
 
 function getSlopeCorrectionFactor(slope: number): number {
@@ -75,48 +74,48 @@ export function calculateShingleWithProducts(
   
   // Telhas principais
   let shingleQuantity = 0;
-  let shinglePrice = FALLBACK_SPECS.shingle.price;
+  let shinglePrice = 0;
   if (shingleProduct) {
     const specs = ProductCalculationService.getProductSpecs(shingleProduct);
     const coverage = specs.coverage_area || FALLBACK_SPECS.shingle.coverage_area;
     shingleQuantity = Math.ceil(totalArea / coverage);
-    shinglePrice = shingleProduct.base_price;
+    shinglePrice = shingleProduct.base_price || 0;
   } else {
     shingleQuantity = Math.ceil(totalArea / FALLBACK_SPECS.shingle.coverage_area);
   }
 
   // Placas OSB
   let osbQuantity = 0;
-  let osbPrice = FALLBACK_SPECS.osb.price;
+  let osbPrice = 0;
   if (osbProduct) {
     const specs = ProductCalculationService.getProductSpecs(osbProduct);
     const coverage = specs.coverage_area || FALLBACK_SPECS.osb.coverage_area;
     osbQuantity = Math.ceil(totalArea / coverage * 1.05); // 5% adicional
-    osbPrice = osbProduct.base_price;
+    osbPrice = osbProduct.base_price || 0;
   } else {
     osbQuantity = Math.ceil(totalArea / FALLBACK_SPECS.osb.coverage_area * 1.05);
   }
 
   // Subcobertura RhinoRoof
   let underlaymentQuantity = 0;
-  let underlaymentPrice = FALLBACK_SPECS.rhinoroof.price;
+  let underlaymentPrice = 0;
   if (underlaymentProduct) {
     const specs = ProductCalculationService.getProductSpecs(underlaymentProduct);
     const coverage = specs.coverage_area || FALLBACK_SPECS.rhinoroof.coverage_area;
     underlaymentQuantity = Math.ceil(totalArea / coverage);
-    underlaymentPrice = underlaymentProduct.base_price;
+    underlaymentPrice = underlaymentProduct.base_price || 0;
   } else {
     underlaymentQuantity = Math.ceil(totalArea / FALLBACK_SPECS.rhinoroof.coverage_area);
   }
 
   // Cumeeira
   let ridgeCapQuantity = 0;
-  let ridgeCapPrice = FALLBACK_SPECS.ridgeCap.price;
+  let ridgeCapPrice = 0;
   if (ridgeCapProduct) {
     const specs = ProductCalculationService.getProductSpecs(ridgeCapProduct);
     const coverage = specs.coverage_area || FALLBACK_SPECS.ridgeCap.coverage_area;
     ridgeCapQuantity = Math.ceil(roofDetails.ridgeLength / coverage);
-    ridgeCapPrice = ridgeCapProduct.base_price;
+    ridgeCapPrice = ridgeCapProduct.base_price || 0;
   } else {
     ridgeCapQuantity = Math.ceil(roofDetails.ridgeLength / FALLBACK_SPECS.ridgeCap.coverage_area);
   }
@@ -139,9 +138,9 @@ export function calculateShingleWithProducts(
   const underlaymentCost = underlaymentQuantity * underlaymentPrice;
   const accessoriesCost = (
     ridgeCapQuantity * ridgeCapPrice + 
-    valleyQuantity * FALLBACK_SPECS.accessories.price_per_meter + 
-    flashingQuantity * 15 + 
-    sealantQuantity * 12
+    valleyQuantity * 0 + // Buscar preços reais dos produtos ou usar 0
+    flashingQuantity * 0 + 
+    sealantQuantity * 0
   );
 
   // Custos itemizados sem mão de obra automática
