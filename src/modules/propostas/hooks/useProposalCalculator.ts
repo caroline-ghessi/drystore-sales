@@ -6,7 +6,7 @@ import { calculateBatteryBackup } from '../utils/calculations/batteryBackupCalcu
 import { calculateSolarWithProducts } from '../utils/calculations/productBasedSolarCalculations';
 import { calculateBatteryBackupWithProducts } from '../utils/calculations/productBasedBatteryBackupCalculations';
 import { useUnifiedProducts } from './useUnifiedProducts';
-import { calculateShingleInstallation } from '../utils/calculations/shingleCalculations';
+import { calculateShingleWithProducts } from '../utils/calculations/productBasedShingleCalculations';
 import { calculateDrywallInstallation } from '../utils/calculations/drywallCalculations';
 import { calculateForroDrywall } from '../utils/calculations/forroDrywallCalculations';
 import { calculateAcousticMineralCeiling } from '../utils/calculations/acousticMineralCeilingCalculations';
@@ -85,7 +85,7 @@ export function useProposalCalculator(productType: ProductType) {
           console.log('🔋 Resultado do cálculo:', result);
           break;
         case 'shingle':
-          result = calculateShingleInstallation(input as any);
+          result = calculateShingleWithProducts(input as any, products);
           break;
         case 'drywall':
           result = calculateDrywallInstallation(input as any);
@@ -499,12 +499,13 @@ export function useProposalCalculator(productType: ProductType) {
         
       case 'shingle':
         const shingle = calculationResult as any;
-        const shingleArea = shingle.totalShingleBundles * 3;
+        const inputData = calculationInput as any;
+        const shingleArea = inputData?.roofArea || (shingle.shingleQuantity * 3.33); // 3.33 m² por fardo aproximadamente
         const metrics = [
           { label: 'Área Total', value: `${shingleArea.toFixed(0)} m²` },
-          { label: 'Total de Fardos', value: `${shingle.totalShingleBundles} unidades` },
-          { label: 'Subcobertura', value: `${shingle.underlaymentRolls} rolos` },
-          { label: 'Placas OSB', value: `${shingle.osbPlates} unidades` }
+          { label: 'Total de Fardos', value: `${shingle.shingleQuantity} unidades` },
+          { label: 'Subcobertura', value: `${shingle.underlaymentQuantity} rolos` },
+          { label: 'Placas OSB', value: `${shingle.osbQuantity} unidades` }
         ];
         
         // Adicionar métricas condicionais
@@ -564,7 +565,7 @@ export function useProposalCalculator(productType: ProductType) {
       default:
         return null;
     }
-  }, [calculationResult, productType]);
+  }, [calculationResult, calculationInput, productType]);
 
   return {
     calculationInput,
