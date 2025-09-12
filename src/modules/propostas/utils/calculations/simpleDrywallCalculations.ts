@@ -33,10 +33,10 @@ export function calculateDrywallInstallation(input: DrywallCalculationInput): Dr
   };
   
   const laborCosts = {
-    structure: wallArea * 15 * 1.0, // Base regional
-    installation: wallArea * 20 * 1.0,
-    finishing: wallArea * 35 * 1.0,
-    insulation: features.insulation ? wallArea * 8 * 1.0 : 0
+    structure: wallArea * 0, // Preço zero - deve vir de produtos configurados
+    installation: wallArea * 0, // Preço zero - deve vir de produtos configurados
+    finishing: wallArea * 0, // Preço zero - deve vir de produtos configurados
+    insulation: features.insulation ? wallArea * 0 : 0 // Preço zero - deve vir de produtos configurados
   };
   
   const laborHours = {

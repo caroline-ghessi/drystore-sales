@@ -12,9 +12,12 @@ interface DrywallProduct {
 export async function calculateImprovedDrywall(input: DrywallCalculationInput): Promise<DrywallCalculationResult> {
   const { wallArea, wallHeight, openings, features, region, selectedProducts, finishType = 'level_4' } = input;
 
-  // Calcular área líquida (descontar 50% das aberturas)
-  const standardDoorArea = 0.80 * 2.10; // Porta padrão
-  const standardWindowArea = 1.20 * 1.00; // Janela padrão
+  // Buscar especificações dos produtos configurados
+  const productSpecs = await getProductSpecifications(selectedProducts);
+  
+  // Calcular área líquida usando dimensões dos produtos ou área fornecida
+  const standardDoorArea = productSpecs.door_dimensions?.area || (wallArea * 0.1); // Se não configurado, assume 10% da área
+  const standardWindowArea = productSpecs.window_dimensions?.area || (wallArea * 0.05); // Se não configurado, assume 5% da área
   const totalOpeningsArea = (openings.doors * standardDoorArea) + (openings.windows * standardWindowArea);
   const netArea = wallArea - (totalOpeningsArea * 0.5); // Desconto parcial de 50%
   
@@ -29,8 +32,8 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
   const wasteFactor = 1.15; // 15% de perda
   const plateAreaWithWaste = totalPlateArea * wasteFactor;
   
-  // Assumindo placas de 2.88 m² (1.20 × 2.40m)
-  const plateArea = 2.88;
+  // Usar área da placa configurada no produto ou calcular baseado na área total
+  const plateArea = productSpecs.plate_dimensions?.area || (plateAreaWithWaste / Math.ceil(plateAreaWithWaste / 2.88));
   const plateQuantity = Math.ceil(plateAreaWithWaste / plateArea);
   
   // 2. PERFIS METÁLICOS
@@ -120,32 +123,37 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
   // Buscar preços dos produtos selecionados
   const productPrices = await getSelectedProductPrices(selectedProducts);
   
+  // Buscar preços dos serviços (mão de obra)
+  const servicePrices = await getServicePricing();
+  
   // Materiais extras por nível de acabamento
   const extraMaterials = getExtraMaterialsByFinishLevel(finishType, netArea);
   
-  // Cálculo de custos usando produtos específicos ou preços padrão
+  // Cálculo de custos usando APENAS produtos configurados (preço 0 se não configurado)
   const materialCosts = {
-    plates: plateQuantity * (productPrices.placas?.price || 25),
-    profiles: (montanteQuantity + guiaQuantity) * (productPrices.perfisMetalicos?.price || 15),
-    screws: (screw25mmQuantity * 0.05) + (screw13mmQuantity * 0.08),
-    jointMass: jointMassQuantity * (productPrices.massaJuntas?.price || 8),
-    finishMass: finishMassQuantity * (productPrices.massaAcabamento?.price || 12),
-    tape: tapeQuantity * (productPrices.fita?.price || 0.80),
-    insulation: insulationQuantity ? insulationQuantity * (productPrices.isolamento?.price || 15) : 0,
-    acousticBand: acousticBandQuantity ? acousticBandQuantity * 2.50 : 0,
-    // Custos dos materiais extras
-    extraMaterialsCost: (extraMaterials.primer * 12) + (extraMaterials.sandpaper * 5) + 
-                        (extraMaterials.extraCoats * 50) + (extraMaterials.specialTools * 100)
+    plates: plateQuantity * (productPrices.placas?.price || 0),
+    profiles: (montanteQuantity + guiaQuantity) * (productPrices.perfisMetalicos?.price || 0),
+    screws: (screw25mmQuantity * (productPrices.parafusos?.price || 0)) + (screw13mmQuantity * (productPrices.parafusos?.price || 0)),
+    jointMass: jointMassQuantity * (productPrices.massaJuntas?.price || 0),
+    finishMass: finishMassQuantity * (productPrices.massaAcabamento?.price || 0),
+    tape: tapeQuantity * (productPrices.fita?.price || 0),
+    insulation: insulationQuantity ? insulationQuantity * (productPrices.isolamento?.price || 0) : 0,
+    acousticBand: acousticBandQuantity ? acousticBandQuantity * (productPrices.bandaAcustica?.price || 0) : 0,
+    // Custos dos materiais extras usando preços de produtos
+    extraMaterialsCost: (extraMaterials.primer * (productPrices.primer?.price || 0)) + 
+                        (extraMaterials.sandpaper * (productPrices.lixa?.price || 0)) + 
+                        (extraMaterials.extraCoats * (productPrices.demaoExtra?.price || 0)) + 
+                        (extraMaterials.specialTools * (productPrices.ferramentasEspeciais?.price || 0))
   };
   
   // Multiplicador regional fixado em 1.0 (sem variação regional)
   const regionalMultiplier = 1.0;
   
-  // Custos de mão de obra com Sistema Inteligente
+  // Custos de mão de obra usando APENAS serviços configurados
   const baseLaborCosts = {
-    structure: 15,      // R$/m² para estrutura (constante)
-    installation: 20,   // R$/m² para instalação (constante)
-    finishing: 35       // R$/m² base para acabamento Level 4
+    structure: servicePrices.estrutura?.price || 0,      // R$/m² vindo de produtos de serviço
+    installation: servicePrices.instalacao?.price || 0,  // R$/m² vindo de produtos de serviço
+    finishing: servicePrices.acabamento?.price || 0      // R$/m² vindo de produtos de serviço
   };
   
   // ZERO mão de obra para "Sem Acabamento"
@@ -158,7 +166,7 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
     structure: netArea * baseLaborCosts.structure * regionalMultiplier,
     installation: netArea * baseLaborCosts.installation * regionalMultiplier,
     finishing: netArea * baseLaborCosts.finishing * levelConfig.laborMultiplier * regionalMultiplier,
-    insulation: features.insulation ? netArea * 8 * regionalMultiplier : 0
+    insulation: features.insulation ? netArea * (servicePrices.isolamento?.price || 0) * regionalMultiplier : 0
   };
   
   // Horas de mão de obra com Sistema Inteligente
@@ -213,7 +221,7 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
       description: 'Massa para tratamento de juntas',
       quantity: jointMassQuantity,
       unit: 'kg',
-      unit_price: productPrices.massaJuntas?.price || 8,
+      unit_price: productPrices.massaJuntas?.price || 0,
       total_price: materialCosts.jointMass,
       category: 'Acabamento',
       specifications: {}
@@ -223,7 +231,7 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
       description: `Massa de acabamento ${finishType}`,
       quantity: finishMassQuantity,
       unit: 'kg',
-      unit_price: productPrices.massaAcabamento?.price || 12,
+      unit_price: productPrices.massaAcabamento?.price || 0,
       total_price: materialCosts.finishMass,
       category: 'Acabamento',
       specifications: { finish_level: finishType }
@@ -233,7 +241,7 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
       description: 'Fita de papel para juntas',
       quantity: tapeQuantity,
       unit: 'm',
-      unit_price: productPrices.fita?.price || 0.80,
+      unit_price: productPrices.fita?.price || 0,
       total_price: materialCosts.tape,
       category: 'Acabamento',
       specifications: {}
@@ -247,7 +255,7 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
       description: 'Lã de vidro ou rocha para isolamento',
       quantity: insulationQuantity,
       unit: 'm²',
-      unit_price: productPrices.isolamento?.price || 15,
+      unit_price: productPrices.isolamento?.price || 0,
       total_price: materialCosts.insulation,
       category: 'Isolamento',
       specifications: {}
@@ -342,7 +350,7 @@ async function getSelectedProductPrices(selectedProducts?: any) {
   try {
     const { data: products } = await supabase
       .from('products')
-      .select('id, name, base_price, unit')
+      .select('id, name, base_price, unit, specifications')
       .in('id', productIds);
     
     if (!products) return {};
@@ -355,8 +363,9 @@ async function getSelectedProductPrices(selectedProducts?: any) {
         if (productId === product.id) {
           priceMap[type] = {
             name: product.name,
-            price: product.base_price,
-            unit: product.unit
+            price: product.base_price || 0,
+            unit: product.unit,
+            specifications: product.specifications
           };
         }
       });
@@ -369,7 +378,78 @@ async function getSelectedProductPrices(selectedProducts?: any) {
   }
 }
 
-// Sistema de materiais extras por nível de acabamento
+// Nova função para buscar especificações técnicas dos produtos
+async function getProductSpecifications(selectedProducts?: any) {
+  if (!selectedProducts) return {};
+  
+  try {
+    // Buscar produtos de drywall_divisorias configurados
+    const { data: products } = await supabase
+      .from('products')
+      .select('id, name, specifications, subcategory')
+      .eq('category', 'drywall_divisorias')
+      .eq('is_active', true);
+    
+    if (!products) return {};
+    
+    const specs: any = {};
+    
+    // Buscar especificações por subcategoria
+    products.forEach(product => {
+      if (product.specifications) {
+        const subcategory = product.subcategory || 'general';
+        if (subcategory.includes('placa')) {
+          specs.plate_dimensions = product.specifications;
+        } else if (subcategory.includes('porta')) {
+          specs.door_dimensions = product.specifications;
+        } else if (subcategory.includes('janela')) {
+          specs.window_dimensions = product.specifications;
+        }
+      }
+    });
+    
+    return specs;
+  } catch (error) {
+    console.error('Erro ao buscar especificações dos produtos:', error);
+    return {};
+  }
+}
+
+// Nova função para buscar preços de serviços (mão de obra)
+async function getServicePricing() {
+  try {
+    const { data: services } = await supabase
+      .from('products')
+      .select('id, name, base_price, subcategory')
+      .eq('category', 'drywall_divisorias')
+      .eq('subcategory', 'servicos')
+      .eq('is_active', true);
+    
+    if (!services) return {};
+    
+    const servicePrices: any = {};
+    
+    services.forEach(service => {
+      const serviceName = service.name.toLowerCase();
+      if (serviceName.includes('estrutura')) {
+        servicePrices.estrutura = { price: service.base_price || 0 };
+      } else if (serviceName.includes('instalacao') || serviceName.includes('instalação')) {
+        servicePrices.instalacao = { price: service.base_price || 0 };
+      } else if (serviceName.includes('acabamento')) {
+        servicePrices.acabamento = { price: service.base_price || 0 };
+      } else if (serviceName.includes('isolamento')) {
+        servicePrices.isolamento = { price: service.base_price || 0 };
+      }
+    });
+    
+    return servicePrices;
+  } catch (error) {
+    console.error('Erro ao buscar preços dos serviços:', error);
+    return {};
+  }
+}
+
+// Sistema de materiais extras por nível de acabamento (apenas quantidades)
 function getExtraMaterialsByFinishLevel(finishType: 'level_3' | 'level_4' | 'level_5' | 'no_finish', area: number) {
   switch (finishType) {
     case 'no_finish':
