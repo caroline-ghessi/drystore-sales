@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { ProductType, ProposalItem } from '../types/proposal.types';
 import { CalculationInput, CalculationResult, SimpleSolarCalculationInput, SolarCalculationInput } from '../types/calculation.types';
-// import { calculateSimpleSolarSystem } from '../utils/calculations/simpleSolarCalculations'; // REMOVIDO - não usar mais valores hardcoded
+import { calculateSimpleSolarSystem } from '../utils/calculations/simpleSolarCalculations'; // Para calculadora simples com valores padrão
 import { calculateBatteryBackup } from '../utils/calculations/batteryBackupCalculations';
 import { calculateSolarWithProducts } from '../utils/calculations/productBasedSolarCalculations';
 import { calculateBatteryBackupWithProducts } from '../utils/calculations/productBasedBatteryBackupCalculations';
@@ -53,21 +53,19 @@ export function useProposalCalculator(productType: ProductType) {
       
       switch (productType) {
         case 'solar':
-          // SEMPRE usar calculadora baseada em produtos
-          let solarInput: SolarCalculationInput;
-          
           if (isSimpleSolarInput(input)) {
-            solarInput = convertSimpleToAdvancedSolarInput(input);
+            // Calculadora simples: usar função com valores padrão e quantified_items populados
+            result = calculateSimpleSolarSystem(input);
           } else {
-            solarInput = input as SolarCalculationInput;
+            // Calculadora avançada: usar produtos do banco de dados
+            const solarInput = input as SolarCalculationInput;
+            
+            if (!products || products.length === 0) {
+              throw new Error('Nenhum produto solar encontrado. Configure produtos na página de produtos.');
+            }
+            
+            result = calculateSolarWithProducts(solarInput, products);
           }
-          
-          // Usar APENAS produtos cadastrados no banco de dados
-          if (!products || products.length === 0) {
-            throw new Error('Nenhum produto solar encontrado. Configure produtos na página de produtos.');
-          }
-          
-          result = calculateSolarWithProducts(solarInput, products);
           break;
         case 'battery_backup':
           console.log('🔋 useProposalCalculator: Iniciando cálculo battery_backup');
