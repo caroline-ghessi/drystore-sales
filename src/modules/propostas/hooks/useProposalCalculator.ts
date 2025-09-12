@@ -29,6 +29,10 @@ function convertSimpleToAdvancedSolarInput(input: SimpleSolarCalculationInput): 
 }
 
 export function useProposalCalculator(productType: ProductType) {
+  // 🚨 DEBUG: Log de inicialização crítico
+  console.log('🎯 useProposalCalculator INICIALIZADO com productType:', productType);
+  console.log('🎯 useProposalCalculator timestamp:', new Date().toISOString());
+  
   const [calculationInput, setCalculationInput] = useState<CalculationInput | null>(null);
   const [calculationResult, setCalculationResult] = useState<CalculationResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -42,7 +46,10 @@ export function useProposalCalculator(productType: ProductType) {
   const category = categoryMap[productType];
   console.log('🎯 useProposalCalculator - productType:', productType);
   console.log('🎯 useProposalCalculator - category mapeada:', category);
+  
   const { products } = useUnifiedProducts(category);
+  console.log('🎯 useProposalCalculator - produtos retornados:', products?.length || 0);
+  console.log('🎯 useProposalCalculator - primeiros 2 produtos:', products?.slice(0, 2));
 
   const calculate = useCallback(async (input: CalculationInput) => {
     setIsCalculating(true);
@@ -112,11 +119,20 @@ export function useProposalCalculator(productType: ProductType) {
 
 
   const generateProposalItems = useCallback((): ProposalItem[] => {
-    if (!calculationResult) return [];
+    console.log('🎯 generateProposalItems CHAMADO para productType:', productType);
+    console.log('🎯 generateProposalItems calculationResult existe?', !!calculationResult);
+    
+    if (!calculationResult) {
+      console.log('❌ generateProposalItems: calculationResult é null/undefined');
+      return [];
+    }
     
     // PRIORIDADE 1: Usar quantified_items se disponível (dados calculados)
     const result = calculationResult as any;
+    console.log('🎯 generateProposalItems result.quantified_items existe?', !!result.quantified_items);
+    
     if (result.quantified_items && Array.isArray(result.quantified_items)) {
+      console.log('✅ generateProposalItems: Usando quantified_items:', result.quantified_items.length);
       return result.quantified_items.map((item: any, index: number) => ({
         id: (index + 1).toString(),
         name: item.name,

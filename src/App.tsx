@@ -12,6 +12,7 @@ import ResetPasswordPage from "@/pages/ResetPassword";
 import HomePage from "@/pages/Home";
 import PublicProposal from "@/pages/PublicProposal";
 import { useStorageCleanup } from "@/hooks/useStorageCleanup";
+import { StorageDiagnostic } from "@/components/StorageDiagnostic";
 
 // Module Layouts
 import CRMLayout from "@/modules/crm/components/layout/CRMLayout";
@@ -52,6 +53,10 @@ function AppContent() {
   useStorageCleanup();
   
   return (
+    <div className="relative">
+      {/* Diagnóstico de Storage para Debug */}
+      <StorageDiagnostic />
+      
     <BrowserRouter>
       <Routes>
         {/* Public routes */}
@@ -101,6 +106,7 @@ function AppContent() {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
+    </div>
   );
 }
 

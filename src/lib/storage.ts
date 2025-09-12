@@ -84,6 +84,76 @@ export class SafeStorage {
     
     return hasCleanedData;
   }
+
+  // 🚨 NOVA FUNÇÃO: Limpeza forçada de emergência
+  static emergencyCleanup() {
+    console.log('🆘 EXECUTANDO LIMPEZA DE EMERGÊNCIA DO STORAGE');
+    
+    try {
+      // Salvar apenas dados essenciais
+      const authData = localStorage.getItem('sb-groqsnnytvjabgeaekkw-auth-token');
+      
+      // Limpar TUDO
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Restaurar apenas auth se válido
+      if (authData) {
+        try {
+          JSON.parse(authData); // Testar se é JSON válido
+          localStorage.setItem('sb-groqsnnytvjabgeaekkw-auth-token', authData);
+          console.log('✅ Auth preservado após limpeza');
+        } catch {
+          console.log('⚠️ Auth também estava corrompido, removido');
+        }
+      }
+      
+      // Marcar limpeza de emergência
+      sessionStorage.setItem('emergency-cleanup-performed', 'true');
+      console.log('✅ Limpeza de emergência concluída');
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Erro na limpeza de emergência:', error);
+      return false;
+    }
+  }
+
+  // 🚨 NOVA FUNÇÃO: Diagnóstico completo do storage
+  static diagnoseStorage() {
+    console.log('🔍 DIAGNÓSTICO COMPLETO DO STORAGE');
+    
+    const issues = [];
+    const totalItems = localStorage.length;
+    
+    console.log(`📊 Total de itens no localStorage: ${totalItems}`);
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      
+      try {
+        const value = localStorage.getItem(key);
+        console.log(`🔑 ${key}: ${typeof value} (${value?.length || 0} chars)`);
+        
+        // Tentar fazer parse se parecer JSON
+        if (value && (value.startsWith('{') || value.startsWith('['))) {
+          JSON.parse(value);
+        }
+      } catch (error) {
+        console.error(`❌ ITEM CORROMPIDO: ${key}`, error);
+        issues.push(key);
+      }
+    }
+    
+    if (issues.length > 0) {
+      console.log(`🚨 ENCONTRADOS ${issues.length} ITENS CORROMPIDOS:`, issues);
+      return issues;
+    }
+    
+    console.log('✅ Storage aparenta estar íntegro');
+    return [];
+  }
 }
 
 // Auto-limpeza na inicialização
