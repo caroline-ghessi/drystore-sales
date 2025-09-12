@@ -108,11 +108,11 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
   const levelConfig = finishLevelMultipliers[finishType];
   
   // MASSAS com Sistema Inteligente
-  const jointMassQuantity = totalJointMeters * levelConfig.joint;
-  const finishMassQuantity = totalPlateArea * levelConfig.finish;
+  const jointMassQuantity = Math.ceil(totalJointMeters * levelConfig.joint);
+  const finishMassQuantity = Math.ceil(totalPlateArea * levelConfig.finish);
   
   // 6. FITA PARA JUNTAS
-  const tapeQuantity = totalJointMeters * 1.10; // 10% de perda
+  const tapeQuantity = Math.ceil(totalJointMeters * 1.10); // 10% de perda
   
   // 7. ISOLAMENTO (se selecionado)
   const insulationQuantity = features.insulation ? netArea * 1.05 : undefined;
@@ -194,29 +194,35 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
   const totalMaterialCost = Object.values(materialCosts).reduce((sum, cost) => sum + cost, 0);
   const totalLaborCost = Object.values(laborCosts).reduce((sum, cost) => sum + cost, 0);
   
-  // Generate quantified items for proposal
-  const quantified_items = [
-    {
-      name: 'Placas Drywall',
-      description: `Placas drywall para ${input.wallConfiguration || 'divisórias'}`,
-      quantity: plateQuantity,
-      unit: 'un',
-      unit_price: materialCosts.plates / plateQuantity,
-      total_price: materialCosts.plates,
-      category: 'Estrutura',
-      specifications: { area_coverage: plateArea }
-    },
-    {
-      name: 'Perfis Metálicos',
-      description: 'Montantes e guias metálicos',
-      quantity: totalMontantes + Math.ceil(guiaLength / 3),
-      unit: 'un',
-      unit_price: materialCosts.profiles / (totalMontantes + Math.ceil(guiaLength / 3)),
-      total_price: materialCosts.profiles,
-      category: 'Estrutura',
-      specifications: {}
-    },
-    {
+  // Generate quantified items for proposal - filter items with zero quantity
+  const quantified_items = [];
+  
+  // Sempre incluir placas e perfis
+  quantified_items.push({
+    name: 'Placas Drywall',
+    description: `Placas drywall para ${input.wallConfiguration || 'divisórias'}`,
+    quantity: plateQuantity,
+    unit: 'un',
+    unit_price: materialCosts.plates / plateQuantity,
+    total_price: materialCosts.plates,
+    category: 'Estrutura',
+    specifications: { area_coverage: plateArea }
+  });
+  
+  quantified_items.push({
+    name: 'Perfis Metálicos',
+    description: 'Montantes e guias metálicos',
+    quantity: totalMontantes + Math.ceil(guiaLength / 3),
+    unit: 'un',
+    unit_price: materialCosts.profiles / (totalMontantes + Math.ceil(guiaLength / 3)),
+    total_price: materialCosts.profiles,
+    category: 'Estrutura',
+    specifications: {}
+  });
+  
+  // Massa para Juntas - só incluir se quantidade > 0
+  if (jointMassQuantity > 0) {
+    quantified_items.push({
       name: 'Massa para Juntas',
       description: 'Massa para tratamento de juntas',
       quantity: jointMassQuantity,
@@ -225,8 +231,12 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
       total_price: materialCosts.jointMass,
       category: 'Acabamento',
       specifications: {}
-    },
-    {
+    });
+  }
+  
+  // Massa de Acabamento - só incluir se quantidade > 0
+  if (finishMassQuantity > 0) {
+    quantified_items.push({
       name: 'Massa de Acabamento',
       description: `Massa de acabamento ${finishType}`,
       quantity: finishMassQuantity,
@@ -235,8 +245,12 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
       total_price: materialCosts.finishMass,
       category: 'Acabamento',
       specifications: { finish_level: finishType }
-    },
-    {
+    });
+  }
+  
+  // Fita para Juntas - só incluir se quantidade > 0
+  if (tapeQuantity > 0) {
+    quantified_items.push({
       name: 'Fita para Juntas',
       description: 'Fita de papel para juntas',
       quantity: tapeQuantity,
@@ -245,8 +259,8 @@ export async function calculateImprovedDrywall(input: DrywallCalculationInput): 
       total_price: materialCosts.tape,
       category: 'Acabamento',
       specifications: {}
-    }
-  ];
+    });
+  }
 
   // Add insulation if specified
   if (features.insulation && insulationQuantity) {

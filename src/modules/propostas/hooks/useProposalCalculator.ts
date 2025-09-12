@@ -443,27 +443,45 @@ export function useProposalCalculator(productType: ProductType) {
       case 'drywall':
         const drywallResult = calculationResult as any;
         
-        // Debug logging para drywall
-        console.log('🧱 DEBUG Drywall Result:', drywallResult);
-        console.log('🧱 plateQuantity:', drywallResult.plateQuantity);
-        console.log('🧱 profileQuantity:', drywallResult.profileQuantity);
-        
-        items.push({
-          id: '1',
-          name: `Drywall ${(drywallResult.plateQuantity || 0).toFixed(0)} m²`,
-          product: 'drywall' as ProductType,
-          quantity: drywallResult.plateQuantity || 0,
-          unit: 'm²',
-          unitPrice: (drywallResult.plateQuantity || 0) > 0 ? (drywallResult.totalCost || 0) / (drywallResult.plateQuantity || 1) : 0,
-          totalPrice: drywallResult.totalCost || 0,
-          category: 'Drywall',
-          specifications: {
-            area: drywallResult.plateQuantity || 0,
-            profiles: drywallResult.profileQuantity || 0,
-            screws: drywallResult.screwQuantity || 0,
-            jointCompound: drywallResult.jointCompoundQuantity || 0
-          }
-        });
+        // Usar quantified_items se disponível (nova implementação com produtos reais)
+        if (drywallResult.quantified_items && drywallResult.quantified_items.length > 0) {
+          drywallResult.quantified_items
+            .filter((item: any) => item.quantity > 0) // Filtro de segurança adicional
+            .forEach((item: any, index: number) => {
+              items.push({
+                id: `drywall-${index + 1}`,
+                name: item.name,
+                product: 'drywall' as ProductType,
+                quantity: item.quantity,
+                unit: item.unit,
+                unitPrice: item.unit_price,
+                totalPrice: item.total_price,
+                category: item.category,
+                specifications: {
+                  description: item.description,
+                  ...item.specifications
+                }
+              });
+            });
+        } else {
+          // Fallback para compatibilidade com resultado antigo
+          items.push({
+            id: '1',
+            name: `Drywall ${(drywallResult.plateQuantity || 0).toFixed(0)} m²`,
+            product: 'drywall' as ProductType,
+            quantity: drywallResult.plateQuantity || 0,
+            unit: 'm²',
+            unitPrice: (drywallResult.plateQuantity || 0) > 0 ? (drywallResult.totalCost || 0) / (drywallResult.plateQuantity || 1) : 0,
+            totalPrice: drywallResult.totalCost || 0,
+            category: 'Drywall',
+            specifications: {
+              area: drywallResult.plateQuantity || 0,
+              profiles: drywallResult.profileQuantity || 0,
+              screws: drywallResult.screwQuantity || 0,
+              jointCompound: drywallResult.jointCompoundQuantity || 0
+            }
+          });
+        }
         break;
         
         case 'forro_drywall':
