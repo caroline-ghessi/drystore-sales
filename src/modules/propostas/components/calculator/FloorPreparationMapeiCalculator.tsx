@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FloorPreparationMapeiInput, FloorPreparationMapeiResult } from '../../types/calculation.types';
-import { calculateFloorPreparationMapei } from '../../utils/calculations/floorPreparationMapeiCalculations';
+import { calculateFloorPreparationMapeiWithProducts } from '../../utils/calculations/floorPreparationMapeiCalculationsDynamic';
+import { useMapeiProducts } from '../../hooks/useMapeiProducts';
 
 interface FloorPreparationMapeiCalculatorProps {
   onCalculationComplete: (result: FloorPreparationMapeiResult) => void;
@@ -55,8 +56,15 @@ export function FloorPreparationMapeiCalculator({ onCalculationComplete, initial
     });
   };
 
+  const { products, isLoading } = useMapeiProducts();
+
   const handleCalculate = () => {
-    const result = calculateFloorPreparationMapei(formData);
+    if (!products || products.length === 0) {
+      console.error('Produtos MAPEI não carregados');
+      return;
+    }
+    
+    const result = calculateFloorPreparationMapeiWithProducts(formData, products);
     onCalculationComplete(result);
   };
 
@@ -285,9 +293,9 @@ export function FloorPreparationMapeiCalculator({ onCalculationComplete, initial
           <Button 
             onClick={handleCalculate} 
             className="w-full" 
-            disabled={formData.area === 0 || formData.averageThickness === 0}
+            disabled={formData.area === 0 || formData.averageThickness === 0 || isLoading}
           >
-            Calcular Preparação de Piso
+            {isLoading ? 'Carregando produtos...' : 'Calcular Preparação de Piso'}
           </Button>
         </CardContent>
       </Card>
