@@ -18,6 +18,23 @@ async function getAcousticMineralProducts() {
   return data || [];
 }
 
+// Função para buscar produtos auxiliares reutilizáveis (tirantes, buchas, cantoneiras)
+async function getAuxiliaryStructuralProducts() {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .in('category', ['forro_drywall', 'forro_mineral_acustico', 'drywall_divisorias'])
+    .eq('is_active', true)
+    .or('code.ilike.%tirante%,name.ilike.%tirante%,code.ilike.%bucha%,name.ilike.%bucha%,code.ilike.%cantoneira%,name.ilike.%cantoneira%');
+  
+  if (error) {
+    console.error('Erro ao buscar produtos auxiliares:', error);
+    return [];
+  }
+  
+  return data || [];
+}
+
 // COMENTÁRIO: Função auxiliar mantida para futuras expansões
 // async function getAuxiliaryProducts() {
 //   const { data, error } = await supabase
@@ -258,14 +275,37 @@ export function calculateLossPercentage(format: AcousticMineralCeilingInput['roo
   return basePercentage;
 }
 
-// Função principal de cálculo (nova versão com produtos dinâmicos)
 export async function calculateAcousticMineralCeiling(input: AcousticMineralCeilingInput): Promise<AcousticMineralCeilingResult> {
   // 1. Buscar produtos da base de dados
   const products = await getAcousticMineralProducts();
+  const auxiliaryProducts = await getAuxiliaryStructuralProducts();
   
   if (!products || products.length === 0) {
     throw new Error('Nenhum produto de forro mineral acústico encontrado na base de dados');
   }
+  
+  // Mapear produtos estruturais por tipo
+  const getProductByType = (type: string) => products.find(p => {
+    const specs = p.specifications as any;
+    return specs?.type === type;
+  });
+
+  const getAuxiliaryProduct = (name: string) => auxiliaryProducts.find(p =>
+    p.name.toLowerCase().includes(name.toLowerCase()) || 
+    p.code.toLowerCase().includes(name.toLowerCase())
+  );
+
+  const structuralProducts = {
+    mainProfile: getProductByType('main_profile'),
+    secondaryProfile: getProductByType('secondary_profile'), 
+    tegularClips: getProductByType('tegular_clip'),
+    lightSupports: getProductByType('light_support'),
+    regulators: getProductByType('suspension_regulator'),
+    // Produtos reutilizáveis de outras categorias
+    hanger: getAuxiliaryProduct('tirante'),
+    anchor: getAuxiliaryProduct('bucha'),
+    perimeterEdge: getAuxiliaryProduct('cantoneira')
+  };
   
   // 2. Seleção do produto adequado baseado nas necessidades
   let selectedProduct;
@@ -424,19 +464,40 @@ export async function calculateAcousticMineralCeiling(input: AcousticMineralCeil
     specialAnchors: Math.ceil(hangers * 0.1) // 10% de buchas especiais
   };
 
-// 6. Custos baseados EXCLUSIVAMENTE nos produtos de forro mineral acústico cadastrados
+// 6. Custos baseados nos produtos cadastrados na base de dados
   const regionMultiplier = 1.0; // Fixado para uniformidade nacional
   
-  // IMPORTANTE: Usar APENAS o produto selecionado de forro mineral acústico
-  // Outros componentes (perfis, tirantes, etc) devem ser zerados se não houver produtos específicos cadastrados
-
   const itemizedCosts = {
     plates: totalPlates * plateArea * selectedProduct.base_price,
-    mainProfile: 0, // Zerar custos de componentes sem produtos cadastrados
-    secondaryProfiles: 0,
-    perimeterEdge: 0,
-    suspension: 0,
-    accessories: 0,
+    mainProfile: structuralProducts.mainProfile 
+      ? mainProfileBars * structuralProducts.mainProfile.base_price 
+      : 0,
+    secondaryProfiles: (() => {
+      let cost = 0;
+      if (secondaryProfile1250 && structuralProducts.secondaryProfile) {
+        cost += secondaryProfile1250.pieces * structuralProducts.secondaryProfile.base_price;
+      }
+      if (secondaryProfile625 && structuralProducts.secondaryProfile) {
+        cost += secondaryProfile625.pieces * structuralProducts.secondaryProfile.base_price;
+      }
+      return cost;
+    })(),
+    perimeterEdge: structuralProducts.perimeterEdge 
+      ? perimeterEdgeBars * structuralProducts.perimeterEdge.base_price 
+      : 0,
+    suspension: (() => {
+      let cost = 0;
+      if (structuralProducts.hanger) cost += hangers * structuralProducts.hanger.base_price;
+      if (structuralProducts.regulators) cost += hangers * structuralProducts.regulators.base_price;
+      if (structuralProducts.anchor) cost += hangers * structuralProducts.anchor.base_price;
+      return cost;
+    })(),
+    accessories: (() => {
+      let cost = 0;
+      if (structuralProducts.tegularClips) cost += accessories.tegularClips * structuralProducts.tegularClips.base_price;
+      if (structuralProducts.lightSupports) cost += accessories.lightSupports * structuralProducts.lightSupports.base_price;
+      return cost;
+    })(),
     labor: input.laborConfig?.includeLabor 
       ? (input.laborConfig.customLaborCost || 
          (input.laborConfig.laborCostPerM2 ? input.laborConfig.laborCostPerM2 * usefulArea : 0))
@@ -520,8 +581,9 @@ export async function calculateAcousticMineralCeiling(input: AcousticMineralCeil
     },
     validations,
     
-    // Generate quantified items for proposal
+    // Generate quantified items for proposal - LISTA COMPLETA
     quantified_items: [
+      // 1. Placas minerais acústicas
       {
         name: selectedProduct.name,
         description: `Placas de forro mineral acústico ${selectedModulation}`,
@@ -537,6 +599,116 @@ export async function calculateAcousticMineralCeiling(input: AcousticMineralCeil
           manufacturer: selectedProduct.supplier || 'Nacional'
         }
       },
+      
+      // 2. Perfil principal
+      ...(structuralProducts.mainProfile ? [{
+        name: structuralProducts.mainProfile.name,
+        description: `Perfil principal de sustentação - ${mainProfileBars} barras de 3,66m`,
+        quantity: mainProfileBars,
+        unit: 'peca',
+        unit_price: structuralProducts.mainProfile.base_price,
+        total_price: mainProfileBars * structuralProducts.mainProfile.base_price,
+        category: 'Estrutura',
+        specifications: { length_meters: 3.66, type: 'main_profile' }
+      }] : []),
+      
+      // 3. Perfis secundários 1250mm (se aplicável)
+      ...(secondaryProfile1250 && structuralProducts.secondaryProfile ? [{
+        name: structuralProducts.secondaryProfile.name.replace('625mm', '1250mm'),
+        description: `Perfil secundário 1250mm - ${secondaryProfile1250.pieces} peças`,
+        quantity: secondaryProfile1250.pieces,
+        unit: 'peca',
+        unit_price: structuralProducts.secondaryProfile.base_price,
+        total_price: secondaryProfile1250.pieces * structuralProducts.secondaryProfile.base_price,
+        category: 'Estrutura',
+        specifications: { length_meters: 1.25, type: 'secondary_profile' }
+      }] : []),
+      
+      // 4. Perfis secundários 625mm
+      ...(secondaryProfile625 && structuralProducts.secondaryProfile ? [{
+        name: structuralProducts.secondaryProfile.name,
+        description: `Perfil secundário 625mm - ${secondaryProfile625.pieces} peças`,
+        quantity: secondaryProfile625.pieces,
+        unit: 'peca',
+        unit_price: structuralProducts.secondaryProfile.base_price,
+        total_price: secondaryProfile625.pieces * structuralProducts.secondaryProfile.base_price,
+        category: 'Estrutura',
+        specifications: { length_meters: 0.625, type: 'secondary_profile' }
+      }] : []),
+      
+      // 5. Cantoneira perimetral
+      ...(structuralProducts.perimeterEdge ? [{
+        name: structuralProducts.perimeterEdge.name,
+        description: `Cantoneira perimetral - ${perimeterEdgeBars} barras de 3m`,
+        quantity: perimeterEdgeBars,
+        unit: 'peca',
+        unit_price: structuralProducts.perimeterEdge.base_price,
+        total_price: perimeterEdgeBars * structuralProducts.perimeterEdge.base_price,
+        category: 'Estrutura',
+        specifications: { length_meters: 3, type: 'perimeter_edge' }
+      }] : []),
+      
+      // 6. Sistema de suspensão - Tirantes
+      ...(structuralProducts.hanger ? [{
+        name: structuralProducts.hanger.name,
+        description: `Tirantes de suspensão Ø3,4mm - ${hangers} unidades`,
+        quantity: hangers,
+        unit: 'unidade',
+        unit_price: structuralProducts.hanger.base_price,
+        total_price: hangers * structuralProducts.hanger.base_price,
+        category: 'Suspensão',
+        specifications: { diameter_mm: 3.4, type: 'hanger' }
+      }] : []),
+      
+      // 7. Reguladores de suspensão
+      ...(structuralProducts.regulators ? [{
+        name: structuralProducts.regulators.name,
+        description: `Reguladores para ajuste de altura - ${hangers} unidades`,
+        quantity: hangers,
+        unit: 'unidade',
+        unit_price: structuralProducts.regulators.base_price,
+        total_price: hangers * structuralProducts.regulators.base_price,
+        category: 'Suspensão',
+        specifications: { type: 'suspension_regulator', adjustable: true }
+      }] : []),
+      
+      // 8. Buchas de fixação
+      ...(structuralProducts.anchor ? [{
+        name: structuralProducts.anchor.name,
+        description: `Buchas para fixação na laje - ${hangers} unidades`,
+        quantity: hangers,
+        unit: 'unidade',
+        unit_price: structuralProducts.anchor.base_price,
+        total_price: hangers * structuralProducts.anchor.base_price,
+        category: 'Fixação',
+        specifications: { type: 'ceiling_anchor' }
+      }] : []),
+      
+      // 9. Clips tegular (se borda tegular)
+      ...(accessories.tegularClips > 0 && structuralProducts.tegularClips ? [{
+        name: structuralProducts.tegularClips.name,
+        description: `Clips de união para borda tegular - ${accessories.tegularClips} unidades`,
+        quantity: accessories.tegularClips,
+        unit: 'unidade',
+        unit_price: structuralProducts.tegularClips.base_price,
+        total_price: accessories.tegularClips * structuralProducts.tegularClips.base_price,
+        category: 'Acessórios',
+        specifications: { edge_type: 'tegular', type: 'union_clip' }
+      }] : []),
+      
+      // 10. Suportes para luminárias
+      ...(accessories.lightSupports > 0 && structuralProducts.lightSupports ? [{
+        name: structuralProducts.lightSupports.name,
+        description: `Suportes para luminárias embutidas - ${accessories.lightSupports} unidades`,
+        quantity: accessories.lightSupports,
+        unit: 'unidade',
+        unit_price: structuralProducts.lightSupports.base_price,
+        total_price: accessories.lightSupports * structuralProducts.lightSupports.base_price,
+        category: 'Acessórios',
+        specifications: { type: 'light_support', fixtures_supported: input.installations.lightFixtures }
+      }] : []),
+      
+      // 11. Mão de obra (se configurada)
       ...(input.laborConfig?.includeLabor && itemizedCosts.labor > 0 ? [{
         name: 'Mão de Obra',
         description: 'Instalação completa do forro mineral acústico',
