@@ -1,121 +1,145 @@
 import { ForroDrywallCalculationInput, ForroDrywallCalculationResult } from '../../types/calculation.types';
 import { supabase } from '@/lib/supabase';
 
-// Get prices from product database
+// Get prices from product database - using ONLY database values, no hardcoded fallbacks
 async function getProductPrices() {
   try {
+    console.log('🔍 Buscando produtos na categoria: forro_drywall');
     const { data: products, error } = await supabase
       .from('products')
       .select('*')
-      .in('category', ['forros', 'drywall_divisorias']);
+      .eq('category', 'forro_drywall')
+      .eq('is_active', true);
 
     if (error) {
-      console.error('Error fetching products:', error);
-      return getDefaultPrices();
+      console.error('❌ Error fetching products:', error);
+      // Return zero prices structure - no hardcoded fallbacks
+      return {
+        plates: { standard: 0, moisture_resistant: 0, acoustic: 0 },
+        profiles: { steel: 0 },
+        suspension: { complete_set: 0 },
+        perimetral: { L_profile: 0, shadow_gap: 0, decorative_molding: 0 },
+        screws: { plate: 0 },
+        finishing: { mass: { PVA: 0, acrylic: 0 }, fiber: { fiberglass: 0, paper: 0 } },
+        insulation: { rockwool: 0, fiberglass: 0, polyurethane: 0 }
+      };
     }
 
+    console.log(`✅ Produtos encontrados: ${products?.length || 0}`);
+    
     const prices: any = {
-      plates: {},
-      profiles: {},
-      suspension: {},
-      perimetral: {},
-      screws: {},
-      finishing: { mass: {}, fiber: {} },
-      insulation: {}
+      plates: { standard: 0, moisture_resistant: 0, acoustic: 0 },
+      profiles: { steel: 0 },
+      suspension: { complete_set: 0 },
+      perimetral: { L_profile: 0, shadow_gap: 0, decorative_molding: 0 },
+      screws: { plate: 0 },
+      finishing: { mass: { PVA: 0, acrylic: 0 }, fiber: { fiberglass: 0, paper: 0 } },
+      insulation: { rockwool: 0, fiberglass: 0, polyurethane: 0 }
     };
 
     products?.forEach(product => {
-      const basePrice = product.base_price || 0;
+      const basePrice = Number(product.base_price) || 0;
+      console.log(`📦 Produto: ${product.name} | Subcategoria: ${product.subcategory || 'N/A'} | Preço: R$ ${basePrice}`);
       
-      // Map products based on name keywords
+      // Map products based on subcategory and name keywords
+      const subcategory = product.subcategory?.toLowerCase() || '';
       const productName = product.name.toLowerCase();
       
-      if (productName.includes('placa') || productName.includes('chapa')) {
-        if (productName.includes('standard') || productName.includes('st')) {
-          prices.plates.standard = basePrice;
-        } else if (productName.includes('ru') || productName.includes('umidade')) {
-          prices.plates.moisture_resistant = basePrice;
-        } else if (productName.includes('rf') || productName.includes('acustic')) {
-          prices.plates.acoustic = basePrice;
-        }
-      } else if (productName.includes('perfil')) {
+      // Placas - usar subcategorias
+      if (subcategory.includes('placas_st') || productName.includes('placa') && productName.includes('st')) {
+        prices.plates.standard = basePrice;
+        console.log(`✅ Mapeado placa standard: R$ ${basePrice}`);
+      } else if (subcategory.includes('placas_ru') || productName.includes('placa') && productName.includes('ru')) {
+        prices.plates.moisture_resistant = basePrice;
+        console.log(`✅ Mapeado placa RU: R$ ${basePrice}`);
+      } else if (subcategory.includes('placas_rf') || productName.includes('placa') && productName.includes('rf')) {
+        prices.plates.acoustic = basePrice;
+        console.log(`✅ Mapeado placa RF: R$ ${basePrice}`);
+      }
+      
+      // Perfis
+      else if (productName.includes('perfil') || subcategory.includes('perfis')) {
         prices.profiles.steel = basePrice;
-      } else if (productName.includes('suspensao') || productName.includes('suporte')) {
+        console.log(`✅ Mapeado perfil: R$ ${basePrice}`);
+      }
+      
+      // Sistema de suspensão
+      else if (productName.includes('suspensao') || productName.includes('suporte') || subcategory.includes('suspensao')) {
         prices.suspension.complete_set = basePrice;
-      } else if (productName.includes('massa')) {
+        console.log(`✅ Mapeado suspensão: R$ ${basePrice}`);
+      }
+      
+      // Acabamento perimetral
+      else if (productName.includes('perimetral') || productName.includes('perfil l')) {
+        prices.perimetral.L_profile = basePrice;
+        console.log(`✅ Mapeado perfil L: R$ ${basePrice}`);
+      } else if (productName.includes('shadow') || productName.includes('sombra')) {
+        prices.perimetral.shadow_gap = basePrice;
+        console.log(`✅ Mapeado shadow gap: R$ ${basePrice}`);
+      } else if (productName.includes('moldura') || productName.includes('decorativ')) {
+        prices.perimetral.decorative_molding = basePrice;
+        console.log(`✅ Mapeado moldura decorativa: R$ ${basePrice}`);
+      }
+      
+      // Parafusos
+      else if (productName.includes('parafuso') || subcategory.includes('parafusos')) {
+        prices.screws.plate = basePrice;
+        console.log(`✅ Mapeado parafuso: R$ ${basePrice}`);
+      }
+      
+      // Massa para juntas
+      else if (productName.includes('massa')) {
         if (productName.includes('pva')) {
           prices.finishing.mass.PVA = basePrice;
+          console.log(`✅ Mapeado massa PVA: R$ ${basePrice}`);
         } else if (productName.includes('acril')) {
           prices.finishing.mass.acrylic = basePrice;
-        }
-      } else if (productName.includes('fita')) {
-        if (productName.includes('vidro') || productName.includes('fiberglass')) {
-          prices.finishing.fiber.fiberglass = basePrice;
-        } else if (productName.includes('papel') || productName.includes('paper')) {
-          prices.finishing.fiber.paper = basePrice;
-        }
-      } else if (productName.includes('isolamento') || productName.includes('la')) {
-        if (productName.includes('rocha') || productName.includes('rockwool')) {
-          prices.insulation.rockwool = basePrice;
-        } else if (productName.includes('vidro') || productName.includes('fiberglass')) {
-          prices.insulation.fiberglass = basePrice;
-        } else if (productName.includes('poliuretano') || productName.includes('polyurethane')) {
-          prices.insulation.polyurethane = basePrice;
+          console.log(`✅ Mapeado massa acrílica: R$ ${basePrice}`);
         }
       }
       
-      // Set default perimeter and screw prices
-      if (!prices.perimetral.L_profile) prices.perimetral.L_profile = 12;
-      if (!prices.perimetral.shadow_gap) prices.perimetral.shadow_gap = 15;
-      if (!prices.perimetral.decorative_molding) prices.perimetral.decorative_molding = 18;
-      if (!prices.screws.plate) prices.screws.plate = 0.15;
+      // Fita para juntas
+      else if (productName.includes('fita')) {
+        if (productName.includes('vidro') || productName.includes('fiberglass')) {
+          prices.finishing.fiber.fiberglass = basePrice;
+          console.log(`✅ Mapeado fita fibra de vidro: R$ ${basePrice}`);
+        } else if (productName.includes('papel') || productName.includes('paper')) {
+          prices.finishing.fiber.paper = basePrice;
+          console.log(`✅ Mapeado fita de papel: R$ ${basePrice}`);
+        }
+      }
+      
+      // Isolamento
+      else if (productName.includes('isolamento') || productName.includes('la')) {
+        if (productName.includes('rocha') || productName.includes('rockwool')) {
+          prices.insulation.rockwool = basePrice;
+          console.log(`✅ Mapeado isolamento lã de rocha: R$ ${basePrice}`);
+        } else if (productName.includes('vidro') || productName.includes('fiberglass')) {
+          prices.insulation.fiberglass = basePrice;
+          console.log(`✅ Mapeado isolamento fibra de vidro: R$ ${basePrice}`);
+        } else if (productName.includes('poliuretano') || productName.includes('polyurethane')) {
+          prices.insulation.polyurethane = basePrice;
+          console.log(`✅ Mapeado isolamento poliuretano: R$ ${basePrice}`);
+        }
+      }
     });
 
+    console.log('💰 Estrutura final de preços:', prices);
     return prices;
+    
   } catch (error) {
-    console.error('Error in getProductPrices:', error);
-    return getDefaultPrices();
+    console.error('❌ Error in getProductPrices:', error);
+    // Return zero prices structure - no hardcoded fallbacks
+    return {
+      plates: { standard: 0, moisture_resistant: 0, acoustic: 0 },
+      profiles: { steel: 0 },
+      suspension: { complete_set: 0 },
+      perimetral: { L_profile: 0, shadow_gap: 0, decorative_molding: 0 },
+      screws: { plate: 0 },
+      finishing: { mass: { PVA: 0, acrylic: 0 }, fiber: { fiberglass: 0, paper: 0 } },
+      insulation: { rockwool: 0, fiberglass: 0, polyurethane: 0 }
+    };
   }
-}
-
-// Default prices as fallback
-function getDefaultPrices() {
-  return {
-    plates: {
-      standard: 85,
-      moisture_resistant: 95,
-      acoustic: 105,
-    },
-    profiles: {
-      steel: 15,
-    },
-    suspension: {
-      complete_set: 8,
-    },
-    perimetral: {
-      L_profile: 12,
-      shadow_gap: 15,
-      decorative_molding: 18,
-    },
-    screws: {
-      plate: 0.15,
-    },
-    finishing: {
-      mass: {
-        PVA: 8,
-        acrylic: 12,
-      },
-      fiber: {
-        fiberglass: 2.5,
-        paper: 2.8,
-      },
-    },
-    insulation: {
-      rockwool: 18,
-      fiberglass: 16,
-      polyurethane: 25,
-    },
-  };
 }
 
 export async function calculateForroDrywall(input: ForroDrywallCalculationInput): Promise<ForroDrywallCalculationResult> {
