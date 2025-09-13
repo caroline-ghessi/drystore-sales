@@ -3007,6 +3007,8 @@ export type Database = {
         | "forro_drywall"
         | "battery_backup"
         | "forro_mineral_acustico"
+        | "impermeabilizacao_mapei"
+        | "preparacao_piso_mapei"
       product_unit:
         | "m2"
         | "ml"
@@ -3215,6 +3217,8 @@ export const Constants = {
         "forro_drywall",
         "battery_backup",
         "forro_mineral_acustico",
+        "impermeabilizacao_mapei",
+        "preparacao_piso_mapei",
       ],
       product_unit: [
         "m2",

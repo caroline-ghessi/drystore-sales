@@ -43,7 +43,9 @@ function mapToDbProductType(productType: ProductType): DatabaseProductType {
     'ceiling': 'forros',
     'forro_drywall': 'forro_drywall',
     'battery_backup': 'battery_backup',
-    'acoustic_mineral_ceiling': 'forro_mineral_acustico'
+    'acoustic_mineral_ceiling': 'forro_mineral_acustico',
+    'waterproofing_mapei': 'impermeabilizacao_mapei',
+    'floor_preparation_mapei': 'preparacao_piso_mapei'
   };
   return mapping[productType];
 }
@@ -58,6 +60,8 @@ function mapFromDbProductType(dbType: DatabaseProductType): ProductType {
     'forro_drywall': 'forro_drywall',
     'battery_backup': 'battery_backup',
     'forro_mineral_acustico': 'acoustic_mineral_ceiling',
+    'impermeabilizacao_mapei': 'waterproofing_mapei',
+    'preparacao_piso_mapei': 'floor_preparation_mapei',
     // Default mappings for other categories
     'ferramentas': 'drywall',
     'pisos': 'drywall',

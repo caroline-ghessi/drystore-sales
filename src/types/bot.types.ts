@@ -98,7 +98,9 @@ export type ProductCategory =
   | 'forro_mineral_acustico'
   | 'saudacao'
   | 'institucional'
-  | 'indefinido';
+  | 'indefinido'
+  | 'impermeabilizacao_mapei'
+  | 'preparacao_piso_mapei';
 
 // Constantes para categorização
 export const PRODUCT_KEYWORDS = {

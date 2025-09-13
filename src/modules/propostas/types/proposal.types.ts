@@ -1,4 +1,4 @@
-export type ProductType = 'solar' | 'solar_advanced' | 'shingle' | 'drywall' | 'steel_frame' | 'ceiling' | 'forro_drywall' | 'battery_backup' | 'acoustic_mineral_ceiling';
+export type ProductType = 'solar' | 'solar_advanced' | 'shingle' | 'drywall' | 'steel_frame' | 'ceiling' | 'forro_drywall' | 'battery_backup' | 'acoustic_mineral_ceiling' | 'waterproofing_mapei' | 'floor_preparation_mapei';
 
 export type ProposalStatus = 'draft' | 'generated' | 'sent' | 'viewed' | 'approved' | 'rejected' | 'expired';
 

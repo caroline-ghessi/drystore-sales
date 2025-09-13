@@ -16,6 +16,25 @@ export interface BaseCalculationInput {
   region?: 'north' | 'northeast' | 'center_west' | 'southeast' | 'south';
 }
 
+export interface BaseCalculationResult {
+  quantified_items: QuantifiedItem[];
+  totalMaterialCost: number;
+  totalLaborCost: number;
+  totalCost: number;
+  
+  // Performance metrics
+  coverage?: string;
+  efficiency?: number;
+  
+  // Validações
+  validationErrors?: string[];
+  warnings?: string[];
+  
+  // Additional info for UI
+  systemSpecs?: Record<string, any>;
+  recommendations?: string[];
+}
+
 // Energia Solar
 export interface SolarCalculationInput extends BaseCalculationInput {
   monthlyConsumption: number; // kWh
@@ -830,24 +849,254 @@ export interface AcousticMineralCeilingResult {
 
 // ============= Union Types =============
 
+// MAPEI - Impermeabilização
+export interface WaterproofingMapeiInput extends BaseCalculationInput {
+  // Dados básicos de área
+  areas: {
+    piso: number;
+    parede: number;
+    total: number;
+  };
+  perimeter: number;
+  
+  // Tipo de aplicação
+  applicationEnvironment: 
+    | 'banheiro_residencial'
+    | 'banheiro_coletivo' 
+    | 'cozinha_residencial'
+    | 'cozinha_industrial'
+    | 'sacada_varanda'
+    | 'terraço_descoberto'
+    | 'terraço_coberto'
+    | 'piscina'
+    | 'reservatorio'
+    | 'subsolo'
+    | 'garagem'
+    | 'floreiras';
+
+  // Condições do substrato
+  substrateType: 
+    | 'concreto_novo' 
+    | 'concreto_velho'
+    | 'alvenaria_reboco'
+    | 'ceramica_existente'
+    | 'gesso_drywall'
+    | 'osb_madeira'
+    | 'contrapiso_cimenticio';
+
+  substrateCondition:
+    | 'plano_nivelado'
+    | 'pequenos_desniveis'
+    | 'desniveis_medios'
+    | 'grandes_desniveis'
+    | 'fissuras_pequenas'
+    | 'fissuras_grandes'
+    | 'infiltracao_ativa';
+
+  // Exposição à água
+  waterExposure:
+    | 'area_seca'
+    | 'respingos_eventuais'
+    | 'umidade_frequente'
+    | 'area_banho'
+    | 'imersao_temporaria'
+    | 'imersao_constante'
+    | 'pressao_positiva'
+    | 'pressao_negativa';
+
+  // Detalhes construtivos
+  constructiveDetails: {
+    commonDrains: number;
+    linearDrains: number; // metros
+    grates: number;
+    passingPipes: number;
+    expansionJoints: number; // metros
+    columns: number;
+    internalCorners: number; // metros
+    externalCorners: number; // metros
+    thresholds: number; // metros
+    gutters: number; // metros
+  };
+
+  // Seleção do sistema
+  systemType?: 'mapelastic' | 'mapelastic_smart' | 'mapelastic_foundation' | 'aquadefense' | 'mapegum_wps';
+  manualProductSelection?: boolean;
+  selectedProducts?: string[];
+
+  // Acabamento final previsto
+  finalFinish?: 
+    | 'ceramica_porcelanato'
+    | 'pastilha_vidro'
+    | 'pastilha_ceramica'
+    | 'pedra_natural'
+    | 'pintura'
+    | 'cimentado'
+    | 'deck_madeira'
+    | 'grama_sintetica';
+
+  // Necessidades especiais
+  specialRequirements?: {
+    potableWaterApproval?: boolean;
+    antiRoot?: boolean;
+    chemicalResistance?: boolean;
+    vehicleTraffic?: boolean;
+    fastApplication?: boolean;
+    extremeTemperature?: boolean;
+    highElasticity?: boolean;
+  };
+}
+
+export interface WaterproofingMapeiResult extends BaseCalculationResult {
+  systemSpecs: {
+    systemType: string;
+    totalLayers: number;
+    thicknessPerLayer: number;
+    totalThickness: number;
+    applicationMethod: string;
+  };
+  correctionFactors: {
+    substrate: number;
+    surface: number;
+    application: number;
+    geometry: number;
+    method: number;
+    final: number;
+  };
+  accessories: {
+    mapeband: {
+      length: number;
+      rolls: number;
+    };
+    reinforcingFabric?: {
+      area: number;
+      rolls: number;
+    };
+    corners?: number;
+    specialPieces?: number;
+    masks?: number;
+  };
+  technicalSpecs: {
+    coverage: string;
+    consumptionBase: string;
+    layers: string;
+    cureTime: string;
+    walkTime: string;
+  };
+}
+
+// MAPEI - Preparação de Piso
+export interface FloorPreparationMapeiInput extends BaseCalculationInput {
+  area: number;
+  
+  // Condição atual do piso
+  currentCondition: 
+    | 'nivelado'
+    | 'pequenos_desniveis'
+    | 'grandes_desniveis'
+    | 'muito_irregular';
+
+  // Medição de espessuras (9 pontos)
+  thicknessMeasurements: number[]; // 9 medições em mm
+  averageThickness: number;
+  maxThickness: number;
+  minThickness: number;
+
+  // Tipo de preparação
+  preparationType: 
+    | 'autonivelante'
+    | 'regularizacao_caimento'
+    | 'nivelamento_simples';
+
+  // Produto selecionado
+  productType: 
+    | 'ultraplan_eco'
+    | 'ultraplan_eco_20'
+    | 'novoplan_2_plus'
+    | 'planitop_fast_330'
+    | 'planitop';
+
+  // Substrato base
+  baseSubstrate: 
+    | 'concreto'
+    | 'ceramica'
+    | 'madeira'
+    | 'gesso'
+    | 'contrapiso';
+
+  // Primer necessário
+  primerRequired: boolean;
+  primerType?: 'primer_g' | 'eco_prim_grip';
+  primerDilution?: '1:1' | '1:3';
+
+  // Configuração de caimento (se aplicável)
+  slopeConfiguration?: {
+    createSlope: boolean;
+    slopePercentage: number;
+    drainPoints: number;
+    highestPoint: number;
+    lowestPoint: number;
+    direction: 'single' | 'multiple';
+  };
+
+  // Condições de aplicação
+  applicationConditions: {
+    temperature: number;
+    humidity: number;
+    ventilation: 'poor' | 'good' | 'excellent';
+    trafficDuringCure: boolean;
+  };
+}
+
+export interface FloorPreparationMapeiResult extends BaseCalculationResult {
+  volumeCalculation: {
+    totalVolume: number; // m³
+    averageThickness: number; // mm
+    thicknessVariation: number; // mm
+    wastePercentage: number;
+  };
+  primer: {
+    required: boolean;
+    type?: string;
+    consumption?: number; // kg/m²
+    dilution?: string;
+  };
+  mixingSpecs: {
+    waterRatio: string;
+    mixingTime: string;
+    potLife: string;
+    walkingTime: string;
+    fullCure: string;
+  };
+  applicationGuide: {
+    toolsNeeded: string[];
+    applicationMethod: string;
+    layerSequence: string[];
+    qualityChecks: string[];
+  };
+}
+
 export type CalculationInput = 
   | SolarCalculationInput 
-  | SimpleSolarCalculationInput
-  | BatteryBackupInput
+  | SimpleSolarCalculationInput 
+  | BatteryBackupInput 
   | ShingleCalculationInput 
   | DrywallCalculationInput 
   | SteelFrameCalculationInput 
-  | CeilingCalculationInput
-  | ForroDrywallCalculationInput
-  | AcousticMineralCeilingInput;
+  | CeilingCalculationInput 
+  | ForroDrywallCalculationInput 
+  | AcousticMineralCeilingInput
+  | WaterproofingMapeiInput
+  | FloorPreparationMapeiInput;
 
 export type CalculationResult = 
   | SolarCalculationResult 
-  | SimpleSolarCalculationResult
-  | BatteryBackupResult
+  | SimpleSolarCalculationResult 
+  | BatteryBackupResult 
   | ShingleCalculationResult 
   | DrywallCalculationResult 
   | SteelFrameCalculationResult 
-  | CeilingCalculationResult
-  | ForroDrywallCalculationResult
-  | AcousticMineralCeilingResult;
+  | CeilingCalculationResult 
+  | ForroDrywallCalculationResult 
+  | AcousticMineralCeilingResult
+  | WaterproofingMapeiResult
+  | FloorPreparationMapeiResult;
