@@ -22,6 +22,8 @@ import { ShingleCalculatorWrapper } from '../calculator/ShingleCalculatorWrapper
 import { DrywallCalculatorWrapper } from '../calculator/DrywallCalculatorWrapper';
 import { ForroDrywallCalculatorWrapper } from '../calculator/ForroDrywallCalculatorWrapper';
 import { AcousticMineralCeilingWrapper } from '../calculator/AcousticMineralCeilingWrapper';
+import { WaterproofingMapeiCalculatorWrapper } from '../calculator/WaterproofingMapeiCalculatorWrapper';
+import { FloorPreparationMapeiCalculatorWrapper } from '../calculator/FloorPreparationMapeiCalculatorWrapper';
 import { ProposalResult } from './ProposalResult';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -209,6 +211,12 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
       case 'acoustic_mineral_ceiling':
         console.log('✅ Renderizando AcousticMineralCeilingWrapper');
         return <AcousticMineralCeilingWrapper onCalculate={(data) => calculator.calculate(data.input)} />;
+      case 'waterproofing_mapei':
+        console.log('✅ Renderizando WaterproofingMapeiCalculatorWrapper');
+        return <WaterproofingMapeiCalculatorWrapper onCalculate={calculator.calculate} />;
+      case 'floor_preparation_mapei':
+        console.log('✅ Renderizando FloorPreparationMapeiCalculatorWrapper');
+        return <FloorPreparationMapeiCalculatorWrapper onCalculate={calculator.calculate} />;
       default:
         console.log('❌ ProductType não reconhecido:', productType);
         return (
@@ -303,7 +311,9 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                     { value: 'shingle', label: 'Telha Shingle', description: 'Telhados e coberturas' },
                     { value: 'drywall', label: 'Drywall', description: 'Divisórias e paredes' },
                     { value: 'forro_drywall', label: 'Forro Drywall', description: 'Sistema completo de forro drywall' },
-                    { value: 'acoustic_mineral_ceiling', label: 'Forro Mineral Acústico', description: 'Forros minerais com isolamento acústico' }
+                    { value: 'acoustic_mineral_ceiling', label: 'Forro Mineral Acústico', description: 'Forros minerais com isolamento acústico' },
+                    { value: 'waterproofing_mapei', label: 'Impermeabilização MAPEI', description: 'Sistemas de impermeabilização profissional' },
+                    { value: 'floor_preparation_mapei', label: 'Preparação de Piso MAPEI', description: 'Autonivelantes e regularização de pisos' }
                   ].map((product) => (
                     <Card 
                       key={product.value}

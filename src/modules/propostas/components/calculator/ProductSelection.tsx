@@ -27,7 +27,7 @@ export interface SelectedProducts {
 }
 
 interface ProductSelectionProps {
-  category: 'drywall_divisorias' | 'energia_solar' | 'battery_backup' | 'forro_drywall' | 'telha_shingle';
+  category: 'drywall_divisorias' | 'energia_solar' | 'battery_backup' | 'forro_drywall' | 'telha_shingle' | 'impermeabilizacao_mapei' | 'preparacao_piso_mapei';
   selectedProducts: SelectedProducts;
   onProductSelect: (productType: string, productId: string) => void;
   mode?: 'manual' | 'automatic';
@@ -55,7 +55,12 @@ export function ProductSelection({
       isolamento: ['la_vidro', 'la_rocha', 'isolamento_acustico'],
       painelSolar: ['paineis_solares', 'modulos_fotovoltaicos'],
       inversor: ['inversores', 'inversores_string', 'inversores_micro'],
-      bateria: ['baterias', 'baterias_lithium', 'baterias_lifepo4']
+      bateria: ['baterias', 'baterias_lithium', 'baterias_lifepo4'],
+      // MAPEI products
+      impermeabilizante: ['mapelastic', 'mapelastic_smart', 'foundation', 'aquadefense'],
+      primer: ['primer_g', 'eco_prim_grip'],
+      autonivelante: ['ultraplan_eco', 'novoplan_plus', 'planitop_fast'],
+      acessorios: ['mapeband', 'mapenet', 'mapetex', 'cantoneiras']
     };
 
     const subcategories = subcategoryMap[functionType] || [functionType];
@@ -180,6 +185,22 @@ export function ProductSelection({
     </>
   );
 
+  const renderMapeiImpermeabilizacaoProducts = () => (
+    <>
+      {renderProductSelector('impermeabilizante', 'Sistema de Impermeabilização', 'Mapelastic, Foundation, AquaDefense')}
+      {renderProductSelector('primer', 'Primer', 'Primer G ou Eco Prim Grip')}
+      {renderProductSelector('acessorios', 'Acessórios', 'MAPEBAND, telas de reforço, cantoneiras', false)}
+    </>
+  );
+
+  const renderMapeiPreparacaoProducts = () => (
+    <>  
+      {renderProductSelector('autonivelante', 'Autonivelante', 'Ultraplan Eco, Novoplan Plus, Planitop')}
+      {renderProductSelector('primer', 'Primer', 'Primer G conforme substrato')}
+      {renderProductSelector('acessorios', 'Acessórios', 'Ferramentas e materiais auxiliares', false)}
+    </>
+  );
+
   const renderProducts = () => {
     switch (category) {
       case 'drywall_divisorias':
@@ -187,6 +208,10 @@ export function ProductSelection({
       case 'energia_solar':
       case 'battery_backup':
         return renderSolarProducts();
+      case 'impermeabilizacao_mapei':
+        return renderMapeiImpermeabilizacaoProducts();
+      case 'preparacao_piso_mapei':
+        return renderMapeiPreparacaoProducts();
       default:
         return <div>Categoria não suportada ainda</div>;
     }

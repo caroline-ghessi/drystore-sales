@@ -18,3 +18,5 @@ export * from './types';
 export { SolarCalculator } from './components/calculator/SolarCalculator';
 export { ShingleCalculator } from './components/calculator/ShingleCalculator';
 export { ForroDrywallCalculator } from './components/calculator/ForroDrywallCalculator';
+export { WaterproofingMapeiCalculator } from './components/calculator/WaterproofingMapeiCalculator';
+export { FloorPreparationMapeiCalculator } from './components/calculator/FloorPreparationMapeiCalculator';
