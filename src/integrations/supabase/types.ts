@@ -3018,6 +3018,10 @@ export type Database = {
         | "unidade"
         | "conjunto"
         | "pacote"
+        | "kit"
+        | "balde"
+        | "galao"
+        | "rolo"
       proposal_status:
         | "draft"
         | "sent"
@@ -3229,6 +3233,10 @@ export const Constants = {
         "unidade",
         "conjunto",
         "pacote",
+        "kit",
+        "balde",
+        "galao",
+        "rolo",
       ],
       proposal_status: [
         "draft",
