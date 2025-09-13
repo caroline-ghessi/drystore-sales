@@ -16,23 +16,22 @@ interface FloorPreparationMapeiCalculatorProps {
 export function FloorPreparationMapeiCalculator({ onCalculationComplete, initialData }: FloorPreparationMapeiCalculatorProps) {
   const [formData, setFormData] = useState<FloorPreparationMapeiInput>({
     area: 0,
-    currentCondition: 'existente_bom',
+    currentCondition: 'nivelado',
     thicknessMeasurements: [0, 0, 0, 0, 0, 0, 0, 0, 0],
     averageThickness: 0,
     maxThickness: 0,
     minThickness: 0,
-    preparationType: 'nivelamento',
+    preparationType: 'autonivelante',
     productType: 'ultraplan_eco',
-    baseSubstrate: 'concreto_velho',
+    baseSubstrate: 'concreto',
     primerRequired: true,
     primerType: 'primer_g',
     primerDilution: '1:3',
     applicationConditions: {
-      temperature: 'normal',
-      humidity: 'normal',
-      applicationMethod: 'manual',
-      applicatorExperience: 'experiente',
-      timeConstraints: 'normal'
+      temperature: 20,
+      humidity: 60,
+      ventilation: 'good',
+      trafficDuringCure: false
     },
     ...initialData
   });
@@ -93,7 +92,7 @@ export function FloorPreparationMapeiCalculator({ onCalculationComplete, initial
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background border z-50">
                   <SelectItem value="nivelado">Nivelado</SelectItem>
                   <SelectItem value="pequenos_desniveis">Pequenos Desníveis</SelectItem>
                   <SelectItem value="grandes_desniveis">Grandes Desníveis</SelectItem>
@@ -151,7 +150,7 @@ export function FloorPreparationMapeiCalculator({ onCalculationComplete, initial
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background border z-50">
                   <SelectItem value="autonivelante">Autonivelante</SelectItem>
                   <SelectItem value="regularizacao_caimento">Regularização com Caimento</SelectItem>
                   <SelectItem value="nivelamento_simples">Nivelamento Simples</SelectItem>
@@ -168,7 +167,7 @@ export function FloorPreparationMapeiCalculator({ onCalculationComplete, initial
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background border z-50">
                   <SelectItem value="ultraplan_eco">ULTRAPLAN ECO (1-10mm)</SelectItem>
                   <SelectItem value="ultraplan_eco_20">ULTRAPLAN ECO 20 (3-20mm)</SelectItem>
                   <SelectItem value="novoplan_2_plus">NOVOPLAN 2 PLUS (3-25mm)</SelectItem>
@@ -176,6 +175,26 @@ export function FloorPreparationMapeiCalculator({ onCalculationComplete, initial
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Substrato */}
+          <div className="space-y-2">
+            <Label>Substrato Base</Label>
+            <Select 
+              value={formData.baseSubstrate} 
+              onValueChange={(value: any) => setFormData({...formData, baseSubstrate: value})}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                <SelectItem value="concreto">Concreto</SelectItem>
+                <SelectItem value="ceramica">Cerâmica</SelectItem>
+                <SelectItem value="madeira">Madeira</SelectItem>
+                <SelectItem value="gesso">Gesso</SelectItem>
+                <SelectItem value="contrapiso">Contrapiso</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Primer */}
@@ -200,7 +219,7 @@ export function FloorPreparationMapeiCalculator({ onCalculationComplete, initial
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-background border z-50">
                       <SelectItem value="primer_g">PRIMER G</SelectItem>
                       <SelectItem value="eco_prim_grip">ECO PRIM GRIP</SelectItem>
                     </SelectContent>
@@ -216,15 +235,51 @@ export function FloorPreparationMapeiCalculator({ onCalculationComplete, initial
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-background border z-50">
                       <SelectItem value="1:3">1:3 (substrato absorvente)</SelectItem>
                       <SelectItem value="1:1">1:1 (substrato pouco absorvente)</SelectItem>
-                      <SelectItem value="puro">Puro (cerâmica existente)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Condições de Aplicação */}
+          <div className="space-y-4">
+            <Label className="text-base font-semibold">Condições de Aplicação</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="temperature">Temperatura (°C)</Label>
+                <Input
+                  id="temperature"
+                  type="number"
+                  value={formData.applicationConditions.temperature}
+                  onChange={(e) => setFormData({
+                    ...formData, 
+                    applicationConditions: {
+                      ...formData.applicationConditions, 
+                      temperature: Number(e.target.value)
+                    }
+                  })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="humidity">Umidade (%)</Label>
+                <Input
+                  id="humidity"
+                  type="number"
+                  value={formData.applicationConditions.humidity}
+                  onChange={(e) => setFormData({
+                    ...formData, 
+                    applicationConditions: {
+                      ...formData.applicationConditions, 
+                      humidity: Number(e.target.value)
+                    }
+                  })}
+                />
+              </div>
+            </div>
           </div>
 
           <Button 
