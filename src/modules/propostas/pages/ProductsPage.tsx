@@ -26,7 +26,9 @@ import {
   ArrowUpDown,
   MoreHorizontal,
   Eye,
-  Trash2
+  Trash2,
+  Droplets,
+  Hammer
 } from 'lucide-react';
 import { Database } from '@/integrations/supabase/types';
 
