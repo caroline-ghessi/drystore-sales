@@ -183,7 +183,9 @@ export async function calculateForroDrywall(input: ForroDrywallCalculationInput)
   const screwsCost = screwQuantity * productPrices.screws.plate;
   const massCost = massQuantity * productPrices.finishing.mass[massType];
   const tapeCost = tapeQuantity * productPrices.finishing.fiber[fiberType];
-  const laborCost = ceilingArea * 25;
+  const laborCost = input.laborConfig?.includeLabor 
+    ? ceilingArea * (input.laborConfig.laborCostPerM2 || 25)
+    : 0;
   
   let insulationCost = 0;
   if (insulationQuantity && insulation.type) {
@@ -280,17 +282,21 @@ export async function calculateForroDrywall(input: ForroDrywallCalculationInput)
       category: 'Acabamento',
       specifications: {}
     },
-    {
+  ];
+
+  // Add labor if enabled
+  if (input.laborConfig?.includeLabor) {
+    quantified_items.push({
       name: 'Mão de Obra',
       description: 'Instalação completa do forro de drywall',
       quantity: ceilingArea,
       unit: 'm²',
-      unit_price: 25,
+      unit_price: input.laborConfig.laborCostPerM2 || 25,
       total_price: laborCost,
       category: 'Serviços',
       specifications: {}
-    }
-  ];
+    });
+  }
 
   // Add insulation if enabled
   if (insulationQuantity && insulationQuantity > 0 && insulation.type) {

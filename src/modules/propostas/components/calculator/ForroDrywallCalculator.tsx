@@ -32,6 +32,10 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
       airVents: 0,
       accessPanels: 0,
       speakers: 0,
+    },
+    laborConfig: {
+      includeLabor: false,
+      laborCostPerM2: 25,
     }
   });
 
@@ -320,6 +324,53 @@ export function ForroDrywallCalculator({ onCalculate }: ForroDrywallCalculatorPr
                       placeholder="0"
                     />
                   </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Configuração de Mão de Obra */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-foreground">Configuração de Mão de Obra</h4>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="includeLabor"
+                checked={input.laborConfig?.includeLabor || false}
+                onCheckedChange={(checked) =>
+                  setInput(prev => ({
+                    ...prev,
+                    laborConfig: {
+                      ...prev.laborConfig,
+                      includeLabor: checked as boolean,
+                      laborCostPerM2: prev.laborConfig?.laborCostPerM2 || 25,
+                    }
+                  }))
+                }
+              />
+              <Label htmlFor="includeLabor" className="text-sm font-normal">
+                Incluir mão de obra no orçamento
+              </Label>
+            </div>
+            
+            {input.laborConfig?.includeLabor && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="laborCost">Valor por m² (R$)</Label>
+                  <Input
+                    id="laborCost"
+                    type="number"
+                    value={input.laborConfig.laborCostPerM2 || 25}
+                    onChange={(e) =>
+                      setInput(prev => ({
+                        ...prev,
+                        laborConfig: {
+                          ...prev.laborConfig!,
+                          laborCostPerM2: parseFloat(e.target.value) || 25,
+                        }
+                      }))
+                    }
+                    placeholder="25"
+                  />
                 </div>
               </div>
             )}

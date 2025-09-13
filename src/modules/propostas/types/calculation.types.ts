@@ -591,6 +591,12 @@ export interface ForroDrywallCalculationInput extends BaseCalculationInput {
     accessPanels: number;
     speakers: number;
   };
+
+  // Labor configuration (optional)
+  laborConfig?: {
+    includeLabor: boolean;
+    laborCostPerM2?: number;
+  };
 }
 
 export interface ForroDrywallCalculationResult {
