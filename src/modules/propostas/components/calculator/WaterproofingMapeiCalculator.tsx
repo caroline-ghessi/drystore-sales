@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { WaterproofingMapeiInput, WaterproofingMapeiResult } from '../../types/calculation.types';
-import { calculateWaterproofingMapei } from '../../utils/calculations/waterproofingMapeiCalculations';
+import { calculateWaterproofingMapei, recommendMapeiSystem } from '../../utils/calculations/waterproofingMapeiCalculations';
 import { useUnifiedProducts } from '../../hooks/useUnifiedProducts';
+import { SystemRecommendationCard } from './SystemRecommendationCard';
 
 interface WaterproofingMapeiCalculatorProps {
   onCalculationComplete: (result: WaterproofingMapeiResult) => void;
@@ -58,6 +59,17 @@ export function WaterproofingMapeiCalculator({ onCalculationComplete, initialDat
     ...initialData
   });
 
+  const [systemRecommendation, setSystemRecommendation] = useState<any>(null);
+  const [showRecommendation, setShowRecommendation] = useState(true);
+
+  // Generate recommendation when form data changes
+  useEffect(() => {
+    if (formData.detailedDimensions.length > 0 && formData.detailedDimensions.width > 0) {
+      const recommendation = recommendMapeiSystem(formData);
+      setSystemRecommendation(recommendation);
+    }
+  }, [formData]);
+
   // Cálculo automático de áreas para preview
   const calculatePreviewAreas = () => {
     const { length, width, boxHeight, baseboard_height, parapetHeight, averageDepth, boxWidth } = formData.detailedDimensions;
@@ -102,6 +114,18 @@ export function WaterproofingMapeiCalculator({ onCalculationComplete, initialDat
     onCalculationComplete(result);
   };
 
+  const handleAcceptRecommendation = () => {
+    if (systemRecommendation) {
+      const systemKey = systemRecommendation.recommendedSystem.toLowerCase().replace(/\s+/g, '_');
+      setFormData(prev => ({ ...prev, systemType: systemKey }));
+      setShowRecommendation(false);
+    }
+  };
+
+  const handleDismissRecommendation = () => {
+    setShowRecommendation(false);
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -113,6 +137,16 @@ export function WaterproofingMapeiCalculator({ onCalculationComplete, initialDat
         </CardHeader>
         <CardContent className="space-y-6">
           
+          {/* Sistema de Recomendação */}
+          {systemRecommendation && showRecommendation && (
+            <SystemRecommendationCard
+              recommendation={systemRecommendation}
+              currentSystem={formData.systemType}
+              onAcceptRecommendation={handleAcceptRecommendation}
+              onDismiss={handleDismissRecommendation}
+            />
+          )}
+
           {/* Tipo de Ambiente */}
           <div className="space-y-2">
             <Label>Tipo de Aplicação</Label>

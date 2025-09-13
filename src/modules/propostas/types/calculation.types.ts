@@ -1029,6 +1029,12 @@ export interface WaterproofingMapeiResult extends BaseCalculationResult {
     cureTime: string;
     walkTime: string;
   };
+  systemRecommendation: {
+    recommendedSystem: string;
+    score: number;
+    reasons: string[];
+    alternatives: Array<{ system: string; score: number; reason: string }>;
+  };
 }
 
 // MAPEI - Preparação de Piso

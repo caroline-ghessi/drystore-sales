@@ -1,5 +1,128 @@
 import { WaterproofingMapeiInput, WaterproofingMapeiResult, QuantifiedItem } from '../../types/calculation.types';
 
+// Recommend the best MAPEI system based on technical criteria
+export function recommendMapeiSystem(input: WaterproofingMapeiInput): {
+  recommendedSystem: string;
+  score: number;
+  reasons: string[];
+  alternatives: Array<{ system: string; score: number; reason: string }>;
+} {
+  const systems = [
+    { id: 'mapelastic', name: 'MAPELASTIC' },
+    { id: 'mapelastic_smart', name: 'MAPELASTIC SMART' },
+    { id: 'mapelastic_foundation', name: 'MAPELASTIC FOUNDATION' },
+    { id: 'aquadefense', name: 'AQUADEFENSE' }
+  ];
+
+  const scores: { [key: string]: { score: number; reasons: string[] } } = {};
+
+  systems.forEach(system => {
+    scores[system.id] = { score: 0, reasons: [] };
+  });
+
+  // Environment-based scoring
+  switch (input.applicationEnvironment) {
+    case 'subsolo':
+      scores.mapelastic_foundation.score += 50;
+      scores.mapelastic_foundation.reasons.push('Especialmente desenvolvido para subsolos com pressão negativa');
+      break;
+    case 'terraço_descoberto':
+      scores.mapelastic_smart.score += 40;
+      scores.mapelastic_smart.reasons.push('Alta elasticidade ideal para terraços com movimentação térmica');
+      scores.mapelastic.score += 20;
+      break;
+    case 'piscina':
+      scores.mapelastic_foundation.score += 45;
+      scores.mapelastic_foundation.reasons.push('Certificado para contato permanente com água');
+      scores.mapelastic_smart.score += 30;
+      break;
+    case 'banheiro_residencial':
+      scores.mapelastic.score += 35;
+      scores.mapelastic.reasons.push('Sistema padrão confiável para banheiros residenciais');
+      scores.aquadefense.score += 25;
+      scores.aquadefense.reasons.push('Aplicação rápida e fácil para banheiros pequenos');
+      break;
+    case 'cozinha_industrial':
+      scores.aquadefense.score += 30;
+      scores.aquadefense.reasons.push('Aplicação rápida ideal para cozinhas industriais');
+      scores.mapelastic.score += 25;
+      break;
+    default:
+      scores.mapelastic.score += 20;
+  }
+
+  // Water exposure scoring
+  switch (input.waterExposure) {
+    case 'imersao_constante':
+      scores.mapelastic_foundation.score += 35;
+      scores.mapelastic_foundation.reasons.push('Resistência superior à imersão permanente');
+      break;
+    case 'umidade_frequente':
+      scores.mapelastic_smart.score += 25;
+      scores.mapelastic.score += 20;
+      break;
+    case 'respingos_eventuais':
+      scores.aquadefense.score += 20;
+      scores.aquadefense.reasons.push('Suficiente para áreas com respingos ocasionais');
+      break;
+  }
+
+  // Substrate condition scoring
+  if (input.substrateCondition === 'infiltracao_ativa') {
+    scores.mapelastic_foundation.score += 40;
+    scores.mapelastic_foundation.reasons.push('Único sistema adequado para infiltração ativa');
+  }
+
+  // Application method scoring
+  if (input.applicationMethod === 'projecao_mecanica') {
+    scores.mapelastic_smart.score += 15;
+    scores.mapelastic_smart.reasons.push('Formulação otimizada para aplicação por aspersão');
+  }
+
+  // Climatic conditions scoring
+  if (input.climaticConditions.temperature === 'alta' || input.climaticConditions.directSun === 'sol_pleno') {
+    scores.mapelastic_smart.score += 20;
+    scores.mapelastic_smart.reasons.push('Melhor resistência a altas temperaturas e UV');
+  }
+
+  // Experience level scoring
+  if (input.applicatorExperience === 'primeira_vez') {
+    scores.aquadefense.score += 25;
+    scores.aquadefense.reasons.push('Mais fácil de aplicar para iniciantes');
+  }
+
+  // Find the best system
+  let bestSystem = systems[0];
+  let bestScore = scores[bestSystem.id].score;
+  let bestReasons = scores[bestSystem.id].reasons;
+
+  systems.forEach(system => {
+    if (scores[system.id].score > bestScore) {
+      bestSystem = system;
+      bestScore = scores[system.id].score;
+      bestReasons = scores[system.id].reasons;
+    }
+  });
+
+  // Create alternatives list
+  const alternatives = systems
+    .filter(s => s.id !== bestSystem.id)
+    .map(system => ({
+      system: system.name,
+      score: scores[system.id].score,
+      reason: scores[system.id].reasons[0] || 'Sistema alternativo viável'
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 2);
+
+  return {
+    recommendedSystem: bestSystem.name,
+    score: bestScore,
+    reasons: bestReasons,
+    alternatives
+  };
+}
+
 // Climatic correction calculation helper
 function calculateClimaticCorrection(conditions: WaterproofingMapeiInput['climaticConditions']): number {
   let correction = 1.0;
@@ -61,6 +184,8 @@ function calculateClimaticCorrection(conditions: WaterproofingMapeiInput['climat
 
 // Fórmula Universal MAPEI: QUANTIDADE = (Área × Consumo × Demãos × Fator_Correção) + Desperdício
 export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): WaterproofingMapeiResult {
+  // Get system recommendation first
+  const systemRecommendation = recommendMapeiSystem(input);
   const {
     detailedDimensions,
     applicationEnvironment,
@@ -292,7 +417,8 @@ export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): Wat
       walkTime: systemSpecs.walkTime || '3-4h'
     },
     validationErrors,
-    recommendations
+    recommendations,
+    systemRecommendation
   };
 }
 
