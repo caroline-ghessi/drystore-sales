@@ -10,12 +10,15 @@ import { Calculator, Info, CheckCircle, AlertTriangle, Plus, Minus } from 'lucid
 import { AcousticMineralCeilingInput, RoomFormat, RoomNeed, AcousticMineralCeilingModel, CeilingModulation, EdgeType } from '../../types/calculation.types';
 import { CEILING_MODELS } from '../../utils/calculations/acousticMineralCeilingCalculations';
 import { LaborCostSelector, LaborCostConfig } from '../../components/shared/LaborCostSelector';
+import { useAcousticMineralProducts } from '../../hooks/useAcousticMineralProducts';
 
 interface AcousticMineralCeilingCalculatorProps {
   onCalculate: (input: AcousticMineralCeilingInput) => void;
 }
 
 export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMineralCeilingCalculatorProps) {
+  const { products, isLoading: productsLoading } = useAcousticMineralProducts();
+  
   const [input, setInput] = useState<AcousticMineralCeilingInput>({
     roomLength: 0,
     roomWidth: 0,
@@ -44,6 +47,8 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
   });
 
   const [selectedModel, setSelectedModel] = useState<AcousticMineralCeilingModel | ''>('');
+  const [selectedProduct, setSelectedProduct] = useState<string>(''); // ID do produto selecionado do banco
+  const [selectionMode, setSelectionMode] = useState<'automatic' | 'manual'>('automatic');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [laborConfig, setLaborConfig] = useState<LaborCostConfig>({
     includeLabor: false
@@ -125,7 +130,9 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
     const usefulArea = totalArea - totalObstacleArea - (input.cutoutArea || 0);
     const calculationInput: AcousticMineralCeilingInput = {
       ...input,
-      manualModel: selectedModel || undefined,
+      manualModel: selectionMode === 'manual' && selectedProduct 
+        ? products.find(p => p.id === selectedProduct)?.code as AcousticMineralCeilingModel
+        : selectedModel as AcousticMineralCeilingModel || undefined,
       laborConfig: laborConfig
     };
     onCalculate(calculationInput);
@@ -172,7 +179,8 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
          : (col.width && col.width > 0 && col.depth && col.depth > 0)
      ));
   
-  const isFormValid = isValid && !perimeterRequired && columnsValid && usefulArea >= 0;
+  const isFormValid = isValid && !perimeterRequired && columnsValid && usefulArea >= 0 && 
+    (selectionMode === 'automatic' || (selectionMode === 'manual' && selectedProduct));
 
   return (
     <div className="space-y-6">
@@ -342,27 +350,112 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
 
           {/* Necessidade Principal */}
           <div className="grid gap-4">
-            <Badge variant="outline">3. NECESSIDADE PRINCIPAL</Badge>
+            <Badge variant="outline">3. SELEÇÃO DO PRODUTO</Badge>
             
             <div>
-              <Label>Qual a necessidade principal?</Label>
+              <Label>Modo de Seleção</Label>
               <Select 
-                value={input.primaryNeed} 
-                onValueChange={(value: RoomNeed) => handleInputChange('primaryNeed', value)}
+                value={selectionMode} 
+                onValueChange={(value: 'automatic' | 'manual') => {
+                  setSelectionMode(value);
+                  // Limpar seleções ao trocar modo
+                  if (value === 'automatic') {
+                    setSelectedProduct('');
+                  } else {
+                    handleInputChange('primaryNeed', 'acoustic');
+                  }
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="acoustic">Isolamento Acústico</SelectItem>
-                  <SelectItem value="humidity">Resistência à Umidade</SelectItem>
-                  <SelectItem value="premium">Estética Premium</SelectItem>
-                  <SelectItem value="economy">Economia</SelectItem>
+                  <SelectItem value="automatic">Automático por Necessidade</SelectItem>
+                  <SelectItem value="manual">Seleção Manual do Produto</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {selectionMode === 'automatic' 
+                  ? 'Sistema sugere o melhor produto baseado na sua necessidade'
+                  : 'Escolha o produto específico que você já tem em mente'
+                }
+              </p>
             </div>
 
-            {input.primaryNeed === 'acoustic' && (
+            {selectionMode === 'automatic' ? (
+              <div>
+                <Label>Qual a necessidade principal?</Label>
+                <Select 
+                  value={input.primaryNeed} 
+                  onValueChange={(value: RoomNeed) => handleInputChange('primaryNeed', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="acoustic">Isolamento Acústico</SelectItem>
+                    <SelectItem value="humidity">Resistência à Umidade</SelectItem>
+                    <SelectItem value="premium">Estética Premium</SelectItem>
+                    <SelectItem value="economy">Economia</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div>
+                <Label>Produto Específico</Label>
+                <Select 
+                  value={selectedProduct} 
+                  onValueChange={setSelectedProduct}
+                  disabled={productsLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={productsLoading ? "Carregando produtos..." : "Selecione o produto"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((product) => {
+                      const specs = product.specifications as any;
+                      return (
+                        <SelectItem key={product.id} value={product.id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{product.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {product.code} | NRC: {specs?.nrc || 'N/I'} | 
+                              RH: {specs?.humidity_resistance ? 'Sim' : 'Não'} | 
+                              R$ {product.base_price.toFixed(2)}/m²
+                            </span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                
+                {selectedProduct && (
+                  <div className="mt-2 p-3 bg-background border rounded-lg">
+                    {(() => {
+                      const product = products.find(p => p.id === selectedProduct);
+                      const specs = product?.specifications as any;
+                      return product ? (
+                        <div>
+                          <p className="font-medium">{product.name}</p>
+                          <p className="text-sm text-muted-foreground">{product.description}</p>
+                          <div className="grid grid-cols-2 gap-4 mt-2 text-xs">
+                            <div><strong>Código:</strong> {product.code}</div>
+                            <div><strong>Preço:</strong> R$ {product.base_price.toFixed(2)}/m²</div>
+                            <div><strong>NRC:</strong> {specs?.nrc || 'Não informado'}</div>
+                            <div><strong>Umidade:</strong> {specs?.humidity_resistance ? 'Resistente' : 'Não resistente'}</div>
+                            <div><strong>Modulação:</strong> {specs?.modulation || 'Não informado'}</div>
+                            <div><strong>Fornecedor:</strong> {product.supplier || 'Não informado'}</div>
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {selectionMode === 'automatic' && input.primaryNeed === 'acoustic' && (
               <div>
                 <Label htmlFor="nrcRequired">NRC Requerido (0.0 - 1.0)</Label>
                 <Input
@@ -378,7 +471,7 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
               </div>
             )}
 
-            {input.primaryNeed === 'humidity' && (
+            {selectionMode === 'automatic' && input.primaryNeed === 'humidity' && (
               <div>
                 <Label htmlFor="humidityLevel">Nível de Umidade (%)</Label>
                 <Input
@@ -729,6 +822,8 @@ export function AcousticMineralCeilingCalculator({ onCalculate }: AcousticMinera
                   ? 'Preencha as dimensões de todas as colunas'
                   : usefulArea < 0
                   ? 'Área de obstáculos não pode ser maior que a área total'
+                  : selectionMode === 'manual' && !selectedProduct
+                  ? 'Selecione um produto específico'
                   : 'Preencha as dimensões básicas para continuar'
                 }
               </div>
