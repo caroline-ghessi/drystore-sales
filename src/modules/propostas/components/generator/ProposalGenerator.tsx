@@ -20,7 +20,7 @@ import { SolarCalculator } from '../calculator/SolarCalculator';
 import { BatteryBackupCalculator } from '../calculator/BatteryBackupCalculator';
 import { ShingleCalculatorWrapper } from '../calculator/ShingleCalculatorWrapper';
 import { DrywallCalculatorWrapper } from '../calculator/DrywallCalculatorWrapper';
-import { ForroDrywallCalculator } from '../calculator/ForroDrywallCalculator';
+import { ForroDrywallCalculatorWrapper } from '../calculator/ForroDrywallCalculatorWrapper';
 import { AcousticMineralCeilingWrapper } from '../calculator/AcousticMineralCeilingWrapper';
 import { ProposalResult } from './ProposalResult';
 import { useNavigate } from 'react-router-dom';
@@ -204,8 +204,8 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
         console.log('✅ Renderizando DrywallCalculatorWrapper');
         return <DrywallCalculatorWrapper onCalculate={calculator.calculate} />;
       case 'forro_drywall':
-        console.log('✅ Renderizando ForroDrywallCalculator');
-        return <ForroDrywallCalculator onCalculate={calculator.calculate} />;
+        console.log('✅ Renderizando ForroDrywallCalculatorWrapper');
+        return <ForroDrywallCalculatorWrapper onCalculate={calculator.calculate} />;
       case 'acoustic_mineral_ceiling':
         console.log('✅ Renderizando AcousticMineralCeilingWrapper');
         return <AcousticMineralCeilingWrapper onCalculate={(data) => calculator.calculate(data.input)} />;
