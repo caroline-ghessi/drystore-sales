@@ -3022,6 +3022,7 @@ export type Database = {
         | "balde"
         | "galao"
         | "rolo"
+        | "saco"
       proposal_status:
         | "draft"
         | "sent"
@@ -3237,6 +3238,7 @@ export const Constants = {
         "balde",
         "galao",
         "rolo",
+        "saco",
       ],
       proposal_status: [
         "draft",
