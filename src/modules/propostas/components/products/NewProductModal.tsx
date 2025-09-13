@@ -34,6 +34,7 @@ const categories: { value: Database['public']['Enums']['product_category']; labe
   { value: 'drywall_divisorias', label: 'Drywall' },
   { value: 'steel_frame', label: 'Steel Frame' },
   { value: 'forro_drywall', label: 'Forro Drywall' },
+  { value: 'forro_mineral_acustico', label: 'Forro Mineral Acústico' },
   { value: 'forros', label: 'Forros' },
   { value: 'ferramentas', label: 'Ferramentas' },
   { value: 'pisos', label: 'Pisos' },
