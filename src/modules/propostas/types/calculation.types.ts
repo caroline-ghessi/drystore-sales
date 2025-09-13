@@ -857,16 +857,19 @@ export interface WaterproofingMapeiInput extends BaseCalculationInput {
     width: number;
     ceilingHeight?: number;
     boxHeight?: number; // Para banheiros
+    boxWidth?: number; // Largura do box para banheiros
     baseboard_height?: number; // Altura do rodapé
+    parapetHeight?: number; // Altura da platibanda para terraços
+    averageDepth?: number; // Profundidade média para piscinas
   };
 
-  // Dados básicos de área
-  areas: {
-    piso: number;
-    parede: number;
-    total: number;
-  };
-  perimeter: number;
+  // Dados básicos de área (calculados automaticamente - removido para evitar redundância)
+  // areas: {
+  //   piso: number;
+  //   parede: number;
+  //   total: number;
+  // };
+  // perimeter: number; // Calculado automaticamente
   
   // Tipo de aplicação
   applicationEnvironment: 
@@ -985,6 +988,12 @@ export interface WaterproofingMapeiInput extends BaseCalculationInput {
 }
 
 export interface WaterproofingMapeiResult extends BaseCalculationResult {
+  calculatedAreas: {
+    floor: number;
+    wall: number;
+    total: number;
+    perimeter: number;
+  };
   systemSpecs: {
     systemType: string;
     totalLayers: number;

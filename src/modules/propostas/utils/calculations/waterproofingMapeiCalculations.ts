@@ -63,8 +63,6 @@ function calculateClimaticCorrection(conditions: WaterproofingMapeiInput['climat
 export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): WaterproofingMapeiResult {
   const {
     detailedDimensions,
-    areas,
-    perimeter,
     applicationEnvironment,
     substrateType,
     substrateCondition,
@@ -78,6 +76,10 @@ export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): Wat
     finalFinish,
     specialRequirements
   } = input;
+
+  // CÁLCULO AUTOMÁTICO DE ÁREAS POR AMBIENTE (conforme manual MAPEI)
+  const calculatedAreas = calculateAreasByEnvironment(detailedDimensions, applicationEnvironment);
+  const calculatedPerimeter = calculatePerimeter(detailedDimensions, applicationEnvironment);
 
   // 1. FATOR DE CORREÇÃO DO SUBSTRATO (POROSIDADE)
   const substrateCorrectionFactors = {
@@ -173,14 +175,14 @@ export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): Wat
   const thicknessPerLayer = systemSpecs.thicknessPerLayer; // mm
   
   // Quantidade = (Área × Consumo × Demãos × Fator) + 5% desperdício
-  const calculatedQuantity = areas.total * baseConsumption * totalLayers * finalCorrectionFactor;
+  const calculatedQuantity = calculatedAreas.total * baseConsumption * totalLayers * finalCorrectionFactor;
   const quantityWithWaste = calculatedQuantity * 1.05; // +5% desperdício
   
   // 12. CÁLCULO DE ACESSÓRIOS
-  const accessories = calculateAccessories(perimeter, constructiveDetails, systemSpecs);
+  const accessories = calculateAccessories(calculatedPerimeter, constructiveDetails, systemSpecs);
 
   // 13. CÁLCULO DE PRIMER (se necessário)
-  const primer = calculatePrimer(areas.total, substrateType, systemSpecs);
+  const primer = calculatePrimer(calculatedAreas.total, substrateType, systemSpecs);
 
   // 14. GERAR LISTA QUANTIFICADA
   const quantified_items: QuantifiedItem[] = [];
@@ -276,8 +278,14 @@ export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): Wat
       specialPieces: accessories.specialPieces || 0,
       masks: accessories.masks || 0
     },
+    calculatedAreas: {
+      floor: calculatedAreas.piso,
+      wall: calculatedAreas.parede,
+      total: calculatedAreas.total,
+      perimeter: calculatedPerimeter
+    },
     technicalSpecs: {
-      coverage: `${areas.total} m²`,
+      coverage: `${calculatedAreas.total} m²`,
       consumptionBase: `${baseConsumption} kg/m²/mm`,
       layers: `${totalLayers} demãos de ${thicknessPerLayer}mm`,
       cureTime: systemSpecs.cureTime || '24-48h',
@@ -443,22 +451,87 @@ function calculatePrimer(area: number, substrateType: string, systemSpecs: any) 
   };
 }
 
+// CÁLCULO AUTOMÁTICO DE ÁREAS POR AMBIENTE (conforme manual MAPEI)
+function calculateAreasByEnvironment(dimensions: any, environment: string) {
+  const { length, width, ceilingHeight, boxHeight, baseboard_height } = dimensions;
+  const floorArea = length * width;
+  let wallArea = 0;
+  
+  switch (environment) {
+    case 'banheiro_residencial':
+    case 'banheiro_coletivo':
+      // Box: 3 lados × altura + Rodapé restante
+      const boxPerimeter = (dimensions.boxWidth || 0.9) * 3; // 3 lados do box
+      const boxWallArea = boxPerimeter * (boxHeight || 1.8);
+      const remainingPerimeter = (2 * (length + width)) - (dimensions.boxWidth || 0.9);
+      const baseboardArea = remainingPerimeter * (baseboard_height || 0.3);
+      wallArea = boxWallArea + baseboardArea;
+      break;
+      
+    case 'cozinha_industrial':
+      // Rodapé 1m (norma sanitária)
+      const kitchenPerimeter = 2 * (length + width);
+      wallArea = kitchenPerimeter * 1.0;
+      break;
+      
+    case 'cozinha_residencial':
+      // Rodapé padrão
+      const residentialKitchenPerimeter = 2 * (length + width);
+      wallArea = residentialKitchenPerimeter * (baseboard_height || 0.3);
+      break;
+      
+    case 'terraço_descoberto':
+    case 'sacada_varanda':
+      // Platibanda
+      const terracePerimeter = 2 * (length + width);
+      wallArea = terracePerimeter * (dimensions.parapetHeight || 0.5);
+      break;
+      
+    case 'piscina':
+      // Paredes por profundidade
+      const poolPerimeter = 2 * (length + width);
+      wallArea = poolPerimeter * (dimensions.averageDepth || 1.5);
+      break;
+      
+    default:
+      // Rodapé padrão para outros ambientes
+      const defaultPerimeter = 2 * (length + width);
+      wallArea = defaultPerimeter * (baseboard_height || 0.3);
+  }
+  
+  return {
+    piso: floorArea,
+    parede: wallArea,
+    total: floorArea + wallArea
+  };
+}
+
+// CÁLCULO AUTOMÁTICO DE PERÍMETRO
+function calculatePerimeter(dimensions: any, environment: string) {
+  const { length, width } = dimensions;
+  return 2 * (length + width);
+}
+
 // Input validation
 function validateInputs(input: WaterproofingMapeiInput): string[] {
   const errors: string[] = [];
   
-  if (input.areas.total <= 0) {
-    errors.push('Área total deve ser maior que zero');
+  if (!input.detailedDimensions.length || input.detailedDimensions.length <= 0) {
+    errors.push('Comprimento deve ser maior que zero');
   }
   
-  if (input.perimeter <= 0) {
-    errors.push('Perímetro deve ser maior que zero');
+  if (!input.detailedDimensions.width || input.detailedDimensions.width <= 0) {
+    errors.push('Largura deve ser maior que zero');
   }
   
-  // Validar relação área/perímetro para detectar inconsistências
-  const perimeterToAreaRatio = input.perimeter / Math.sqrt(input.areas.total);
-  if (perimeterToAreaRatio > 8) {
-    errors.push('Relação perímetro/área parece inconsistente - verificar medições');
+  if (input.applicationEnvironment.includes('banheiro') && 
+      (!input.detailedDimensions.boxHeight || input.detailedDimensions.boxHeight <= 0)) {
+    errors.push('Altura do box é obrigatória para banheiros');
+  }
+  
+  if (input.applicationEnvironment === 'piscina' && 
+      (!input.detailedDimensions.averageDepth || input.detailedDimensions.averageDepth <= 0)) {
+    errors.push('Profundidade média é obrigatória para piscinas');
   }
   
   return errors;

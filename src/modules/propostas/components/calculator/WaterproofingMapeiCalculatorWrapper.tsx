@@ -15,7 +15,10 @@ export function WaterproofingMapeiCalculatorWrapper({ onCalculate }: Waterproofi
       totalLaborCost: result.totalLaborCost,
       totalCost: result.totalCost,
       // Add MAPEI-specific data
+      calculatedAreas: result.calculatedAreas,
       systemSpecs: result.systemSpecs,
+      correctionFactors: result.correctionFactors,
+      accessories: result.accessories,
       validationErrors: result.validationErrors,
       recommendations: result.recommendations
     };

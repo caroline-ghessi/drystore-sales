@@ -23,10 +23,11 @@ export function WaterproofingMapeiCalculator({ onCalculationComplete, initialDat
       width: 0,
       ceilingHeight: 2.5,
       boxHeight: 1.8,
-      baseboard_height: 0.3
+      boxWidth: 0.9,
+      baseboard_height: 0.3,
+      parapetHeight: 0.5,
+      averageDepth: 1.5
     },
-    areas: { piso: 0, parede: 0, total: 0 },
-    perimeter: 0,
     applicationEnvironment: 'banheiro_residencial',
     substrateType: 'concreto_novo',
     substrateCondition: 'plano_nivelado',
@@ -57,11 +58,44 @@ export function WaterproofingMapeiCalculator({ onCalculationComplete, initialDat
     ...initialData
   });
 
-  const handleAreaChange = (field: 'piso' | 'parede', value: number) => {
-    const newAreas = { ...formData.areas, [field]: value };
-    newAreas.total = newAreas.piso + newAreas.parede;
-    setFormData({ ...formData, areas: newAreas });
+  // Cálculo automático de áreas para preview
+  const calculatePreviewAreas = () => {
+    const { length, width, boxHeight, baseboard_height, parapetHeight, averageDepth, boxWidth } = formData.detailedDimensions;
+    if (!length || !width) return { floor: 0, wall: 0, total: 0 };
+    
+    const floorArea = length * width;
+    let wallArea = 0;
+    
+    switch (formData.applicationEnvironment) {
+      case 'banheiro_residencial':
+      case 'banheiro_coletivo':
+        const boxPerimeter = (boxWidth || 0.9) * 3;
+        const boxWallArea = boxPerimeter * (boxHeight || 1.8);
+        const remainingPerimeter = (2 * (length + width)) - (boxWidth || 0.9);
+        const baseboardArea = remainingPerimeter * (baseboard_height || 0.3);
+        wallArea = boxWallArea + baseboardArea;
+        break;
+      case 'cozinha_industrial':
+        wallArea = (2 * (length + width)) * 1.0;
+        break;
+      case 'cozinha_residencial':
+        wallArea = (2 * (length + width)) * (baseboard_height || 0.3);
+        break;
+      case 'terraço_descoberto':
+      case 'sacada_varanda':
+        wallArea = (2 * (length + width)) * (parapetHeight || 0.5);
+        break;
+      case 'piscina':
+        wallArea = (2 * (length + width)) * (averageDepth || 1.5);
+        break;
+      default:
+        wallArea = (2 * (length + width)) * (baseboard_height || 0.3);
+    }
+    
+    return { floor: floorArea, wall: wallArea, total: floorArea + wallArea };
   };
+
+  const previewAreas = calculatePreviewAreas();
 
   const handleCalculate = () => {
     const result = calculateWaterproofingMapei(formData);
@@ -132,75 +166,115 @@ export function WaterproofingMapeiCalculator({ onCalculationComplete, initialDat
                   })}
                 />
               </div>
+              
+              {/* Campos condicionais por ambiente */}
               {formData.applicationEnvironment.includes('banheiro') && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="boxHeight">Altura Box (m)</Label>
+                    <Input
+                      id="boxHeight"
+                      type="number"
+                      step="0.1"
+                      value={formData.detailedDimensions.boxHeight || 1.8}
+                      onChange={(e) => setFormData({
+                        ...formData, 
+                        detailedDimensions: {...formData.detailedDimensions, boxHeight: Number(e.target.value)}
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="boxWidth">Largura Box (m)</Label>
+                    <Input
+                      id="boxWidth"
+                      type="number"
+                      step="0.1"
+                      value={formData.detailedDimensions.boxWidth || 0.9}
+                      onChange={(e) => setFormData({
+                        ...formData, 
+                        detailedDimensions: {...formData.detailedDimensions, boxWidth: Number(e.target.value)}
+                      })}
+                    />
+                  </div>
+                </>
+              )}
+              
+              {(formData.applicationEnvironment === 'terraço_descoberto' || 
+                formData.applicationEnvironment === 'sacada_varanda') && (
                 <div className="space-y-2">
-                  <Label htmlFor="boxHeight">Altura Box (m)</Label>
+                  <Label htmlFor="parapetHeight">Altura Platibanda (m)</Label>
                   <Input
-                    id="boxHeight"
+                    id="parapetHeight"
                     type="number"
                     step="0.1"
-                    value={formData.detailedDimensions.boxHeight || 1.8}
+                    value={formData.detailedDimensions.parapetHeight || 0.5}
                     onChange={(e) => setFormData({
                       ...formData, 
-                      detailedDimensions: {...formData.detailedDimensions, boxHeight: Number(e.target.value)}
+                      detailedDimensions: {...formData.detailedDimensions, parapetHeight: Number(e.target.value)}
                     })}
                   />
                 </div>
               )}
-              <div className="space-y-2">
-                <Label htmlFor="baseboard">Altura Rodapé (m)</Label>
-                <Input
-                  id="baseboard"
-                  type="number"
-                  step="0.1"
-                  value={formData.detailedDimensions.baseboard_height || 0.3}
-                  onChange={(e) => setFormData({
-                    ...formData, 
-                    detailedDimensions: {...formData.detailedDimensions, baseboard_height: Number(e.target.value)}
-                  })}
-                />
+              
+              {formData.applicationEnvironment === 'piscina' && (
+                <div className="space-y-2">
+                  <Label htmlFor="averageDepth">Profundidade Média (m)</Label>
+                  <Input
+                    id="averageDepth"
+                    type="number"
+                    step="0.1"
+                    value={formData.detailedDimensions.averageDepth || 1.5}
+                    onChange={(e) => setFormData({
+                      ...formData, 
+                      detailedDimensions: {...formData.detailedDimensions, averageDepth: Number(e.target.value)}
+                    })}
+                  />
+                </div>
+              )}
+              
+              {!formData.applicationEnvironment.includes('banheiro') && 
+               formData.applicationEnvironment !== 'terraço_descoberto' &&
+               formData.applicationEnvironment !== 'sacada_varanda' &&
+               formData.applicationEnvironment !== 'piscina' &&
+               formData.applicationEnvironment !== 'cozinha_industrial' && (
+                <div className="space-y-2">
+                  <Label htmlFor="baseboard">Altura Rodapé (m)</Label>
+                  <Input
+                    id="baseboard"
+                    type="number"
+                    step="0.1"
+                    value={formData.detailedDimensions.baseboard_height || 0.3}
+                    onChange={(e) => setFormData({
+                      ...formData, 
+                      detailedDimensions: {...formData.detailedDimensions, baseboard_height: Number(e.target.value)}
+                    })}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Preview de Áreas Calculadas */}
+          {(formData.detailedDimensions.length > 0 && formData.detailedDimensions.width > 0) && (
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <Label className="text-sm font-medium text-muted-foreground">Áreas Automáticas (Manual MAPEI)</Label>
+              <div className="grid grid-cols-3 gap-4 mt-2">
+                <div className="text-center">
+                  <div className="text-lg font-semibold">{previewAreas.floor.toFixed(1)} m²</div>
+                  <div className="text-xs text-muted-foreground">Piso</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-semibold">{previewAreas.wall.toFixed(1)} m²</div>
+                  <div className="text-xs text-muted-foreground">Parede</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-semibold text-primary">{previewAreas.total.toFixed(1)} m²</div>
+                  <div className="text-xs text-muted-foreground">Total</div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Medições */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="area-piso">Área Piso (m²)</Label>
-              <Input
-                id="area-piso"
-                type="number"
-                value={formData.areas.piso}
-                onChange={(e) => handleAreaChange('piso', Number(e.target.value))}
-                placeholder="0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="area-parede">Área Parede (m²)</Label>
-              <Input
-                id="area-parede"
-                type="number"
-                value={formData.areas.parede}
-                onChange={(e) => handleAreaChange('parede', Number(e.target.value))}
-                placeholder="0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Área Total</Label>
-              <Input value={`${formData.areas.total} m²`} readOnly className="bg-muted" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="perimeter">Perímetro (m)</Label>
-            <Input
-              id="perimeter"
-              type="number"
-              value={formData.perimeter}
-              onChange={(e) => setFormData({...formData, perimeter: Number(e.target.value)})}
-              placeholder="0"
-            />
-          </div>
 
           {/* Detalhes Construtivos */}
           <div className="space-y-4">
@@ -492,8 +566,8 @@ export function WaterproofingMapeiCalculator({ onCalculationComplete, initialDat
 
           <Button 
             onClick={handleCalculate} 
-            className="w-full" 
-            disabled={formData.areas.total === 0}
+            className="w-full"
+            disabled={previewAreas.total === 0}
           >
             Calcular Impermeabilização
           </Button>
