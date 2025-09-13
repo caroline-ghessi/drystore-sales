@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { WaterproofingMapeiInput, WaterproofingMapeiResult } from '../../types/calculation.types';
-import { calculateWaterproofingMapei, recommendMapeiSystem } from '../../utils/calculations/waterproofingMapeiCalculations';
-import { useUnifiedProducts } from '../../hooks/useUnifiedProducts';
+import { calculateWaterproofingMapeiWithProducts, recommendMapeiSystem } from '../../utils/calculations/waterproofingMapeiCalculationsDynamic';
+import { useMapeiProducts } from '../../hooks/useMapeiProducts';
 import { SystemRecommendationCard } from './SystemRecommendationCard';
 
 interface WaterproofingMapeiCalculatorProps {
@@ -16,7 +16,7 @@ interface WaterproofingMapeiCalculatorProps {
 }
 
 export function WaterproofingMapeiCalculator({ onCalculationComplete, initialData }: WaterproofingMapeiCalculatorProps) {
-  const { products, isLoading } = useUnifiedProducts('impermeabilizacao_mapei');
+  const { products, isLoading, hasProducts } = useMapeiProducts();
 
   const [formData, setFormData] = useState<WaterproofingMapeiInput>({
     detailedDimensions: {
@@ -110,8 +110,17 @@ export function WaterproofingMapeiCalculator({ onCalculationComplete, initialDat
   const previewAreas = calculatePreviewAreas();
 
   const handleCalculate = () => {
-    const result = calculateWaterproofingMapei(formData);
-    onCalculationComplete(result);
+    if (!hasProducts) {
+      console.error('Nenhum produto MAPEI encontrado para cálculo');
+      return;
+    }
+
+    try {
+      const result = calculateWaterproofingMapeiWithProducts(formData, products);
+      onCalculationComplete(result);
+    } catch (error) {
+      console.error('Erro no cálculo:', error);
+    }
   };
 
   const handleAcceptRecommendation = () => {

@@ -40,6 +40,8 @@ const categories: { key: UnifiedProductCategory | 'all'; label: string; icon: an
   { key: 'forro_drywall', label: 'Forro Drywall', icon: Layers },
   { key: 'drywall_divisorias', label: 'Divisórias Drywall', icon: Layers },
   { key: 'forro_mineral_acustico', label: 'Forro Mineral Acústico', icon: Layers },
+  { key: 'impermeabilizacao_mapei', label: 'Impermeabilização MAPEI', icon: Droplets },
+  { key: 'preparacao_piso_mapei', label: 'Preparação Piso MAPEI', icon: Hammer },
 ];
 
 const units: { value: Database['public']['Enums']['product_unit']; label: string }[] = [
@@ -50,7 +52,12 @@ const units: { value: Database['public']['Enums']['product_unit']; label: string
   { value: 'conjunto', label: 'conjunto' },
   { value: 'pacote', label: 'pacote' },
   { value: 'kg', label: 'kg' },
-  { value: 'litro', label: 'litro' }
+  { value: 'litro', label: 'litro' },
+  { value: 'kit', label: 'kit' },
+  { value: 'balde', label: 'balde' },
+  { value: 'galao', label: 'galão' },
+  { value: 'rolo', label: 'rolo' },
+  { value: 'saco', label: 'saco' }
 ];
 
 interface EditingProduct {
