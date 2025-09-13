@@ -1,13 +1,77 @@
 import { WaterproofingMapeiInput, WaterproofingMapeiResult, QuantifiedItem } from '../../types/calculation.types';
 
+// Climatic correction calculation helper
+function calculateClimaticCorrection(conditions: WaterproofingMapeiInput['climaticConditions']): number {
+  let correction = 1.0;
+  
+  // Temperature correction
+  switch (conditions.temperature) {
+    case 'baixa':  // < 10°C
+      correction *= 1.08; // +8% (secagem lenta, retrabalho)
+      break;
+    case 'normal': // 10-25°C
+      correction *= 1.00; // Normal
+      break;
+    case 'alta':   // > 30°C
+      correction *= 1.12; // +12% (secagem rápida, desperdício)
+      break;
+  }
+  
+  // Humidity correction
+  switch (conditions.humidity) {
+    case 'baixa':  // < 40%
+      correction *= 1.10; // +10% (secagem muito rápida)
+      break;
+    case 'normal': // 40-70%
+      correction *= 1.00; // Normal
+      break;
+    case 'alta':   // > 70%
+      correction *= 1.05; // +5% (secagem lenta)
+      break;
+  }
+  
+  // Wind correction
+  switch (conditions.wind) {
+    case 'sem_vento':
+      correction *= 1.00; // Normal
+      break;
+    case 'brisa_leve':
+      correction *= 1.03; // +3%
+      break;
+    case 'vento_forte':
+      correction *= 1.15; // +15% (evaporação)
+      break;
+  }
+  
+  // Direct sun correction
+  switch (conditions.directSun) {
+    case 'sombra':
+      correction *= 1.00; // Normal
+      break;
+    case 'sol_parcial':
+      correction *= 1.05; // +5%
+      break;
+    case 'sol_pleno':
+      correction *= 1.10; // +10%
+      break;
+  }
+  
+  return correction;
+}
+
 // Fórmula Universal MAPEI: QUANTIDADE = (Área × Consumo × Demãos × Fator_Correção) + Desperdício
 export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): WaterproofingMapeiResult {
   const {
+    detailedDimensions,
     areas,
     perimeter,
     applicationEnvironment,
     substrateType,
     substrateCondition,
+    surfaceRoughness,
+    applicationMethod,
+    climaticConditions,
+    applicatorExperience,
     waterExposure,
     constructiveDetails,
     systemType = 'mapelastic',
@@ -15,30 +79,57 @@ export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): Wat
     specialRequirements
   } = input;
 
-  // 1. FATOR DE CORREÇÃO DO SUBSTRATO
+  // 1. FATOR DE CORREÇÃO DO SUBSTRATO (POROSIDADE)
   const substrateCorrectionFactors = {
-    'concreto_novo': 1.20,         // +20%
-    'concreto_velho': 1.10,        // +10%
-    'alvenaria_reboco': 1.30,      // +30%
-    'ceramica_existente': 1.00,    // 0%
-    'gesso_drywall': 1.40,         // +40%
-    'osb_madeira': 1.50,           // +50%
-    'contrapiso_cimenticio': 1.25  // +25%
+    'concreto_novo': 1.20,         // Muito poroso +20%
+    'concreto_velho': 1.10,        // Poroso normal +10%
+    'alvenaria_reboco': 1.30,      // Muito poroso +20% + rugosidade
+    'ceramica_existente': 1.00,    // Não poroso 0%
+    'gesso_drywall': 1.40,         // Muito poroso +20% + absorção
+    'osb_madeira': 1.50,           // Muito poroso +20% + fibras
+    'contrapiso_cimenticio': 1.20  // Muito poroso +20%
   };
 
-  // 2. FATOR DE CORREÇÃO DA SUPERFÍCIE
-  const surfaceCorrectionFactors = {
-    'plano_nivelado': 1.05,        // +5%
-    'pequenos_desniveis': 1.10,    // +10%
-    'desniveis_medios': 1.15,      // +15%
-    'grandes_desniveis': 1.20,     // +20%
+  // 2. FATOR DE CORREÇÃO DA RUGOSIDADE DA SUPERFÍCIE
+  const surfaceRoughnessCorrectionFactors = {
+    'muito_rugosa': 1.15,     // +15%
+    'rugosidade_media': 1.10, // +10%
+    'lisa': 1.05,             // +5%
+    'polida': 1.00            // 0%
+  };
+
+  // 3. FATOR DE CORREÇÃO DO MÉTODO DE APLICAÇÃO
+  const applicationMethodCorrectionFactors = {
+    'projecao_mecanica': 1.30, // +30%
+    'rolo': 1.10,              // +10%
+    'trincha': 1.08,           // +8%
+    'desempenadeira': 1.05     // +5%
+  };
+
+  // 4. FATOR DE CORREÇÃO CLIMÁTICA
+  const climaticCorrection = calculateClimaticCorrection(climaticConditions);
+
+  // 5. FATOR DE CORREÇÃO DA EXPERIÊNCIA DO APLICADOR
+  const applicatorCorrectionFactors = {
+    'primeira_vez': 1.15,      // Inexperiente +15%
+    'condicoes_adversas': 1.10, // Condições adversas +10%
+    'prazo_apertado': 1.08,    // Prazo apertado +8%
+    'condicoes_ideais': 1.05   // Condições ideais +5%
+  };
+
+  // 6. FATOR DE CORREÇÃO DA CONDIÇÃO DO SUBSTRATO
+  const substrateConditionCorrectionFactors = {
+    'plano_nivelado': 1.00,        // Normal
+    'pequenos_desniveis': 1.05,    // +5%
+    'desniveis_medios': 1.10,      // +10%
+    'grandes_desniveis': 1.15,     // +15%
     'fissuras_pequenas': 1.08,     // +8%
     'fissuras_grandes': 1.15,      // +15%
     'infiltracao_ativa': 1.12      // +12%
   };
 
-  // 3. FATOR DE CORREÇÃO DE APLICAÇÃO POR AMBIENTE
-  const applicationCorrectionFactors = {
+  // 7. FATOR DE CORREÇÃO POR AMBIENTE
+  const applicationEnvironmentCorrectionFactors = {
     'banheiro_residencial': 1.05,    // +5%
     'banheiro_coletivo': 1.10,       // +10%
     'cozinha_residencial': 1.08,     // +8%
@@ -53,19 +144,30 @@ export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): Wat
     'floreiras': 1.18                // +18%
   };
 
-  // 4. FATOR DE GEOMETRIA (detalhes construtivos)
+  // 8. FATOR DE GEOMETRIA (detalhes construtivos)
   const geometryComplexity = calculateGeometryComplexity(constructiveDetails);
   
-  // 5. FATOR FINAL DE CORREÇÃO
+  // 9. FATOR FINAL DE CORREÇÃO - FÓRMULA COMPLETA DO MANUAL
   const substrateCorrection = substrateCorrectionFactors[substrateType];
-  const surfaceCorrection = surfaceCorrectionFactors[substrateCondition];
-  const applicationCorrection = applicationCorrectionFactors[applicationEnvironment];
-  const finalCorrectionFactor = substrateCorrection * surfaceCorrection * applicationCorrection * geometryComplexity;
+  const roughnessCorrection = surfaceRoughnessCorrectionFactors[surfaceRoughness];
+  const methodCorrection = applicationMethodCorrectionFactors[applicationMethod];
+  const experienceCorrection = applicatorCorrectionFactors[applicatorExperience];
+  const conditionCorrection = substrateConditionCorrectionFactors[substrateCondition];
+  const environmentCorrection = applicationEnvironmentCorrectionFactors[applicationEnvironment];
 
-  // 6. ESPECIFICAÇÕES DO SISTEMA SELECIONADO
+  const finalCorrectionFactor = substrateCorrection * 
+                               roughnessCorrection * 
+                               methodCorrection * 
+                               climaticCorrection * 
+                               experienceCorrection * 
+                               conditionCorrection *
+                               environmentCorrection * 
+                               geometryComplexity;
+
+  // 10. ESPECIFICAÇÕES DO SISTEMA SELECIONADO
   const systemSpecs = getSystemSpecifications(systemType, waterExposure);
 
-  // 7. CÁLCULO PRINCIPAL - Fórmula Universal
+  // 11. CÁLCULO PRINCIPAL - Fórmula Universal
   const baseConsumption = systemSpecs.consumption; // kg/m²/mm
   const totalLayers = systemSpecs.layers;
   const thicknessPerLayer = systemSpecs.thicknessPerLayer; // mm
@@ -74,13 +176,13 @@ export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): Wat
   const calculatedQuantity = areas.total * baseConsumption * totalLayers * finalCorrectionFactor;
   const quantityWithWaste = calculatedQuantity * 1.05; // +5% desperdício
   
-  // 8. CÁLCULO DE ACESSÓRIOS
+  // 12. CÁLCULO DE ACESSÓRIOS
   const accessories = calculateAccessories(perimeter, constructiveDetails, systemSpecs);
 
-  // 9. CÁLCULO DE PRIMER (se necessário)
+  // 13. CÁLCULO DE PRIMER (se necessário)
   const primer = calculatePrimer(areas.total, substrateType, systemSpecs);
 
-  // 10. GERAR LISTA QUANTIFICADA
+  // 14. GERAR LISTA QUANTIFICADA
   const quantified_items: QuantifiedItem[] = [];
 
   // Produto principal
@@ -98,7 +200,9 @@ export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): Wat
       consumption: `${baseConsumption} kg/m²/mm`,
       layers: totalLayers,
       thickness: `${totalLayers * thicknessPerLayer}mm total`,
-      coverage: `${(packagesNeeded * mainProduct.packageSize / areas.total).toFixed(2)} kg/m²`
+      correctionFactor: finalCorrectionFactor.toFixed(2),
+      calculatedQuantity: `${calculatedQuantity.toFixed(1)} kg`,
+      quantityWithWaste: `${quantityWithWaste.toFixed(1)} kg`
     }
   });
 
@@ -107,36 +211,41 @@ export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): Wat
     const primerPackages = Math.ceil(primer.quantity / primer.product.packageSize);
     quantified_items.push({
       name: primer.product.name,
-      description: primer.product.description,
+      description: `Primer para ${systemType}`,
       quantity: primerPackages,
       unit: primer.product.unit,
       unit_price: 0,
       total_price: 0,
-      category: 'preparacao',
+      category: 'primer',
       specifications: {
         consumption: `${primer.consumption} kg/m²`,
-        dilution: primer.dilution,
-        application: 'Aplicar antes da impermeabilização'
+        dilution: primer.dilution || 'Puro',
+        coverage: `${primer.coverage} m²`,
+        requiredQuantity: `${primer.quantity.toFixed(1)} kg`
       }
     });
   }
 
-  // Acessórios
-  Object.entries(accessories).forEach(([accessoryType, accessoryData]) => {
-    const accessory = accessoryData as any;
-    if (accessory?.quantity > 0) {
-      quantified_items.push({
-        name: accessory.name,
-        description: accessory.description,
-        quantity: accessory.quantity,
-        unit: accessory.unit,
-        unit_price: 0,
-        total_price: 0,
-        category: 'acessorios',
-        specifications: accessory.specifications || {}
-      });
-    }
-  });
+  // Acessórios - MAPEBAND
+  if (accessories.mapeband && (accessories.mapeband as any).quantity > 0) {
+    quantified_items.push({
+      name: 'MAPEBAND',
+      description: 'Fita selante para juntas e detalhes',
+      quantity: (accessories.mapeband as any).quantity,
+      unit: 'rolo',
+      unit_price: 0,
+      total_price: 0,
+      category: 'acessorio',
+      specifications: {
+        totalLength: `${(accessories.mapeband as any).totalLength}m`,
+        rollSize: '10m por rolo'
+      }
+    });
+  }
+
+  // Validações
+  const validationErrors = validateInputs(input);
+  const recommendations = generateRecommendations(input, systemSpecs);
 
   return {
     quantified_items,
@@ -152,10 +261,10 @@ export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): Wat
     },
     correctionFactors: {
       substrate: substrateCorrection,
-      surface: surfaceCorrection,
-      application: applicationCorrection,
+      surface: roughnessCorrection,
+      application: environmentCorrection,
       geometry: geometryComplexity,
-      method: 1.0, // Para futuras implementações
+      method: methodCorrection,
       final: finalCorrectionFactor
     },
     accessories: {
@@ -163,289 +272,224 @@ export function calculateWaterproofingMapei(input: WaterproofingMapeiInput): Wat
         length: (accessories.mapeband as any)?.totalLength || 0,
         rolls: (accessories.mapeband as any)?.quantity || 0
       },
-      reinforcingFabric: (accessories.reinforcingFabric as any) ? {
-        area: (accessories.reinforcingFabric as any).area,
-        rolls: (accessories.reinforcingFabric as any).quantity
-      } : undefined,
-      corners: (accessories.corners as any)?.quantity || 0,
-      specialPieces: (accessories.specialPieces as any)?.quantity || 0,
-      masks: (accessories.masks as any)?.quantity || 0
+      corners: accessories.corners || 0,
+      specialPieces: accessories.specialPieces || 0,
+      masks: accessories.masks || 0
     },
     technicalSpecs: {
-      coverage: `${areas.total}m² em ${totalLayers} demãos`,
+      coverage: `${areas.total} m²`,
       consumptionBase: `${baseConsumption} kg/m²/mm`,
       layers: `${totalLayers} demãos de ${thicknessPerLayer}mm`,
-      cureTime: systemSpecs.cureTime,
-      walkTime: systemSpecs.walkTime
+      cureTime: systemSpecs.cureTime || '24-48h',
+      walkTime: systemSpecs.walkTime || '3-4h'
     },
-    validationErrors: validateInputs(input),
-    recommendations: generateRecommendations(input, systemSpecs)
+    validationErrors,
+    recommendations
   };
 }
 
-// Função auxiliar para calcular complexidade geométrica
+// Geometry complexity calculation
 function calculateGeometryComplexity(details: WaterproofingMapeiInput['constructiveDetails']): number {
-  let complexityFactor = 1.05; // Base mínima
-
-  // Ralos e dispositivos
-  const totalDevices = details.commonDrains + details.grates + details.passingPipes;
-  if (totalDevices <= 2) complexityFactor *= 1.00;
-  else if (totalDevices <= 5) complexityFactor *= 1.08;
-  else complexityFactor *= 1.15;
-
-  // Cantos e juntas
-  const totalLinearDetails = details.internalCorners + details.externalCorners + details.expansionJoints;
-  if (totalLinearDetails > 10) complexityFactor *= 1.10;
-  if (totalLinearDetails > 20) complexityFactor *= 1.15;
+  let complexity = 1.05; // Base complexity
+  
+  // Ralos
+  const totalDrains = details.commonDrains + Math.ceil(details.linearDrains / 2);
+  if (totalDrains <= 2) complexity *= 1.05;      // Simples
+  else if (totalDrains <= 5) complexity *= 1.10; // Médio  
+  else complexity *= 1.15;                        // Complexo
 
   // Colunas e obstáculos
-  if (details.columns > 2) complexityFactor *= 1.12;
-  if (details.columns > 5) complexityFactor *= 1.20;
+  if (details.columns === 0) complexity *= 1.00;
+  else if (details.columns <= 2) complexity *= 1.08;
+  else complexity *= 1.12;
 
-  return Math.min(complexityFactor, 1.30); // Máximo 30% de correção
+  // Tubulações passantes
+  if (details.passingPipes <= 5) complexity *= 1.03;
+  else complexity *= 1.08;
+
+  // Juntas de dilatação
+  if (details.expansionJoints > 0) complexity *= 1.05;
+
+  return Math.min(complexity, 1.20); // Máximo 20% de acréscimo
 }
 
-// Função auxiliar para especificações do sistema
+// System specifications retrieval
 function getSystemSpecifications(systemType: string, waterExposure: string) {
   const systems = {
     'mapelastic': {
       name: 'MAPELASTIC',
       consumption: 1.7, // kg/m²/mm
       layers: 2,
-      thicknessPerLayer: 1, // mm
-      applicationMethod: 'Trincha ou rolo',
-      cureTime: '24-48h',
-      walkTime: '12h',
+      thicknessPerLayer: 1.0, // mm
+      applicationMethod: 'trincha_rolo',
+      cureTime: '24h',
+      walkTime: '3h',
       productInfo: {
         name: 'MAPELASTIC Kit 32kg',
         packageSize: 32,
         unit: 'kit'
-      },
-      needsReinforcement: false
+      }
     },
     'mapelastic_smart': {
       name: 'MAPELASTIC SMART',
       consumption: 1.6,
       layers: 2,
       thicknessPerLayer: 1.25,
-      applicationMethod: 'Trincha com tela incorporada',
+      applicationMethod: 'trincha_rolo',
       cureTime: '24h',
-      walkTime: '8h',
+      walkTime: '3h',
       productInfo: {
         name: 'MAPELASTIC SMART Kit 30kg',
         packageSize: 30,
         unit: 'kit'
-      },
-      needsReinforcement: true
+      }
     },
     'mapelastic_foundation': {
       name: 'MAPELASTIC FOUNDATION',
       consumption: 1.65,
       layers: 3,
-      thicknessPerLayer: 1,
-      applicationMethod: 'Trincha - múltiplas demãos',
-      cureTime: '48-72h',
-      walkTime: '24h',
+      thicknessPerLayer: 1.0,
+      applicationMethod: 'trincha_rolo',
+      cureTime: '48h',
+      walkTime: '4h',
       productInfo: {
         name: 'MAPELASTIC FOUNDATION Kit 32kg',
         packageSize: 32,
         unit: 'kit'
-      },
-      needsReinforcement: true
+      }
     },
     'aquadefense': {
       name: 'AQUADEFENSE',
-      consumption: 0.5, // kg/m² total (2 demãos)
+      consumption: 0.5, // kg/m² (2 demãos)
       layers: 2,
       thicknessPerLayer: 0.25,
-      applicationMethod: 'Rolo de lã',
-      cureTime: '12h',
-      walkTime: '4h',
+      applicationMethod: 'rolo_trincha',
+      cureTime: '2-4h',
+      walkTime: '1h',
       productInfo: {
         name: 'AQUADEFENSE Balde 15kg',
         packageSize: 15,
         unit: 'balde'
-      },
-      needsReinforcement: true
+      }
     }
   };
 
   return systems[systemType as keyof typeof systems] || systems.mapelastic;
 }
 
-// Função auxiliar para cálculo de acessórios
+// Accessory calculations  
 function calculateAccessories(perimeter: number, details: WaterproofingMapeiInput['constructiveDetails'], systemSpecs: any) {
-  const accessories: any = {};
-
-  // MAPEBAND - Fita de vedação
   const mapebandLength = calculateMapebandLength(perimeter, details);
   const mapebandRolls = Math.ceil(mapebandLength / 10); // Rolos de 10m
-  
-  accessories.mapeband = {
-    name: 'MAPEBAND',
-    description: 'Fita de vedação para cantos e detalhes',
-    quantity: mapebandRolls,
-    unit: 'rolo 10m',
-    totalLength: mapebandLength,
-    specifications: {
-      application: 'Cantos, ralos e tubulações',
-      width: '10cm'
-    }
+
+  return {
+    mapeband: {
+      totalLength: mapebandLength,
+      quantity: mapebandRolls
+    },
+    corners: details.internalCorners + details.externalCorners,
+    specialPieces: details.passingPipes + details.commonDrains,
+    masks: details.commonDrains + details.passingPipes
   };
-
-  // Tela de reforço (se necessário)
-  if (systemSpecs.needsReinforcement) {
-    const reinforcementArea = Math.ceil(details.commonDrains * 1.0 + details.linearDrains * 2.0); // m²
-    if (reinforcementArea > 0) {
-      accessories.reinforcingFabric = {
-        name: systemSpecs.name.includes('SMART') ? 'MAPETEX SEL' : 'MAPENET 150',
-        description: 'Tela de reforço para pontos críticos',
-        quantity: Math.ceil(reinforcementArea / 50), // Rolos de 50m²
-        unit: 'rolo 50m²',
-        area: reinforcementArea
-      };
-    }
-  }
-
-  // Cantoneiras
-  const totalCorners = details.internalCorners + details.externalCorners;
-  if (totalCorners > 0) {
-    accessories.corners = {
-      name: 'Cantoneiras 90°',
-      description: 'Cantoneiras para cantos internos e externos',
-      quantity: Math.ceil(totalCorners / 0.2), // 20cm por canto
-      unit: 'unidade'
-    };
-  }
-
-  // Máscaras para dispositivos
-  const totalDevices = details.commonDrains + details.grates + details.passingPipes;
-  if (totalDevices > 0) {
-    accessories.masks = {
-      name: 'Máscaras para dispositivos',
-      description: 'Máscaras para ralos e tubulações',
-      quantity: totalDevices,
-      unit: 'unidade'
-    };
-  }
-
-  return accessories;
 }
 
-// Função auxiliar para cálculo do MAPEBAND
+// MAPEBAND length calculation
 function calculateMapebandLength(perimeter: number, details: WaterproofingMapeiInput['constructiveDetails']): number {
-  let totalLength = 0;
+  let totalLength = perimeter;
   
-  // Perímetro base
-  totalLength += perimeter;
+  // Adicionar detalhes construtivos
+  totalLength += details.commonDrains * 0.5;        // 0.5m por ralo
+  totalLength += details.linearDrains;              // Comprimento linear
+  totalLength += details.passingPipes * 0.3;       // 0.3m por tubo
+  totalLength += details.expansionJoints * 2;      // Ambos lados da junta
+  totalLength += (details.internalCorners + details.externalCorners) * 0.2; // Sobreposição cantos
   
-  // Cantos (20cm cada)
-  totalLength += (details.internalCorners + details.externalCorners) * 0.20;
-  
-  // Ralos (π × diâmetro + 20cm sobreposição)
-  totalLength += details.commonDrains * (Math.PI * 0.10 + 0.20); // Ralo Ø100mm
-  
-  // Ralos lineares
-  totalLength += details.linearDrains;
-  
-  // Tubulações (π × diâmetro estimado + 20cm)
-  totalLength += details.passingPipes * (Math.PI * 0.05 + 0.20); // Tubo Ø50mm médio
-  
-  // Juntas de dilatação (ambos os lados)
-  totalLength += details.expansionJoints * 2;
-  
-  // Fator de segurança 15%
+  // Fator de sobreposição (15%)
   return totalLength * 1.15;
 }
 
-// Função auxiliar para cálculo de primer
+// Primer calculation
 function calculatePrimer(area: number, substrateType: string, systemSpecs: any) {
   const primerRequirements = {
-    'concreto_novo': { required: true, type: 'primer_g', consumption: 0.15, dilution: '1:3' },
-    'concreto_velho': { required: true, type: 'primer_g', consumption: 0.15, dilution: '1:3' },
-    'alvenaria_reboco': { required: true, type: 'primer_g', consumption: 0.20, dilution: '1:1' },
-    'ceramica_existente': { required: true, type: 'eco_prim_grip', consumption: 0.20, dilution: 'puro' },
-    'gesso_drywall': { required: true, type: 'primer_g', consumption: 0.25, dilution: '1:1' },
-    'osb_madeira': { required: true, type: 'primer_g', consumption: 0.30, dilution: '1:1' },
-    'contrapiso_cimenticio': { required: true, type: 'primer_g', consumption: 0.18, dilution: '1:3' }
+    'concreto_novo': { required: true, type: 'PRIMER G', consumption: 0.15, dilution: '1:3' },
+    'concreto_velho': { required: true, type: 'PRIMER G', consumption: 0.15, dilution: '1:3' },
+    'alvenaria_reboco': { required: true, type: 'PRIMER G', consumption: 0.20, dilution: '1:2' },
+    'ceramica_existente': { required: true, type: 'ECO PRIM GRIP', consumption: 0.20, dilution: 'puro' },
+    'gesso_drywall': { required: true, type: 'PRIMER G', consumption: 0.25, dilution: '1:1' },
+    'osb_madeira': { required: true, type: 'PRIMER SN', consumption: 0.30, dilution: 'puro' },
+    'contrapiso_cimenticio': { required: true, type: 'PRIMER G', consumption: 0.18, dilution: '1:3' }
   };
 
   const requirement = primerRequirements[substrateType as keyof typeof primerRequirements];
   
   if (!requirement?.required) {
-    return { required: false };
+    return { required: false, quantity: 0 };
   }
 
-  const totalQuantity = area * requirement.consumption * 1.1; // +10% segurança
-
-  const products = {
-    'primer_g': {
-      name: 'PRIMER G',
-      description: 'Primer penetrante para superfícies absorventes',
-      packageSize: 5, // kg
-      unit: 'galão'
-    },
-    'eco_prim_grip': {
-      name: 'ECO PRIM GRIP',
-      description: 'Primer aderente para superfícies não absorventes',
-      packageSize: 5, // kg
-      unit: 'galão'
-    }
-  };
-
+  const quantity = area * requirement.consumption * 1.1; // +10% margem
+  
   return {
     required: true,
     type: requirement.type,
     consumption: requirement.consumption,
     dilution: requirement.dilution,
-    quantity: totalQuantity,
-    product: products[requirement.type as keyof typeof products]
+    quantity,
+    coverage: area,
+    product: {
+      name: requirement.type,
+      packageSize: requirement.type === 'ECO PRIM GRIP' ? 5 : 10,
+      unit: requirement.type === 'ECO PRIM GRIP' ? 'balde' : 'galão'
+    }
   };
 }
 
-// Função de validação
+// Input validation
 function validateInputs(input: WaterproofingMapeiInput): string[] {
   const errors: string[] = [];
-
-  if (!input.areas?.total || input.areas.total <= 0) {
+  
+  if (input.areas.total <= 0) {
     errors.push('Área total deve ser maior que zero');
   }
-
-  if (!input.perimeter || input.perimeter <= 0) {
+  
+  if (input.perimeter <= 0) {
     errors.push('Perímetro deve ser maior que zero');
   }
-
-  if (input.areas.total > 0 && input.perimeter > 0) {
-    const maxPerimeter = 4 * Math.sqrt(input.areas.total); // Perímetro máximo teórico
-    if (input.perimeter > maxPerimeter * 2) {
-      errors.push('Perímetro muito grande em relação à área - verificar medições');
-    }
+  
+  // Validar relação área/perímetro para detectar inconsistências
+  const perimeterToAreaRatio = input.perimeter / Math.sqrt(input.areas.total);
+  if (perimeterToAreaRatio > 8) {
+    errors.push('Relação perímetro/área parece inconsistente - verificar medições');
   }
-
+  
   return errors;
 }
 
-// Função para gerar recomendações
+// Recommendation generation
 function generateRecommendations(input: WaterproofingMapeiInput, systemSpecs: any): string[] {
   const recommendations: string[] = [];
-
+  
   // Recomendações por tipo de ambiente
-  if (input.applicationEnvironment === 'piscina') {
-    recommendations.push('Para piscinas, recomendamos aplicação de proteção mecânica sobre a impermeabilização');
+  if (input.applicationEnvironment === 'piscina' || input.applicationEnvironment === 'reservatorio') {
+    recommendations.push('Para áreas de imersão, considere proteção mecânica sobre a impermeabilização');
   }
-
+  
   if (input.applicationEnvironment === 'subsolo') {
-    recommendations.push('Em subsolos, verificar sistema de drenagem antes da aplicação');
+    recommendations.push('Em subsolos com pressão negativa, verifique drenagem e aplique FOUNDATION');
   }
-
+  
   // Recomendações por substrato
   if (input.substrateType === 'ceramica_existente') {
-    recommendations.push('Fazer teste de aderência em área pequena antes da aplicação total');
+    recommendations.push('Verificar aderência da cerâmica existente antes da aplicação');
   }
-
+  
   // Recomendações climáticas
-  recommendations.push('Evitar aplicação em dias chuvosos ou com umidade relativa acima de 80%');
-  recommendations.push('Temperatura ideal de aplicação: entre 10°C e 30°C');
-
+  if (input.climaticConditions.temperature === 'baixa') {
+    recommendations.push('Temperatura baixa: Aumentar tempo de cura e evitar aplicação se <5°C');
+  }
+  
+  if (input.climaticConditions.humidity === 'alta') {
+    recommendations.push('Alta umidade: Garantir ventilação adequada durante aplicação');
+  }
+  
   return recommendations;
 }

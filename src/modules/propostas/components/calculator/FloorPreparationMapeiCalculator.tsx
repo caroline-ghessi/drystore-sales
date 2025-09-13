@@ -16,22 +16,23 @@ interface FloorPreparationMapeiCalculatorProps {
 export function FloorPreparationMapeiCalculator({ onCalculationComplete, initialData }: FloorPreparationMapeiCalculatorProps) {
   const [formData, setFormData] = useState<FloorPreparationMapeiInput>({
     area: 0,
-    currentCondition: 'pequenos_desniveis',
-    thicknessMeasurements: new Array(9).fill(0),
+    currentCondition: 'existente_bom',
+    thicknessMeasurements: [0, 0, 0, 0, 0, 0, 0, 0, 0],
     averageThickness: 0,
     maxThickness: 0,
     minThickness: 0,
-    preparationType: 'autonivelante',
+    preparationType: 'nivelamento',
     productType: 'ultraplan_eco',
-    baseSubstrate: 'concreto',
+    baseSubstrate: 'concreto_velho',
     primerRequired: true,
     primerType: 'primer_g',
     primerDilution: '1:3',
     applicationConditions: {
-      temperature: 20,
-      humidity: 60,
-      ventilation: 'good',
-      trafficDuringCure: false
+      temperature: 'normal',
+      humidity: 'normal',
+      applicationMethod: 'manual',
+      applicatorExperience: 'experiente',
+      timeConstraints: 'normal'
     },
     ...initialData
   });

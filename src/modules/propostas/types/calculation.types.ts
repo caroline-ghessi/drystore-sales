@@ -851,6 +851,15 @@ export interface AcousticMineralCeilingResult {
 
 // MAPEI - Impermeabilização
 export interface WaterproofingMapeiInput extends BaseCalculationInput {
+  // Dimensões detalhadas
+  detailedDimensions: {
+    length: number;
+    width: number;
+    ceilingHeight?: number;
+    boxHeight?: number; // Para banheiros
+    baseboard_height?: number; // Altura do rodapé
+  };
+
   // Dados básicos de área
   areas: {
     piso: number;
@@ -892,6 +901,35 @@ export interface WaterproofingMapeiInput extends BaseCalculationInput {
     | 'fissuras_pequenas'
     | 'fissuras_grandes'
     | 'infiltracao_ativa';
+
+  // Rugosidade específica da superfície
+  surfaceRoughness:
+    | 'muito_rugosa'    // +15%
+    | 'rugosidade_media' // +10%
+    | 'lisa'            // +5%
+    | 'polida';         // 0%
+
+  // Método de aplicação
+  applicationMethod:
+    | 'projecao_mecanica' // +30%
+    | 'rolo'             // +10%
+    | 'trincha'          // +8%
+    | 'desempenadeira';  // +5%
+
+  // Condições climáticas
+  climaticConditions: {
+    temperature: 'baixa' | 'normal' | 'alta'; // <10°C, 10-25°C, >30°C
+    humidity: 'baixa' | 'normal' | 'alta';    // <40%, 40-70%, >70%
+    wind: 'sem_vento' | 'brisa_leve' | 'vento_forte';
+    directSun: 'sombra' | 'sol_parcial' | 'sol_pleno';
+  };
+
+  // Experiência do aplicador
+  applicatorExperience:
+    | 'primeira_vez'      // +15%
+    | 'condicoes_adversas' // +10%
+    | 'prazo_apertado'    // +8%
+    | 'condicoes_ideais'; // +5%
 
   // Exposição à água
   waterExposure:
