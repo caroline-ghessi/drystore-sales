@@ -422,23 +422,27 @@ export default function ProductsPage() {
 
       {/* Products by Category */}
       <Tabs value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as UnifiedProductCategory | 'all')}>
-        <TabsList className="grid w-full grid-cols-7 lg:grid-cols-7">
-          {categories.map((category: any) => {
-            const CategoryIcon = category.icon;
-            const count = getProductsByCategory(category.key).length;
-            return (
-              <TabsTrigger 
-                key={category.key} 
-                value={category.key}
-                className="flex items-center space-x-1 text-xs"
-              >
-                <CategoryIcon className="h-3 w-3" />
-                <span className="hidden sm:inline">{category.label}</span>
-                <span className="text-xs">({count})</span>
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
+        <div className="w-full overflow-x-auto">
+          <TabsList className="inline-flex w-max min-w-full h-auto p-2 gap-2 bg-card">
+            {categories.map((category: any) => {
+              const CategoryIcon = category.icon;
+              const count = getProductsByCategory(category.key).length;
+              return (
+                <TabsTrigger 
+                  key={category.key} 
+                  value={category.key}
+                  className="flex flex-col items-center gap-1 p-3 min-w-[120px] h-auto text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground hover:bg-muted/50 transition-all duration-200"
+                >
+                  <CategoryIcon className="h-5 w-5" />
+                  <span className="text-xs font-normal leading-tight text-center">{category.label}</span>
+                  <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full min-w-[24px] text-center data-[state=active]:bg-primary-foreground/20 data-[state=active]:text-primary-foreground">
+                    {count}
+                  </span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </div>
 
         {categories.map((category) => (
           <TabsContent key={category.key} value={category.key} className="mt-6">
