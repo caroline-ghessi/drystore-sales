@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calculator, FileText, Zap, Plus, Search } from 'lucide-react';
 import { ProposalGenerator } from '../components/generator/ProposalGenerator';
+import { TemplateManager } from '../components/templates/TemplateManager';
 
 export default function Propostas() {
   const [activeTab, setActiveTab] = useState('generator');
@@ -62,15 +63,7 @@ export default function Propostas() {
         </TabsContent>
 
         <TabsContent value="templates">
-          <Card>
-            <CardHeader>
-              <CardTitle>Templates</CardTitle>
-              <CardDescription>Gerencie templates personalizados</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Em desenvolvimento</p>
-            </CardContent>
-          </Card>
+          <TemplateManager />
         </TabsContent>
 
         <TabsContent value="analytics">
