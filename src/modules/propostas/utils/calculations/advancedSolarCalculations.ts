@@ -281,42 +281,82 @@ function calculateItemizedCosts(
   panelQuantity: number,
   inverterModel: keyof typeof LIVOLTEK_INVERTERS,
   batteryConfig: any,
-  input: SolarCalculationInput
+  input: SolarCalculationInput,
+  products?: any[] // Products must be passed to this function
 ) {
-  // Preços conforme equipamentos reais
-  const panelPrice = 1800; // R$ por módulo Amerisolar 550W
-  const inverterPrices = {
-    'GF1-3K': 4500,
-    'GF1-5K': 7200
-  };
-  const batteryPrice = 12800; // BLF-B51100
-  
+  if (!products || products.length === 0) {
+    throw new Error('ERRO: Produtos não fornecidos para cálculo. O sistema deve buscar produtos cadastrados no banco de dados.');
+  }
+
   const systemPower = (panelQuantity * 550) / 1000; // kWp
   
-  // Custos base
-  const panelsCost = panelQuantity * panelPrice;
-  const invertersCost = inverterPrices[inverterModel];
-  const structureCost = systemPower * 600; // R$/kWp
-  const installationCost = systemPower * 800; // R$/kWp
-  const documentationCost = systemPower * 300; // R$/kWp
+  // Buscar produtos obrigatórios no banco de dados
+  const structureProduct = products.find(p => p.code === 'SOL-EST-KIT');
+  const documentationProduct = products.find(p => p.code === 'SOL-PROJ-DOC');
+  const installationProduct = products.find(p => p.code === 'SOL-INST-MO');
   
-  // Custos de bateria
+  // Validar produtos obrigatórios
+  if (!structureProduct) {
+    throw new Error('ERRO: Produto de estrutura solar (SOL-EST-KIT) não encontrado. Cadastre este produto obrigatório.');
+  }
+  
+  if (!documentationProduct) {
+    throw new Error('ERRO: Produto de projeto/documentação (SOL-PROJ-DOC) não encontrado. Cadastre este produto obrigatório.');
+  }
+  
+  // Buscar painéis e inversores nos produtos solares
+  const solarPanels = products.filter(p => p.category === 'energia_solar' && p.solar_category === 'panel');
+  const solarInverters = products.filter(p => p.category === 'energia_solar' && p.solar_category === 'inverter');
+  const solarBatteries = products.filter(p => p.category === 'battery_backup' && p.solar_category === 'battery');
+  
+  if (solarPanels.length === 0) {
+    throw new Error('ERRO: Nenhum painel solar cadastrado. Produtos de energia solar são obrigatórios.');
+  }
+  
+  if (solarInverters.length === 0) {
+    throw new Error('ERRO: Nenhum inversor solar cadastrado. Produtos de energia solar são obrigatórios.');
+  }
+  
+  // Usar preços reais dos produtos cadastrados
+  const panelPrice = solarPanels[0]?.base_price || 0;
+  const inverterPrice = solarInverters[0]?.base_price || 0;
+  
+  if (panelPrice === 0) {
+    throw new Error('ERRO: Preço do painel solar está zerado. Configure o preço no cadastro de produtos.');
+  }
+  
+  if (inverterPrice === 0) {
+    throw new Error('ERRO: Preço do inversor está zerado. Configure o preço no cadastro de produtos.');
+  }
+  
+  // Calcular custos baseados em produtos reais
+  const panelsCost = panelQuantity * panelPrice;
+  const invertersCost = inverterPrice;
+  const structureCost = systemPower * structureProduct.base_price;
+  const installationCost = installationProduct ? systemPower * installationProduct.base_price : 0;
+  const documentationCost = systemPower * documentationProduct.base_price;
+  
+  // Custos de bateria baseados em produtos reais
   let batteriesCost = 0;
-  if (batteryConfig) {
+  if (batteryConfig && batteryConfig.batteryQuantity > 0) {
+    if (solarBatteries.length === 0) {
+      throw new Error('ERRO: Sistema com baterias requer produtos de bateria cadastrados.');
+    }
+    
+    const batteryPrice = solarBatteries[0]?.base_price || 0;
+    if (batteryPrice === 0) {
+      throw new Error('ERRO: Preço da bateria está zerado. Configure o preço no cadastro de produtos.');
+    }
+    
     batteriesCost = batteryConfig.batteryQuantity * batteryPrice;
   }
   
-  // Multiplicador regional fixado em 1.0 (uniformidade nacional)
-  const regionalMultiplier = 1.0;
-  
-  const multiplier = regionalMultiplier;
-  
   return {
-    panels: panelsCost * multiplier,
-    inverters: invertersCost * multiplier,
-    batteries: batteriesCost > 0 ? batteriesCost * multiplier : undefined,
-    structure: structureCost * multiplier,
-    installation: installationCost * multiplier,
+    panels: panelsCost,
+    inverters: invertersCost,
+    batteries: batteriesCost > 0 ? batteriesCost : undefined,
+    structure: structureCost,
+    installation: installationCost,
     documentation: documentationCost
   };
 }

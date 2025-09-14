@@ -23,6 +23,7 @@ export interface ProductCalculationSpecs {
   installation_factor?: number; // Fator de instalação/perda
   regional_multiplier?: number; // Multiplicador regional
   compatibility?: string[];     // Produtos compatíveis
+  maxParallel?: number;         // Máximo de unidades em paralelo
 }
 
 export class ProductCalculationService {

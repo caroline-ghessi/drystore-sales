@@ -113,19 +113,22 @@ export function calculateShingleInstallation(
   // Unidades de ventilação (se incluídas)
   const ventilationUnits = features.ventilation ? Math.ceil(totalArea / 50) : undefined;
   
-  // 5. CUSTOS - Usar preços do sistema de produtos ou fallback
-  const shinglePrice = productPrices?.shinglePrice || 40; // Fallback price
-  const osbPrice = productPrices?.osbPrice || 35;
-  const underlaymentPrice = productPrices?.underlaymentPrice || 180;
-  const laborCostPerM2 = productPrices?.laborCostPerM2 || 25;
-  const equipmentCostPerM2 = productPrices?.equipmentCostPerM2 || 5;
+  // ERRO: Não usar fallbacks - produtos devem estar cadastrados
+  if (!productPrices?.shinglePrice || !productPrices?.osbPrice || !productPrices?.underlaymentPrice) {
+    throw new Error('ERRO: Preços de produtos não fornecidos. Todos os produtos de telha shingle devem estar cadastrados no sistema.');
+  }
   
-  const accessoryPrices = productPrices?.accessoryPrices || {
-    ridgeCapPrice: 45,
-    valleyPrice: 25, 
-    flashingPrice: 15,
-    sealantPrice: 12
-  };
+  const shinglePrice = productPrices.shinglePrice;
+  const osbPrice = productPrices.osbPrice;
+  const underlaymentPrice = productPrices.underlaymentPrice;
+  const laborCostPerM2 = productPrices.laborCostPerM2 || 0;
+  const equipmentCostPerM2 = productPrices.equipmentCostPerM2 || 0;
+  
+  if (!productPrices.accessoryPrices) {
+    throw new Error('ERRO: Preços de acessórios não fornecidos. Produtos de acessórios devem estar cadastrados.');
+  }
+  
+  const accessoryPrices = productPrices.accessoryPrices;
   
   const shinglesCost = shingleQuantity * shinglePrice * 3 * totalMultiplier; // 3m² por fardo
   const osbCost = osbQuantity * osbPrice * totalMultiplier;
