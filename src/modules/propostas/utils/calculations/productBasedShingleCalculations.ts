@@ -132,15 +132,27 @@ export function calculateShingleWithProducts(
   const insulationQuantity = features.insulation ? totalArea : undefined;
   const ventilationUnits = features.ventilation ? Math.ceil(totalArea / 50) : undefined;
 
-  // 5. CALCULAR CUSTOS
+  // 5. CALCULAR CUSTOS COM PRODUTOS ESPECÍFICOS
+  
+  // Buscar produtos específicos para acessórios
+  const nailsProduct = shingleProducts.nails;
+  const valleyTapeProduct = shingleProducts.valleyTape;
+  const sealantProduct = shingleProducts.sealant;
+  
   const shinglesCost = shingleQuantity * shinglePrice;
   const osbCost = osbQuantity * osbPrice; 
   const underlaymentCost = underlaymentQuantity * underlaymentPrice;
+  
+  // Calcular custos de acessórios usando produtos reais
+  const nailsCost = nailsProduct ? nailsQuantity * (nailsProduct.base_price || 0) : 0;
+  const valleyTapeCost = valleyTapeProduct ? valleyQuantity * (valleyTapeProduct.base_price || 0) : 0;
+  const sealantCost = sealantProduct ? sealantQuantity * (sealantProduct.base_price || 0) : 0;
+  
   const accessoriesCost = (
     ridgeCapQuantity * ridgeCapPrice + 
-    valleyQuantity * 0 + // Buscar preços reais dos produtos ou usar 0
-    flashingQuantity * 0 + 
-    sealantQuantity * 0
+    valleyTapeCost + 
+    nailsCost + 
+    sealantCost
   );
 
   // Custos itemizados sem mão de obra automática
@@ -162,49 +174,89 @@ export function calculateShingleWithProducts(
 
   const totalCost = Object.values(itemizedCosts).reduce((sum, cost) => sum + cost, 0);
 
-  // Generate quantified items for proposal
+  // Generate quantified items for proposal usando produtos reais
   const quantified_items = [
     {
       name: shingleProduct?.name || 'Telhas Shingle',
       description: `Telhas shingle ${shingleType}`,
       quantity: shingleQuantity,
-      unit: 'un',
+      unit: shingleProduct?.unit || 'un',
       unit_price: shinglePrice,
       total_price: shinglesCost,
       category: 'Cobertura',
-      specifications: { coverage_area: FALLBACK_SPECS.shingle.coverage_area }
+      specifications: shingleProduct ? ProductCalculationService.getProductSpecs(shingleProduct) : {}
     },
     {
       name: osbProduct?.name || 'Placa OSB',
       description: 'Placa OSB estrutural',
       quantity: osbQuantity,
-      unit: 'un',
+      unit: osbProduct?.unit || 'un',
       unit_price: osbPrice,
       total_price: osbCost,
       category: 'Estrutura',
-      specifications: { coverage_area: FALLBACK_SPECS.osb.coverage_area }
+      specifications: osbProduct ? ProductCalculationService.getProductSpecs(osbProduct) : {}
     },
     {
       name: underlaymentProduct?.name || 'Subcobertura RhinoRoof',
       description: 'Manta subcobertura impermeável',
       quantity: underlaymentQuantity,
-      unit: 'un',
+      unit: underlaymentProduct?.unit || 'un',
       unit_price: underlaymentPrice,
       total_price: underlaymentCost,
       category: 'Impermeabilização',
-      specifications: { coverage_area: FALLBACK_SPECS.rhinoroof.coverage_area }
+      specifications: underlaymentProduct ? ProductCalculationService.getProductSpecs(underlaymentProduct) : {}
     },
     {
       name: ridgeCapProduct?.name || 'Cumeeira',
       description: 'Peças de cumeeira para acabamento',
       quantity: ridgeCapQuantity,
-      unit: 'un',
+      unit: ridgeCapProduct?.unit || 'un',
       unit_price: ridgeCapPrice,
       total_price: ridgeCapQuantity * ridgeCapPrice,
       category: 'Acabamento',
-      specifications: { coverage_area: FALLBACK_SPECS.ridgeCap.coverage_area }
+      specifications: ridgeCapProduct ? ProductCalculationService.getProductSpecs(ridgeCapProduct) : {}
     }
   ];
+
+  // Adicionar acessórios específicos se os produtos existirem
+  if (nailsProduct && nailsQuantity > 0) {
+    quantified_items.push({
+      name: nailsProduct.name,
+      description: nailsProduct.description || 'Pregos galvanizados para fixação',
+      quantity: nailsQuantity,
+      unit: nailsProduct.unit || 'kg',
+      unit_price: nailsProduct.base_price || 0,
+      total_price: nailsCost,
+      category: 'Fixação',
+      specifications: ProductCalculationService.getProductSpecs(nailsProduct)
+    });
+  }
+
+  if (valleyTapeProduct && valleyQuantity > 0) {
+    quantified_items.push({
+      name: valleyTapeProduct.name,
+      description: valleyTapeProduct.description || 'Fita autoadesiva para águas furtadas',
+      quantity: valleyQuantity,
+      unit: valleyTapeProduct.unit || 'ml',
+      unit_price: valleyTapeProduct.base_price || 0,
+      total_price: valleyTapeCost,
+      category: 'Vedação',
+      specifications: ProductCalculationService.getProductSpecs(valleyTapeProduct)
+    });
+  }
+
+  if (sealantProduct && sealantQuantity > 0) {
+    quantified_items.push({
+      name: sealantProduct.name,
+      description: sealantProduct.description || 'Selante para vedação',
+      quantity: sealantQuantity,
+      unit: sealantProduct.unit || 'un',
+      unit_price: sealantProduct.base_price || 0,
+      total_price: sealantCost,
+      category: 'Vedação',
+      specifications: ProductCalculationService.getProductSpecs(sealantProduct)
+    });
+  }
 
   // Add labor if configured
   if (laborConfig?.includeLabor && itemizedCosts.labor > 0) {

@@ -150,11 +150,17 @@ export class ProductCalculationService {
    */
   static getShingleProducts(products: UnifiedProduct[]) {
     return {
-      shingles: this.findProductsByCategory(products, 'telha_shingle', 'telha'),
-      osb: this.findProductsByCategory(products, 'telha_shingle', 'osb'),
+      shingles: [
+        ...this.findProductsByCategory(products, 'telha_shingle', 'telha_principal'),
+        ...this.findProductsByCategory(products, 'telha_shingle', 'telha_starter')
+      ],
+      osb: this.findProductsByCategory(products, 'telha_shingle', 'base_estrutural'),
       underlayment: this.findProductByCode(products, 'SH-RHI-87'), // RhinoRoof específico
       ridgeCap: this.findProductsByCategory(products, 'telha_shingle', 'cumeeira'),
-      accessories: this.findProductsByCategory(products, 'telha_shingle', 'acessorio')
+      nails: this.findProductByCode(products, 'SH-PRG-TEL'), // Pregos específicos
+      valleyTape: this.findProductByCode(products, 'FITA-AUTOAD-AGUAS-001'), // Fita para águas furtadas
+      sealant: this.findProductByCode(products, 'SELANTE-PU-SHINGLE-001'), // Selante específico
+      accessories: this.findProductsByCategory(products, 'telha_shingle', 'acessorios')
     };
   }
 
