@@ -1500,12 +1500,9 @@ function generatePremiumShingleHTML(data: {
                 <!-- Área da Imagem Principal do Sistema -->
                 <div class="sistema-principal">
                     <div class="sistema-image-container">
-                        <div class="sistema-image-placeholder">
-                            <div class="placeholder-content">
-                                <p>📋 IMAGEM PRINCIPAL DO SISTEMA SHINGLE</p>
-                                <small>Sistema 3D com numeração das camadas</small>
-                            </div>
-                        </div>
+                        <img src="https://groqsnnytvjabgeaekkw.supabase.co/storage/v1/object/public/whatsapp-media/shingle-system-general.jpg" 
+                             alt="Sistema Completo Shingle - Anatomia das Camadas" 
+                             style="width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 400px; object-fit: contain;">
                     </div>
                 </div>
                 
