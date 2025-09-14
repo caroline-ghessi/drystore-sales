@@ -1512,36 +1512,22 @@ function generatePremiumShingleHTML(data: {
                     <div class="legenda-item">
                         <div class="legenda-numero">1</div>
                         <div class="legenda-texto">
-                            <div class="legenda-nome">Telha Shingle Owens Corning Duration®</div>
-                            <div class="legenda-funcao">PROTEÇÃO PRINCIPAL: Resistência a ventos de 130mph, granizo e raios UV. Tecnologia SureNail® exclusiva com faixa de fixação reforçada. Vida útil de 50 anos.</div>
+                            <div class="legenda-nome">OSB 11,1mm</div>
+                            <div class="legenda-funcao">BASE SÓLIDA: Superfície uniforme para fixação. Distribuição de cargas. Isolamento térmico adicional.</div>
                         </div>
                     </div>
                     <div class="legenda-item">
                         <div class="legenda-numero">2</div>
                         <div class="legenda-texto">
-                            <div class="legenda-nome">Cumeeira ProEdge® Hip & Ridge</div>
-                            <div class="legenda-funcao">VENTILAÇÃO E ACABAMENTO: Permite saída do ar quente, evitando condensação. Protege pontos críticos contra infiltração.</div>
+                            <div class="legenda-nome">Subcobertura RhinoRoof</div>
+                            <div class="legenda-funcao">IMPERMEABILIZAÇÃO: Manta asfáltica de alta performance. Proteção contra infiltrações e umidade. Auto-selante e resistente a intempéries.</div>
                         </div>
                     </div>
                     <div class="legenda-item">
                         <div class="legenda-numero">3</div>
                         <div class="legenda-texto">
-                            <div class="legenda-nome">Manta Asfáltica WeatherLock®</div>
-                            <div class="legenda-funcao">IMPERMEABILIZAÇÃO: Barreira 100% impermeável. Auto-adesiva e auto-selante ao redor dos pregos. Proteção extra em vales e beirais.</div>
-                        </div>
-                    </div>
-                    <div class="legenda-item">
-                        <div class="legenda-numero">4</div>
-                        <div class="legenda-texto">
-                            <div class="legenda-nome">Deck OSB Estrutural 18mm</div>
-                            <div class="legenda-funcao">BASE SÓLIDA: Superfície uniforme para fixação. Distribuição de cargas. Isolamento térmico adicional.</div>
-                        </div>
-                    </div>
-                    <div class="legenda-item">
-                        <div class="legenda-numero">5</div>
-                        <div class="legenda-texto">
-                            <div class="legenda-nome">Estrutura de Suporte</div>
-                            <div class="legenda-funcao">SUSTENTAÇÃO: Caibros e ripas dimensionados para suportar o sistema. Inclinação mínima de 15° para perfeito escoamento.</div>
+                            <div class="legenda-nome">Telhas Shingle</div>
+                            <div class="legenda-funcao">PROTEÇÃO PRINCIPAL: Cobertura premium com tecnologia avançada. Resistência superior a ventos, granizo e raios UV. Garantia estendida e durabilidade comprovada.</div>
                         </div>
                     </div>
                 </div>
