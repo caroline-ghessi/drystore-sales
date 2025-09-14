@@ -17,6 +17,9 @@ interface ProposalData {
   valid_until: string;
   status: string;
   created_at: string;
+  product_category?: string;
+  calculation_data?: any;
+  client_data?: any;
   items: Array<{
     id: string;
     custom_name: string;
@@ -27,6 +30,99 @@ interface ProposalData {
     specifications: any;
   }>;
 }
+
+// Configurações de template por produto
+interface ProductTemplate {
+  displayName: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  primaryColor: string;
+  accentColor: string;
+  benefits: string[];
+  warranties: Array<{
+    component: string;
+    duration: string;
+    details: string;
+  }>;
+}
+
+const getProductTemplate = (productCategory: string): ProductTemplate => {
+  const templates: Record<string, ProductTemplate> = {
+    'telha_shingle': {
+      displayName: 'Telha Shingle',
+      heroTitle: 'Sistema de Cobertura Telha Shingle',
+      heroSubtitle: 'Solução completa para sua cobertura com tecnologia americana',
+      primaryColor: '#8B4513',
+      accentColor: '#D2691E',
+      benefits: [
+        'Resistência superior a ventos e intempéries',
+        'Isolamento térmico e acústico excelente',
+        'Baixa manutenção e alta durabilidade',
+        'Design moderno e variadas opções de cores',
+        'Sistema de ventilação natural integrado',
+        'Instalação rápida e eficiente'
+      ],
+      warranties: [
+        {
+          component: 'Telhas Shingle',
+          duration: '30 anos',
+          details: 'Garantia contra defeitos de fabricação e resistência ao vento até 180 km/h'
+        },
+        {
+          component: 'Manta Subcobertura',
+          duration: '15 anos',
+          details: 'Proteção contra infiltrações e umidade'
+        }
+      ]
+    },
+    'energia_solar': {
+      displayName: 'Energia Solar',
+      heroTitle: 'Sistema de Energia Solar Fotovoltaica',
+      heroSubtitle: 'Economia garantida e sustentabilidade para sua casa ou empresa',
+      primaryColor: '#FF8C00',
+      accentColor: '#FFD700',
+      benefits: [
+        'Redução de até 95% na conta de energia',
+        'Valorização do imóvel',
+        'Contribuição para sustentabilidade',
+        'Tecnologia de ponta',
+        'Monitoramento em tempo real'
+      ],
+      warranties: [
+        {
+          component: 'Painéis Solares',
+          duration: '25 anos',
+          details: 'Garantia de performance linear de 25 anos'
+        },
+        {
+          component: 'Inversor',
+          duration: '12 anos',
+          details: 'Garantia total do fabricante'
+        }
+      ]
+    }
+  };
+
+  return templates[productCategory] || {
+    displayName: 'Sistema Personalizado',
+    heroTitle: 'Proposta Técnica Especializada',
+    heroSubtitle: 'Solução profissional para sua necessidade',
+    primaryColor: '#2563EB',
+    accentColor: '#60A5FA',
+    benefits: [
+      'Qualidade garantida',
+      'Atendimento especializado',
+      'Suporte pós-venda'
+    ],
+    warranties: [
+      {
+        component: 'Materiais',
+        duration: '2 anos',
+        details: 'Garantia contra defeitos de fabricação'
+      }
+    ]
+  };
+};
 
 export default function PublicProposal() {
   const { id } = useParams<{ id: string }>();

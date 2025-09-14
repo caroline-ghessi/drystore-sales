@@ -44,6 +44,23 @@ interface ProposalGenerationRequest {
   };
 }
 
+// Import do sistema de templates
+interface ProductTemplateConfig {
+  productType: string;
+  displayName: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  primaryColor: string;
+  accentColor: string;
+}
+
+interface ProductKPI {
+  label: string;
+  value: string | number;
+  unit?: string;
+  highlight?: boolean;
+}
+
 // Função para mapear ProductType do frontend para product_category do banco
 function mapProductTypeToDbCategory(productType: string): string {
   const mapping: Record<string, string> = {
