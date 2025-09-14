@@ -90,6 +90,8 @@ export default function ProductsPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [advancedEditingId, setAdvancedEditingId] = useState<string | null>(null);
 
+  const [advancedEditingSpecs, setAdvancedEditingSpecs] = useState<{[key: string]: any}>({});
+
   const { products, isLoading, updateProduct, isUpdating, createProduct, isCreating } = useUnifiedProducts();
 
   const filteredAndSortedProducts = React.useMemo(() => {
@@ -218,8 +220,26 @@ export default function ProductsPage() {
   };
 
   const handleSpecificationChange = (productId: string, specifications: any) => {
-    // Update in real-time - could be optimized with debouncing if needed
-    updateProduct({ id: productId, updates: { specifications } });
+    // Store updated specifications temporarily
+    setAdvancedEditingSpecs(prev => ({
+      ...prev,
+      [productId]: specifications
+    }));
+  };
+
+  const handleSpecificationSave = (productId: string) => {
+    // Save the specifications that were temporarily stored
+    const specificationsToSave = advancedEditingSpecs[productId];
+    if (specificationsToSave) {
+      updateProduct({ id: productId, updates: { specifications: specificationsToSave } });
+    }
+    setAdvancedEditingId(null);
+    // Clear the temporary specs
+    setAdvancedEditingSpecs(prev => {
+      const newSpecs = { ...prev };
+      delete newSpecs[productId];
+      return newSpecs;
+    });
   };
 
   const hasAdvancedSpecifications = (category: UnifiedProductCategory) => {
@@ -547,12 +567,14 @@ export default function ProductsPage() {
                                            </Badge>
                                          </div>
                                          
-                                         <SpecificationEditor
-                                           category={product.category}
-                                           specifications={product.specifications}
-                                           onChange={(specs) => handleSpecificationChange(product.id, specs)}
-                                           compact={true}
-                                         />
+                                          <SpecificationEditor
+                                            category={product.category}
+                                            specifications={product.specifications}
+                                            onChange={(specs) => handleSpecificationChange(product.id, specs)}
+                                            onSave={() => handleSpecificationSave(product.id)}
+                                            onCancel={() => setAdvancedEditingId(null)}
+                                            compact={true}
+                                          />
                                        </div>
                                      </CollapsibleContent>
                                    </Collapsible>

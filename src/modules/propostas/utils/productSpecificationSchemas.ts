@@ -22,6 +22,281 @@ export interface ProductSpecificationSchema {
 
 // Esquemas de especificações por categoria de produto
 export const PRODUCT_SPECIFICATION_SCHEMAS: ProductSpecificationSchema[] = [
+  // Telha Shingle
+  {
+    category: 'telha_shingle',
+    title: 'Especificações de Telha Shingle',
+    description: 'Propriedades técnicas para telhas asfálticas tipo shingle',
+    fields: [
+      {
+        key: 'abas',
+        label: 'Número de Abas',
+        type: 'number',
+        description: 'Quantidade de abas da telha',
+        required: true,
+        min: 2,
+        max: 4,
+        defaultValue: 3
+      },
+      {
+        key: 'rendimento_m2',
+        label: 'Rendimento por m²',
+        type: 'number',
+        unit: 'pç/m²',
+        description: 'Quantidade de peças necessárias por metro quadrado',
+        required: true,
+        min: 1,
+        max: 10
+      },
+      {
+        key: 'garantia_anos',
+        label: 'Garantia',
+        type: 'number',
+        unit: 'anos',
+        description: 'Tempo de garantia do fabricante',
+        required: true,
+        min: 5,
+        max: 50
+      },
+      {
+        key: 'resistencia_vento_kmh',
+        label: 'Resistência ao Vento',
+        type: 'number',
+        unit: 'km/h',
+        description: 'Velocidade máxima de vento suportada',
+        min: 50,
+        max: 300
+      },
+      {
+        key: 'uso',
+        label: 'Aplicação',
+        type: 'select',
+        description: 'Tipo de aplicação da telha',
+        options: [
+          { value: 'cobertura_principal', label: 'Cobertura Principal' },
+          { value: 'starter_cumeeira', label: 'Starter/Cumeeira' },
+          { value: 'ventilacao', label: 'Ventilação' }
+        ]
+      },
+      {
+        key: 'dimensoes',
+        label: 'Dimensões',
+        type: 'text',
+        description: 'Dimensões da telha (ex: 45cm x 150cm)',
+        required: true
+      }
+    ]
+  },
+
+  // Battery Backup
+  {
+    category: 'battery_backup',
+    title: 'Especificações de Baterias e Backup',
+    description: 'Propriedades técnicas para sistemas de backup e baterias',
+    fields: [
+      {
+        key: 'capacity_ah',
+        label: 'Capacidade',
+        type: 'number',
+        unit: 'Ah',
+        description: 'Capacidade nominal da bateria em Ampere-hora',
+        required: true,
+        min: 50,
+        max: 1000
+      },
+      {
+        key: 'capacity_kwh',
+        label: 'Capacidade Energética',
+        type: 'number',
+        unit: 'kWh',
+        description: 'Capacidade energética da bateria',
+        required: true,
+        min: 1,
+        max: 100
+      },
+      {
+        key: 'voltage',
+        label: 'Tensão Nominal',
+        type: 'number',
+        unit: 'V',
+        description: 'Tensão nominal da bateria',
+        required: true,
+        min: 12,
+        max: 800
+      },
+      {
+        key: 'cycles',
+        label: 'Ciclos de Vida',
+        type: 'number',
+        description: 'Número de ciclos de carga/descarga',
+        min: 1000,
+        max: 15000
+      },
+      {
+        key: 'dod',
+        label: 'Profundidade de Descarga',
+        type: 'number',
+        unit: '%',
+        description: 'Profundidade máxima de descarga recomendada (0-1)',
+        min: 0.5,
+        max: 1.0,
+        defaultValue: 0.8
+      },
+      {
+        key: 'technology',
+        label: 'Tecnologia',
+        type: 'select',
+        description: 'Tecnologia da bateria',
+        options: [
+          { value: 'LiFePO4', label: 'LiFePO4 (Fosfato de Ferro)' },
+          { value: 'Li-ion', label: 'Li-ion' },
+          { value: 'AGM', label: 'AGM' },
+          { value: 'Gel', label: 'Gel' }
+        ]
+      },
+      {
+        key: 'max_parallel',
+        label: 'Máximo em Paralelo',
+        type: 'number',
+        description: 'Número máximo de baterias em paralelo',
+        min: 1,
+        max: 16,
+        defaultValue: 1
+      },
+      {
+        key: 'weight',
+        label: 'Peso',
+        type: 'number',
+        unit: 'kg',
+        description: 'Peso da bateria',
+        min: 5,
+        max: 200
+      },
+      {
+        key: 'power_continuous',
+        label: 'Potência Contínua',
+        type: 'number',
+        unit: 'W',
+        description: 'Potência contínua do inversor (para inversores)',
+        min: 1000,
+        max: 50000
+      },
+      {
+        key: 'power_peak',
+        label: 'Potência de Pico',
+        type: 'number',
+        unit: 'W',
+        description: 'Potência de pico do inversor (para inversores)',
+        min: 2000,
+        max: 100000
+      },
+      {
+        key: 'efficiency',
+        label: 'Eficiência',
+        type: 'number',
+        unit: '%',
+        description: 'Eficiência do inversor (0-1)',
+        min: 0.8,
+        max: 1.0,
+        defaultValue: 0.95
+      }
+    ]
+  },
+
+  // Energia Solar
+  {
+    category: 'energia_solar',
+    title: 'Especificações de Energia Solar',
+    description: 'Propriedades técnicas para painéis solares e inversores',
+    fields: [
+      {
+        key: 'power',
+        label: 'Potência',
+        type: 'number',
+        unit: 'W',
+        description: 'Potência nominal do painel ou inversor',
+        required: true,
+        min: 100,
+        max: 50000
+      },
+      {
+        key: 'efficiency',
+        label: 'Eficiência',
+        type: 'number',
+        unit: '%',
+        description: 'Eficiência do painel ou inversor (0-1)',
+        min: 0.15,
+        max: 1.0
+      },
+      {
+        key: 'vmp',
+        label: 'Tensão no Ponto de Máxima Potência',
+        type: 'number',
+        unit: 'V',
+        description: 'Tensão VMP do painel',
+        min: 20,
+        max: 100
+      },
+      {
+        key: 'imp',
+        label: 'Corrente no Ponto de Máxima Potência',
+        type: 'number',
+        unit: 'A',
+        description: 'Corrente IMP do painel',
+        min: 5,
+        max: 20
+      },
+      {
+        key: 'voc',
+        label: 'Tensão de Circuito Aberto',
+        type: 'number',
+        unit: 'V',
+        description: 'Tensão VOC do painel',
+        min: 30,
+        max: 120
+      },
+      {
+        key: 'isc',
+        label: 'Corrente de Curto-Circuito',
+        type: 'number',
+        unit: 'A',
+        description: 'Corrente ISC do painel',
+        min: 5,
+        max: 25
+      },
+      {
+        key: 'technology',
+        label: 'Tecnologia',
+        type: 'select',
+        description: 'Tecnologia do painel solar',
+        options: [
+          { value: 'Monocristalino', label: 'Monocristalino' },
+          { value: 'Policristalino', label: 'Policristalino' },
+          { value: 'Filme Fino', label: 'Filme Fino' },
+          { value: 'Half-Cell', label: 'Half-Cell' },
+          { value: 'Bifacial', label: 'Bifacial' }
+        ]
+      },
+      {
+        key: 'mppt_voltage',
+        label: 'Faixa MPPT',
+        type: 'text',
+        description: 'Faixa de tensão MPPT do inversor (ex: 120-500V)',
+        defaultValue: '120-500V'
+      },
+      {
+        key: 'phases',
+        label: 'Fases',
+        type: 'select',
+        description: 'Número de fases do inversor',
+        options: [
+          { value: '1', label: 'Monofásico (1 fase)' },
+          { value: '3', label: 'Trifásico (3 fases)' }
+        ]
+      }
+    ]
+  },
+
   // Impermeabilização MAPEI
   {
     category: 'impermeabilizacao_mapei',

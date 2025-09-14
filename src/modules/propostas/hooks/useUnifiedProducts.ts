@@ -211,6 +211,7 @@ export function useUnifiedProducts(category?: UnifiedProductCategory) {
         if (updates.description !== undefined) productUpdates.description = updates.description;
         if (updates.base_price !== undefined) productUpdates.base_price = updates.base_price;
         if (updates.unit) productUpdates.unit = updates.unit;
+        if (updates.specifications !== undefined) productUpdates.specifications = updates.specifications;
         
         const { error } = await supabase
           .from('products')

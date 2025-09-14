@@ -38,16 +38,32 @@ export function SpecificationEditor({
   readOnly = false,
   compact = false
 }: SpecificationEditorProps) {
-  const [localSpecs, setLocalSpecs] = useState(specifications || {});
+  const [localSpecs, setLocalSpecs] = useState({});
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
 
   const schema = getSpecificationSchema(category);
 
+  // Initialize specifications with current values
   useEffect(() => {
-    setLocalSpecs(specifications || {});
+    if (schema && specifications) {
+      const initialSpecs = { ...specifications };
+      
+      // Ensure all schema fields have initial values
+      schema.fields.forEach(field => {
+        if (!(field.key in initialSpecs)) {
+          if (field.defaultValue !== undefined) {
+            initialSpecs[field.key] = field.defaultValue;
+          }
+        }
+      });
+      
+      setLocalSpecs(initialSpecs);
+    } else {
+      setLocalSpecs(specifications || {});
+    }
     setHasChanges(false);
-  }, [specifications]);
+  }, [specifications, schema]);
 
   useEffect(() => {
     if (schema) {
