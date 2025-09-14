@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DrystoreShingleCalculator } from './DrystoreShingleCalculator';
+import { DrystoreShingleCalculator } from './ShingleCalculator';
 import { calculateShingleWithProducts } from '../../utils/calculations/drystoreShingleCalculations';
 import { ShingleCalculationInput, ShingleCalculationResult } from '../../types/calculation.types';
 import { useCalculatorValidation } from '../../hooks/useCalculatorValidation';

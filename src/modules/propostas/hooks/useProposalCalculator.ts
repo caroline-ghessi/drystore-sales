@@ -6,7 +6,7 @@ import { calculateBatteryBackup } from '../utils/calculations/batteryBackupCalcu
 import { calculateSolarWithProducts } from '../utils/calculations/productBasedSolarCalculations';
 import { calculateBatteryBackupWithProducts } from '../utils/calculations/productBasedBatteryBackupCalculations';
 import { useUnifiedProducts } from './useUnifiedProducts';
-import { calculateShingleWithProducts } from '../utils/calculations/productBasedShingleCalculations';
+import { calculateShingleWithProducts } from '../utils/calculations/drystoreShingleCalculations';
 import { calculateDrywallInstallation } from '../utils/calculations/drywallCalculations';
 import { calculateForroDrywall } from '../utils/calculations/forroDrywallCalculations';
 import { calculateAcousticMineralCeiling } from '../utils/calculations/acousticMineralCeilingCalculations';

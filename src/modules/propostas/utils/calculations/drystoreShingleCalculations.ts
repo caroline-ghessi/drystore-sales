@@ -220,13 +220,17 @@ export function calculateShingleWithProducts(
     dripEdgeLength
   );
   
+  // Bobina alumínio total (step flash + rufos)
+  const dripEdgeAluminum = dripEdgeLength * 0.18 * 1.1; // 18cm largura + 10% desperdício
+  const aluminumCoilArea = stepFlashingCalc.aluminumArea + dripEdgeAluminum;
+  
   // 6. CALCULAR CUSTOS POR CATEGORIA
   const shinglePrice = shingleProduct?.base_price || 0;
   const osbProduct = shingleProducts.osb?.[0];
   const rhinoroofProduct = products.find(p => p.code === 'SH-RHI-87');
 
   // Buscar produto bobina alumínio
-  const aluminumProduct = products.find(p => p.category === 'acessorio' && p.name.toLowerCase().includes('aluminio'));
+  const aluminumProduct = products.find(p => p.name.toLowerCase().includes('aluminio'));
   
   const itemizedCosts = {
     shingles: shingleBundles * shinglePrice,
