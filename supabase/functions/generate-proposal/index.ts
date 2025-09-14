@@ -908,9 +908,9 @@ function generatePremiumShingleHTML(data: {
         }
 
         .logo {
-            font-size: 32px;
-            font-weight: bold;
-            letter-spacing: -1px;
+            height: 40px;
+            max-width: 200px;
+            object-fit: contain;
         }
 
         .proposta-numero {
@@ -933,7 +933,7 @@ function generatePremiumShingleHTML(data: {
         .badge-premium {
             position: absolute;
             top: 20px;
-            right: 200px;
+            right: 50px;
             background: #D4AF37;
             color: #1a1a1a;
             padding: 5px 15px;
@@ -1460,7 +1460,7 @@ function generatePremiumShingleHTML(data: {
         <div class="header">
             <div class="badge-premium">Premium Quality</div>
             <div class="logo-section">
-                <div class="logo">DRYSTORE</div>
+                <img src="/assets/drystore-logo.png" alt="Drystore" class="logo" />
                 <div class="proposta-numero">
                     <div>PROPOSTA Nº ${data.proposal.proposal_number}</div>
                     <div>Data: ${new Date().toLocaleDateString('pt-BR')}</div>
