@@ -1553,11 +1553,9 @@ function generatePremiumShingleHTML(data: {
                     
                     <div class="sistema-products-grid">
                         <div class="product-card">
-                            <div class="product-image-placeholder osb">
-                                <div class="placeholder-content">
-                                    <p>🏗️ OSB APA PLUS</p>
-                                </div>
-                            </div>
+                            <img src="https://groqsnnytvjabgeaekkw.supabase.co/storage/v1/object/public/whatsapp-media/osb-apa-plus.jpg" 
+                                 alt="OSB APA PLUS - Base Estrutural" 
+                                 style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;"
                             <div class="product-info">
                                 <h5>OSB APA PLUS</h5>
                                 <p>Base estrutural de alta resistência e durabilidade</p>
@@ -1565,11 +1563,9 @@ function generatePremiumShingleHTML(data: {
                         </div>
                         
                         <div class="product-card">
-                            <div class="product-image-placeholder rhinoroof">
-                                <div class="placeholder-content">
-                                    <p>🛡️ RHINOROOF</p>
-                                </div>
-                            </div>
+                            <img src="https://groqsnnytvjabgeaekkw.supabase.co/storage/v1/object/public/whatsapp-media/rhinoroof-membrane.jpg" 
+                                 alt="RhinoRoof - Membrana de Subcobertura" 
+                                 style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;"
                             <div class="product-info">
                                 <h5>MEMB. SUBCOBERTURA</h5>
                                 <p>Manta impermeabilizante de proteção avançada</p>
@@ -1577,11 +1573,9 @@ function generatePremiumShingleHTML(data: {
                         </div>
                         
                         <div class="product-card">
-                            <div class="product-image-placeholder shingle">
-                                <div class="placeholder-content">
-                                    <p>🏠 TELHAS SHINGLE</p>
-                                </div>
-                            </div>
+                            <img src="https://groqsnnytvjabgeaekkw.supabase.co/storage/v1/object/public/whatsapp-media/shingle-tiles.jpg" 
+                                 alt="Telhas Shingle - Cobertura Final" 
+                                 style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;"
                             <div class="product-info">
                                 <h5>TELHAS SHINGLE</h5>
                                 <p>Cobertura premium com garantia estendida</p>
