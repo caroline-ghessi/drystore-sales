@@ -932,7 +932,7 @@ function generatePremiumShingleHTML(data: {
 
         .badge-premium {
             position: absolute;
-            top: 60px;
+            top: 80px;
             right: 50px;
             background: #D4AF37;
             color: #1a1a1a;
