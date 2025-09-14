@@ -31,7 +31,6 @@ interface ProposalData {
   }>;
 }
 
-// Configurações de template por produto
 interface ProductTemplate {
   displayName: string;
   heroTitle: string;
@@ -144,28 +143,43 @@ export default function PublicProposal() {
         .select(`
           *,
           proposal_items (
-            id,
-            custom_name,
-            description,
-            quantity,
-            unit_price,
-            total_price,
-            specifications
+            *
           )
         `)
-        .like('acceptance_link', `%${id}%`)
+        .contains('acceptance_link', id)
         .single();
 
       if (proposalError) {
-        throw new Error('Proposta não encontrada');
+        console.error('Error fetching proposal:', proposalError);
+        setError('Erro ao carregar proposta');
+        return;
       }
 
-      setProposal({
-        ...proposalData,
-        items: proposalData.proposal_items || []
-      });
-    } catch (err: any) {
-      setError(err.message);
+      if (proposalData) {
+        const formattedProposal: ProposalData = {
+          id: proposalData.id,
+          proposal_number: proposalData.proposal_number,
+          title: proposalData.title,
+          description: proposalData.description,
+          total_value: proposalData.total_value,
+          discount_value: proposalData.discount_value,
+          discount_percentage: proposalData.discount_percentage,
+          final_value: proposalData.final_value,
+          valid_until: proposalData.valid_until,
+          status: proposalData.status,
+          created_at: proposalData.created_at,
+          product_category: (proposalData as any).product_category || 'generic',
+          calculation_data: (proposalData as any).calculation_data || {},
+          client_data: (proposalData as any).client_data || {},
+          items: proposalData.proposal_items || []
+        };
+        setProposal(formattedProposal);
+      } else {
+        setError('Proposta não encontrada');
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      setError('Erro ao carregar proposta');
     } finally {
       setLoading(false);
     }
@@ -175,14 +189,11 @@ export default function PublicProposal() {
     window.print();
   };
 
-  const isExpired = proposal ? new Date(proposal.valid_until) < new Date() : false;
-  const isValid = proposal ? new Date(proposal.valid_until) >= new Date() : false;
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           <p className="text-gray-600">Carregando proposta...</p>
         </div>
       </div>
@@ -192,10 +203,12 @@ export default function PublicProposal() {
   if (error || !proposal) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
+        <Card className="max-w-md w-full mx-4">
           <CardContent className="p-6 text-center">
             <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Proposta não encontrada</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Proposta não encontrada
+            </h2>
             <p className="text-gray-600">
               {error || 'A proposta solicitada não existe ou foi removida.'}
             </p>
@@ -205,228 +218,277 @@ export default function PublicProposal() {
     );
   }
 
+  const isExpired = new Date(proposal.valid_until) < new Date();
+  const statusIcon = isExpired ? XCircle : proposal.status === 'sent' ? Clock : CheckCircle;
+  const statusColor = isExpired ? 'text-red-500' : proposal.status === 'sent' ? 'text-yellow-500' : 'text-green-500';
+  const StatusIcon = statusIcon;
+  
+  // Obter template específico do produto
+  const template = getProductTemplate(proposal.product_category || 'generic');
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header com botões - apenas na visualização */}
-      <div className="no-print bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold">Visualizar Proposta</h1>
-              <p className="text-sm text-gray-600">
-                Proposta Nº {proposal.proposal_number}
-              </p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header Específico do Produto */}
+      <div 
+        className="text-white"
+        style={{ 
+          background: `linear-gradient(135deg, ${template.primaryColor}, ${template.accentColor})` 
+        }}
+      >
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold">{template.heroTitle}</h1>
+            <p className="text-lg mt-2 opacity-90">{template.heroSubtitle}</p>
+            <div className="mt-6 bg-white bg-opacity-10 rounded-lg p-4 inline-block">
+              <p className="font-medium">Proposta Nº: {proposal.proposal_number}</p>
+              <p className="text-sm">Data: {new Date().toLocaleDateString('pt-BR')}</p>
             </div>
-            <div className="flex items-center space-x-3">
-              {isExpired && (
-                <div className="flex items-center text-red-600 text-sm">
-                  <XCircle className="h-4 w-4 mr-1" />
-                  Expirada
-                </div>
-              )}
-              {isValid && (
-                <div className="flex items-center text-green-600 text-sm">
-                  <CheckCircle className="h-4 w-4 mr-1" />
-                  Válida
-                </div>
-              )}
-              <Button onClick={handlePrint} size="sm">
-                <Printer className="h-4 w-4 mr-2" />
-                Imprimir
-              </Button>
+          </div>
+          <div className="flex items-center justify-center mt-4">
+            <div className="flex items-center space-x-2">
+              <StatusIcon className={`h-5 w-5 ${statusColor}`} />
+              <span className={`font-medium ${statusColor}`}>
+                {isExpired ? 'Expirada' : proposal.status === 'sent' ? 'Enviada' : 'Válida'}
+              </span>
             </div>
+            <span className="mx-4">•</span>
+            <p className="text-sm">
+              Válida até: {new Date(proposal.valid_until).toLocaleDateString('pt-BR')}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Conteúdo da proposta otimizado para A4 */}
-      <div className="proposal-content max-w-4xl mx-auto p-8">
-        {/* Header da proposta */}
-        <div className="text-center mb-8 pb-6 border-b-4 border-blue-600">
-          <div className="text-2xl font-bold text-blue-600 mb-2">DRY STORE</div>
-          <h1 className="text-3xl font-bold text-blue-600 mb-2">PROPOSTA COMERCIAL</h1>
-          <p className="text-gray-600">Proposta Nº {proposal.proposal_number}</p>
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        {/* Actions */}
+        <div className="flex justify-center space-x-4 print:hidden">
+          <Button onClick={handlePrint} className="flex items-center space-x-2">
+            <Printer className="h-4 w-4" />
+            <span>Imprimir</span>
+          </Button>
+          <Button variant="outline" className="flex items-center space-x-2">
+            <Download className="h-4 w-4" />
+            <span>Download PDF</span>
+          </Button>
         </div>
 
-        {/* Status da proposta - visual */}
-        <div className="mb-6 p-4 rounded-lg bg-gray-50">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-gray-800">Status da Proposta</h3>
-              <p className="text-sm text-gray-600">
-                Válida até: {new Date(proposal.valid_until).toLocaleDateString('pt-BR')}
-              </p>
-            </div>
-            <div className="flex items-center">
-              {isExpired ? (
-                <div className="flex items-center text-red-600">
-                  <XCircle className="h-5 w-5 mr-2" />
-                  <span className="font-semibold">EXPIRADA</span>
-                </div>
-              ) : (
-                <div className="flex items-center text-green-600">
-                  <CheckCircle className="h-5 w-5 mr-2" />
-                  <span className="font-semibold">VÁLIDA</span>
+        {/* Client Information */}
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Informações do Cliente</h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-500">Nome</label>
+                <p className="text-lg">{proposal.client_data?.name || proposal.title || 'Nome não informado'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Telefone</label>
+                <p className="text-lg">{proposal.client_data?.phone || 'Não informado'}</p>
+              </div>
+              {proposal.client_data?.email && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Email</label>
+                  <p className="text-lg">{proposal.client_data.email}</p>
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* Informações da proposta */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-blue-600 mb-3">INFORMAÇÕES DA PROPOSTA</h3>
-            <div className="space-y-2 text-sm">
-              <p><strong>Data:</strong> {new Date(proposal.created_at).toLocaleDateString('pt-BR')}</p>
-              <p><strong>Validade:</strong> {Math.ceil((new Date(proposal.valid_until).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias</p>
-              <p><strong>Condições:</strong> Conforme especificado nos itens</p>
-            </div>
-          </div>
-          
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-blue-600 mb-3">RESUMO FINANCEIRO</h3>
-            <div className="space-y-2 text-sm">
-              <p><strong>Valor Total:</strong> R$ {proposal.total_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-              {proposal.discount_value > 0 && (
-                <p><strong>Desconto:</strong> R$ {proposal.discount_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-              )}
-              <p className="text-lg font-bold text-blue-600">
-                <strong>VALOR FINAL:</strong> R$ {proposal.final_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Itens da proposta */}
-        <div className="mb-8">
-          <h3 className="text-xl font-semibold text-blue-600 mb-4">ITENS DA PROPOSTA</h3>
-          <div className="overflow-hidden rounded-lg border border-gray-200">
-            <table className="w-full">
-              <thead className="bg-blue-600 text-white">
-                <tr>
-                  <th className="px-4 py-3 text-left">Item</th>
-                  <th className="px-4 py-3 text-left">Descrição</th>
-                  <th className="px-4 py-3 text-center">Qtd</th>
-                  <th className="px-4 py-3 text-right">Valor Unit.</th>
-                  <th className="px-4 py-3 text-right">Valor Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {proposal.items.map((item, index) => (
-                  <tr key={item.id} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                    <td className="px-4 py-3 font-medium">{index + 1}</td>
-                    <td className="px-4 py-3">
-                      <div>
-                        <p className="font-medium">{item.custom_name}</p>
-                        {item.description && (
-                          <p className="text-sm text-gray-600">{item.description}</p>
-                        )}
+        {/* KPIs Section - Específico por produto */}
+        {proposal.calculation_data && proposal.product_category && (
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-xl font-semibold mb-4" style={{ color: template.primaryColor }}>
+                Destaques do Projeto
+              </h2>
+              <div className="grid md:grid-cols-3 gap-4">
+                {proposal.product_category === 'telha_shingle' && (
+                  <>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg" style={{ borderLeft: `4px solid ${template.primaryColor}` }}>
+                      <div className="text-2xl font-bold" style={{ color: template.primaryColor }}>
+                        {proposal.calculation_data.totalRealArea || 0}m²
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">{item.quantity}</td>
-                    <td className="px-4 py-3 text-right">
-                      R$ {item.unit_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium">
-                      R$ {item.total_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Totais */}
-        <div className="mb-8">
-          <div className="flex justify-end">
-            <div className="w-80">
-              <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>R$ {proposal.total_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                </div>
-                {proposal.discount_value > 0 && (
-                  <div className="flex justify-between text-red-600">
-                    <span>Desconto:</span>
-                    <span>- R$ {proposal.discount_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                  </div>
+                      <div className="text-sm text-gray-600">Área Total Coberta</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg" style={{ borderLeft: `4px solid ${template.primaryColor}` }}>
+                      <div className="text-2xl font-bold" style={{ color: template.primaryColor }}>
+                        {proposal.calculation_data.shingleBundles || 0}
+                      </div>
+                      <div className="text-sm text-gray-600">Fardos de Telha</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg" style={{ borderLeft: `4px solid ${template.accentColor}` }}>
+                      <div className="text-2xl font-bold" style={{ color: template.primaryColor }}>
+                        30+ anos
+                      </div>
+                      <div className="text-sm text-gray-600">Vida Útil</div>
+                    </div>
+                  </>
                 )}
-                <div className="border-t border-gray-300 pt-2">
-                  <div className="flex justify-between text-xl font-bold text-blue-600">
-                    <span>TOTAL GERAL:</span>
-                    <span>R$ {proposal.final_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                {proposal.product_category === 'energia_solar' && (
+                  <>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg" style={{ borderLeft: `4px solid ${template.primaryColor}` }}>
+                      <div className="text-2xl font-bold" style={{ color: template.primaryColor }}>
+                        {proposal.calculation_data.systemPower || 0}kWp
+                      </div>
+                      <div className="text-sm text-gray-600">Potência Instalada</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg" style={{ borderLeft: `4px solid ${template.primaryColor}` }}>
+                      <div className="text-2xl font-bold" style={{ color: template.primaryColor }}>
+                        R$ {proposal.calculation_data.monthlySavings?.toFixed(2) || '0,00'}
+                      </div>
+                      <div className="text-sm text-gray-600">Economia Mensal</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 rounded-lg" style={{ borderLeft: `4px solid ${template.accentColor}` }}>
+                      <div className="text-2xl font-bold" style={{ color: template.primaryColor }}>
+                        {proposal.calculation_data.paybackYears || 0} anos
+                      </div>
+                      <div className="text-sm text-gray-600">Payback</div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Items Table */}
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Itens da Proposta</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b" style={{ backgroundColor: template.primaryColor }}>
+                    <th className="text-left p-3 text-white font-medium">Item</th>
+                    <th className="text-left p-3 text-white font-medium">Quantidade</th>
+                    <th className="text-left p-3 text-white font-medium">Valor Unit.</th>
+                    <th className="text-left p-3 text-white font-medium">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {proposal.items.map((item, idx) => (
+                    <tr key={idx} className="border-b hover:bg-gray-50">
+                      <td className="p-3">
+                        <div>
+                          <div className="font-medium">{item.custom_name}</div>
+                          {item.description && (
+                            <div className="text-sm text-gray-600">{item.description}</div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3">{item.quantity}</td>
+                      <td className="p-3">R$ {item.unit_price.toFixed(2)}</td>
+                      <td className="p-3 font-medium">R$ {item.total_price.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Benefits Section */}
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="text-xl font-semibold mb-4" style={{ color: template.primaryColor }}>
+              Benefícios
+            </h2>
+            <div className="grid md:grid-cols-2 gap-3">
+              {template.benefits.map((benefit, index) => (
+                <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <div 
+                    className="w-2 h-2 rounded-full flex-shrink-0" 
+                    style={{ backgroundColor: template.primaryColor }}
+                  ></div>
+                  <span className="text-sm">{benefit}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Warranties Section */}
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="text-xl font-semibold mb-4" style={{ color: template.primaryColor }}>
+              Garantias
+            </h2>
+            <div className="space-y-4">
+              {template.warranties.map((warranty, index) => (
+                <div key={index} className="p-4 bg-gray-50 rounded-lg" style={{ borderLeft: `4px solid ${template.primaryColor}` }}>
+                  <div className="font-semibold" style={{ color: template.primaryColor }}>
+                    {warranty.component}
+                  </div>
+                  <div className="font-medium text-gray-900 mt-1">
+                    {warranty.duration}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {warranty.details}
                   </div>
                 </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Financial Summary */}
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Resumo Financeiro</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span>Subtotal:</span>
+                <span className="font-medium">R$ {proposal.total_value.toFixed(2)}</span>
+              </div>
+              {proposal.discount_value > 0 && (
+                <div className="flex justify-between items-center text-red-600">
+                  <span>Desconto ({proposal.discount_percentage}%):</span>
+                  <span className="font-medium">- R$ {proposal.discount_value.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                <span className="text-lg font-semibold">Total:</span>
+                <span className="text-lg font-bold" style={{ color: template.primaryColor }}>
+                  R$ {proposal.final_value.toFixed(2)}
+                </span>
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* Termos e condições */}
-        <div className="mb-8 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-semibold text-blue-600 mb-3">TERMOS E CONDIÇÕES</h4>
-          <ul className="text-sm space-y-1 text-gray-700">
-            <li>• Esta proposta tem validade até {new Date(proposal.valid_until).toLocaleDateString('pt-BR')};</li>
-            <li>• Os preços estão sujeitos a alterações sem aviso prévio após o vencimento;</li>
-            <li>• O início dos trabalhos está condicionado à aprovação desta proposta;</li>
-            <li>• Garantia conforme especificações de cada fabricante;</li>
-            <li>• Valores não incluem custos de instalação, a menos que especificado;</li>
-            <li>• Frete será calculado de acordo com a localização da obra.</li>
-          </ul>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center pt-6 border-t border-gray-200">
-          <p className="text-gray-600 mb-2">Obrigado pela oportunidade!</p>
-          <p className="text-sm text-gray-500">
-            Proposta gerada em {new Date(proposal.created_at).toLocaleDateString('pt-BR')}
-          </p>
-          <div className="mt-4 text-sm text-gray-500">
-            <p>DRY STORE - Soluções em Construção Seca</p>
-            <p>www.drystore.com.br</p>
-          </div>
-        </div>
+        {/* Terms and Conditions */}
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Termos e Condições</h2>
+            <div className="prose prose-sm max-w-none">
+              <p className="mb-3">
+                <strong>Validade da Proposta:</strong> {new Date(proposal.valid_until).toLocaleDateString('pt-BR')}
+              </p>
+              <p className="mb-3">
+                <strong>Condições de Pagamento:</strong> Conforme acordo estabelecido.
+              </p>
+              <p className="mb-3">
+                <strong>Prazo de Entrega:</strong> Conforme cronograma apresentado.
+              </p>
+              <p>
+                <strong>Observações:</strong> Esta proposta está sujeita à aprovação técnica e disponibilidade de materiais.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* CSS adicional para impressão */}
-      <style dangerouslySetInnerHTML={{
-        __html: `
+      {/* Print Styles */}
+      <style>
+        {`
           @media print {
-            @page {
-              size: A4;
-              margin: 15mm;
-            }
-            
-            .proposal-content {
-              max-width: none !important;
-              padding: 0 !important;
-            }
-            
-            body {
-              font-size: 12px !important;
-              line-height: 1.4 !important;
-            }
-            
-            h1, h2, h3 {
-              page-break-after: avoid;
-            }
-            
-            table {
-              page-break-inside: avoid;
-            }
-            
-            .page-break {
-              page-break-before: always;
-            }
-            
-            .no-print {
-              display: none !important;
-            }
+            body { background: white !important; }
+            .print\\:hidden { display: none !important; }
+            .page-break-inside-avoid { page-break-inside: avoid; }
           }
-        `
-      }} />
+        `}
+      </style>
     </div>
   );
 }

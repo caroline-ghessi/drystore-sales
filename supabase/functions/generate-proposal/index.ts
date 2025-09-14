@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface ProposalGenerationRequest {
-  calculationId?: string; // Opcional agora
+  calculationId?: string;
   clientData: {
     name: string;
     phone: string;
@@ -44,16 +44,6 @@ interface ProposalGenerationRequest {
   };
 }
 
-// Import do sistema de templates
-interface ProductTemplateConfig {
-  productType: string;
-  displayName: string;
-  heroTitle: string;
-  heroSubtitle: string;
-  primaryColor: string;
-  accentColor: string;
-}
-
 interface ProductKPI {
   label: string;
   value: string | number;
@@ -61,205 +51,347 @@ interface ProductKPI {
   highlight?: boolean;
 }
 
+interface ProductTemplate {
+  displayName: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  primaryColor: string;
+  accentColor: string;
+  benefits: string[];
+  warranties: Array<{
+    component: string;
+    duration: string;
+    details: string;
+  }>;
+}
+
 // Função para mapear ProductType do frontend para product_category do banco
 function mapProductTypeToDbCategory(productType: string): string {
   const mapping: Record<string, string> = {
     'acoustic_mineral_ceiling': 'forro_mineral_acustico',
+    'waterproofing_mapei': 'impermeabilizacao_mapei',
+    'floor_preparation_mapei': 'preparacao_piso_mapei',
+    'shingle': 'telha_shingle',
     'solar': 'energia_solar',
     'solar_advanced': 'energia_solar',
-    'shingle': 'telha_shingle', 
-    'drywall': 'drywall_divisorias',
+    'drywall': 'drywall',
     'steel_frame': 'steel_frame',
-    'ceiling': 'forros',
+    'ceiling': 'forro_drywall',
     'forro_drywall': 'forro_drywall',
-    'battery_backup': 'battery_backup'
+    'battery_backup': 'energia_solar'
   };
+  
+  console.log('Mapping product type:', { original: productType, mapped: mapping[productType] || productType });
   
   return mapping[productType] || productType;
 }
 
+function getProductTemplate(productType: string): ProductTemplate {
+  const templates: Record<string, ProductTemplate> = {
+    'shingle': {
+      displayName: 'Telha Shingle',
+      heroTitle: 'Sistema de Cobertura Telha Shingle',
+      heroSubtitle: 'Solução completa para sua cobertura com tecnologia americana',
+      primaryColor: '#8B4513',
+      accentColor: '#D2691E',
+      benefits: [
+        'Resistência superior a ventos e intempéries',
+        'Isolamento térmico e acústico excelente',
+        'Baixa manutenção e alta durabilidade',
+        'Design moderno e variadas opções de cores',
+        'Sistema de ventilação natural integrado',
+        'Instalação rápida e eficiente'
+      ],
+      warranties: [
+        {
+          component: 'Telhas Shingle',
+          duration: '30 anos',
+          details: 'Garantia contra defeitos de fabricação e resistência ao vento até 180 km/h'
+        },
+        {
+          component: 'Manta Subcobertura',
+          duration: '15 anos',
+          details: 'Proteção contra infiltrações e umidade'
+        },
+        {
+          component: 'Instalação',
+          duration: '5 anos',
+          details: 'Garantia de mão de obra especializada'
+        }
+      ]
+    },
+    'solar': {
+      displayName: 'Energia Solar',
+      heroTitle: 'Sistema de Energia Solar Fotovoltaica',
+      heroSubtitle: 'Economia garantida e sustentabilidade para sua casa ou empresa',
+      primaryColor: '#FF8C00',
+      accentColor: '#FFD700',
+      benefits: [
+        'Redução de até 95% na conta de energia',
+        'Valorização do imóvel',
+        'Contribuição para sustentabilidade',
+        'Tecnologia de ponta',
+        'Monitoramento em tempo real'
+      ],
+      warranties: [
+        {
+          component: 'Painéis Solares',
+          duration: '25 anos',
+          details: 'Garantia de performance linear de 25 anos'
+        },
+        {
+          component: 'Inversor',
+          duration: '12 anos',
+          details: 'Garantia total do fabricante'
+        },
+        {
+          component: 'Instalação',
+          duration: '5 anos',
+          details: 'Garantia completa de instalação e funcionamento'
+        }
+      ]
+    },
+    'forro_drywall': {
+      displayName: 'Forro de Drywall',
+      heroTitle: 'Sistema de Forro em Drywall',
+      heroSubtitle: 'Acabamento perfeito com isolamento térmico e acústico',
+      primaryColor: '#708090',
+      accentColor: '#B0C4DE',
+      benefits: [
+        'Instalação limpa e rápida',
+        'Excelente isolamento acústico',
+        'Facilita passagem de fiação',
+        'Acabamento profissional',
+        'Material sustentável e reciclável'
+      ],
+      warranties: [
+        {
+          component: 'Placas de Drywall',
+          duration: '10 anos',
+          details: 'Garantia contra defeitos de fabricação'
+        },
+        {
+          component: 'Sistema de Fixação',
+          duration: '5 anos',
+          details: 'Perfis e parafusos certificados'
+        },
+        {
+          component: 'Instalação',
+          duration: '3 anos',
+          details: 'Garantia de execução e acabamento'
+        }
+      ]
+    }
+  };
+
+  return templates[productType] || {
+    displayName: 'Sistema Personalizado',
+    heroTitle: 'Proposta Técnica Especializada',
+    heroSubtitle: 'Solução profissional para sua necessidade',
+    primaryColor: '#2563EB',
+    accentColor: '#60A5FA',
+    benefits: [
+      'Qualidade garantida',
+      'Atendimento especializado',
+      'Suporte pós-venda'
+    ],
+    warranties: [
+      {
+        component: 'Materiais',
+        duration: '2 anos',
+        details: 'Garantia contra defeitos de fabricação'
+      },
+      {
+        component: 'Instalação',
+        duration: '1 ano',
+        details: 'Garantia de execução'
+      }
+    ]
+  };
+}
+
+function generateProductKPIs(productType: string, calculationData: any): ProductKPI[] {
+  switch (productType) {
+    case 'shingle':
+      return [
+        { label: 'Área Total Coberta', value: calculationData?.totalRealArea || 0, unit: 'm²', highlight: true },
+        { label: 'Fardos de Telha', value: calculationData?.shingleBundles || 0, unit: 'unidades' },
+        { label: 'Placas OSB', value: calculationData?.osbSheets || 0, unit: 'placas' },
+        { label: 'Resistência ao Vento', value: '180', unit: 'km/h', highlight: true },
+        { label: 'Vida Útil', value: '30+', unit: 'anos', highlight: true }
+      ];
+    
+    case 'solar':
+      return [
+        { label: 'Potência Instalada', value: calculationData?.systemPower || 0, unit: 'kWp', highlight: true },
+        { label: 'Geração Mensal', value: calculationData?.monthlyGeneration || 0, unit: 'kWh' },
+        { label: 'Economia Mensal', value: calculationData?.monthlySavings || 0, unit: 'R$', highlight: true },
+        { label: 'Payback', value: calculationData?.paybackYears || 0, unit: 'anos' },
+        { label: 'ROI 25 anos', value: calculationData?.roi25Years || 0, unit: '%', highlight: true }
+      ];
+    
+    case 'forro_drywall':
+      return [
+        { label: 'Área do Forro', value: calculationData?.totalArea || 0, unit: 'm²', highlight: true },
+        { label: 'Placas de Drywall', value: calculationData?.drywallSheets || 0, unit: 'placas' },
+        { label: 'Perfis Metálicos', value: calculationData?.metalProfiles || 0, unit: 'm' },
+        { label: 'Redução Ruído', value: '45', unit: 'dB', highlight: true }
+      ];
+    
+    default:
+      return [];
+  }
+}
+
 const handler = async (req: Request): Promise<Response> => {
+  console.log('=== GENERATE PROPOSAL FUNCTION STARTED ===');
+  console.log('Request method:', req.method);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const body = await req.json();
+    console.log('Raw request received:', JSON.stringify(body, null, 2));
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    if (req.method !== 'POST') {
-      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-        status: 405,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    let calculationData = null;
 
-    const requestData: ProposalGenerationRequest = await req.json();
-    console.log('=== GENERATE PROPOSAL FUNCTION STARTED ===');
-    console.log('Request method:', req.method);
-    console.log('Raw request received:', JSON.stringify(requestData, null, 2));
-    console.log('Generating proposal for calculation:', requestData.calculationId || 'direct calculation');
-
-    let calculation: any = null;
-    
-    // Se há calculationId, buscar o cálculo salvo
-    if (requestData.calculationId) {
-      const { data: savedCalc, error: calcError } = await supabase
+    // Try to fetch existing calculation if calculationId is provided
+    if (body.calculationId) {
+      console.log('Fetching calculation for ID:', body.calculationId);
+      const { data, error } = await supabase
         .from('saved_calculations')
         .select('*')
-        .eq('id', requestData.calculationId)
+        .eq('id', body.calculationId)
         .single();
 
-      if (calcError) {
-        console.error('Failed to fetch calculation:', calcError);
-        // Continuar sem cálculo salvo se houver dados diretos
+      if (error) {
+        console.error('Error fetching calculation:', error);
       } else {
-        calculation = savedCalc;
+        calculationData = data?.calculation_data;
+        console.log('Calculation fetched successfully');
       }
     }
 
-    // Se não há cálculo salvo, usar dados diretos do request
-    if (!calculation && requestData.calculationInput) {
-      calculation = {
-        product_type: requestData.productType || 'solar',
-        calculation_input: requestData.calculationInput,
-        calculation_result: requestData.calculationInput, // Usar input como fallback
-        user_id: null // Será definido pelo contexto de auth se necessário
-      };
+    // Use direct calculationInput if no saved calculation found
+    if (!calculationData && body.calculationInput) {
+      calculationData = body.calculationInput;
+      console.log('Using direct calculation input');
     }
 
-    if (!calculation) {
-      throw new Error('No calculation data provided');
-    }
+    console.log('Generating proposal for calculation:', body.calculationId || 'direct calculation');
 
-    // Generate proposal number and unique link
-    const proposalNumber = `PROP-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-    const uniqueId = crypto.randomUUID();
-    const acceptanceLink = `https://a8d68d6e-4efd-4093-966f-bddf0a89dc45.lovableproject.com/proposta/${uniqueId}`;
+    // Generate unique proposal number and acceptance link
+    const proposalNumber = `PROP-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const acceptanceLink = `https://groqsnnytvjabgeaekkw.supabase.co/proposal/${proposalNumber}`;
 
-    // Mapear o tipo de produto para o enum do banco
-    const mappedProductType = mapProductTypeToDbCategory(calculation.product_type || requestData.productType || 'solar');
-    
-    console.log('Mapping product type:', {
-      original: calculation.product_type || requestData.productType,
-      mapped: mappedProductType
-    });
+    // Map product type to database category
+    const productCategory = mapProductTypeToDbCategory(body.productType || 'generic');
 
-    // Create proposal record
-    const { data: proposal, error: proposalError } = await supabase
+    console.log('Pricing data received:', JSON.stringify(body.pricing, null, 2));
+
+    // Insert proposal record
+    const proposalData = {
+      proposal_number: proposalNumber,
+      title: `${body.clientData.name} - ${body.productType || 'Proposta'}`,
+      description: `Proposta para ${body.clientData.name}`,
+      product_category: productCategory,
+      client_data: body.clientData,
+      calculation_data: calculationData,
+      template_preferences: body.templatePreferences,
+      total_value: body.pricing?.total || 0,
+      discount_value: body.pricing?.discount || 0,
+      discount_percentage: body.pricing?.discountPercentage || 0,
+      final_value: (body.pricing?.total || 0) - (body.pricing?.discount || 0),
+      valid_until: new Date(Date.now() + (body.pricing?.validityDays || 30) * 24 * 60 * 60 * 1000).toISOString(),
+      payment_terms: body.pricing?.paymentTerms || 'A combinar',
+      delivery_time: body.pricing?.deliveryTime || 'A combinar',
+      acceptance_link: acceptanceLink,
+      status: 'draft'
+    };
+
+    const { data: proposalResult, error: proposalError } = await supabase
       .from('proposals')
-      .insert({
-        proposal_number: proposalNumber,
-        title: `Proposta - ${requestData.clientData.name}`,
-        description: `Proposta para ${mappedProductType} - ${requestData.clientData.name}`,
-        project_type: mappedProductType,
-        status: 'sent',
-        total_value: requestData.pricing?.total || 0,
-        discount_value: requestData.pricing?.discount || 0,
-        discount_percentage: requestData.pricing?.discountPercentage || 0,
-        final_value: (requestData.pricing?.total || 0) - (requestData.pricing?.discount || 0),
-        valid_until: new Date(Date.now() + ((requestData.pricing?.validityDays || 30) * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
-        acceptance_link: acceptanceLink,
-        created_by: calculation.user_id
-      })
+      .insert(proposalData)
       .select()
       .single();
 
     if (proposalError) {
-      throw new Error(`Failed to create proposal: ${proposalError.message}`);
+      console.error('Error inserting proposal:', proposalError);
+      throw new Error('Failed to create proposal');
     }
 
     console.log('=== PROPOSAL GENERATION DEBUG ===');
-    console.log('Client Data:', JSON.stringify(requestData.clientData, null, 2));
-    console.log('Product Type:', requestData.productType);
-    console.log('Calculation Input:', JSON.stringify(requestData.calculationInput, null, 2));
-    console.log('Pricing data received:', JSON.stringify(requestData.pricing, null, 2));
-    console.log('Pricing items array:', requestData.pricing?.items);
-    console.log('Pricing items length:', requestData.pricing?.items?.length || 0);
-    
-    // Validar se temos dados de pricing válidos
-    if (!requestData.pricing) {
-      throw new Error('Pricing data is missing from request');
-    }
+    console.log('Client Data:', JSON.stringify(body.clientData, null, 2));
+    console.log('Product Type:', body.productType);
+    console.log('Calculation Input:', JSON.stringify(body.calculationInput, null, 2));
 
-    // Create proposal items com logs detalhados
+    // Insert proposal items
     console.log('=== INSERTING PROPOSAL ITEMS ===');
-    console.log('Pricing items available:', !!requestData.pricing?.items);
-    console.log('Items array length:', requestData.pricing?.items?.length || 0);
-    
-    if (requestData.pricing?.items && Array.isArray(requestData.pricing.items)) {
-      console.log('Items to insert:', JSON.stringify(requestData.pricing.items, null, 2));
-      
-      const proposalItems = requestData.pricing.items.map((item, index) => {
+    console.log('Pricing items array:', body.pricing?.items);
+    console.log('Pricing items length:', body.pricing?.items?.length);
+    console.log('Pricing items available:', !!body.pricing?.items);
+    console.log('Items array length:', body.pricing?.items?.length || 0);
+
+    const items = body.pricing?.items || [];
+    console.log('Items to insert:', JSON.stringify(items, null, 2));
+
+    if (items && items.length > 0) {
+      const itemsToInsert = items.map((item: any, index: number) => {
         const mappedItem = {
-          proposal_id: proposal.id,
-          custom_name: item.name || 'Item sem nome',
-          description: item.name || 'Item - Categoria',
-          quantity: Number(item.quantity) || 0,
-          unit_price: Number(item.unitPrice) || 0,
-          total_price: Number(item.totalPrice) || 0,
+          proposal_id: proposalResult.id,
+          custom_name: item.name,
+          description: item.name,
+          quantity: item.quantity,
+          unit_price: item.unitPrice || 0,
+          total_price: item.totalPrice || 0,
           specifications: {
             unit: item.unit,
-            category: item.product,
+            category: body.productType,
             originalId: item.id,
             specifications: item.specifications || {}
           },
           sort_order: index
         };
         
-        console.log(`Mapped item ${index + 1}:`, JSON.stringify(mappedItem, null, 2));
+        console.log(`Mapped item ${item.id}:`, JSON.stringify(mappedItem, null, 2));
         return mappedItem;
       });
 
       const { error: itemsError } = await supabase
         .from('proposal_items')
-        .insert(proposalItems);
+        .insert(itemsToInsert);
 
       if (itemsError) {
         console.error('Error inserting proposal items:', itemsError);
-        throw new Error(`Failed to create proposal items: ${itemsError.message}`);
+        throw new Error('Failed to insert proposal items');
       }
-      
-      console.log(`Successfully inserted ${proposalItems.length} proposal items`);
-    } else {
-      console.warn('No valid pricing items found to insert');
-      console.log('Available pricing data:', Object.keys(requestData.pricing || {}));
+
+      console.log(`Successfully inserted ${itemsToInsert.length} proposal items`);
     }
 
-    // Generate HTML content for the proposal
+    // Generate HTML content with product-specific template
     const htmlContent = generateProposalHTML({
-      proposal,
-      items: requestData.pricing?.items || [],
-      clientData: requestData.clientData,
-      templatePreferences: requestData.templatePreferences,
-      pricing: requestData.pricing || { 
-        items: [], 
-        subtotal: 0, 
-        total: 0, 
-        validityDays: 30, 
-        paymentTerms: 'À vista', 
-        deliveryTime: '30 dias' 
-      },
-      calculationData: calculation
+      proposal: proposalResult,
+      items: items,
+      clientData: body.clientData,
+      templatePreferences: body.templatePreferences,
+      pricing: body.pricing,
+      calculationData: calculationData
     });
 
-    // Return the HTML content, proposal data, and unique link
     const response = {
       success: true,
-      proposal: {
-        id: proposal.id,
-        number: proposalNumber,
-        title: proposal.title,
-        total: requestData.pricing?.total || 0,
-        validUntil: proposal.valid_until,
-        status: proposal.status,
-        acceptanceLink: acceptanceLink,
-        uniqueId: uniqueId
-      },
-      htmlContent,
+      proposalId: proposalResult.id,
+      proposalNumber: proposalNumber,
       acceptanceLink,
+      htmlContent,
       message: 'Proposta gerada com sucesso! Link único criado para compartilhar com o cliente.'
     };
 
@@ -282,7 +414,6 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-// Helper function to generate HTML content for the proposal
 function generateProposalHTML(data: {
   proposal: any;
   items: any[];
@@ -290,201 +421,332 @@ function generateProposalHTML(data: {
   templatePreferences: any;
   pricing: any;
   calculationData: any;
-}) {
-  const { proposal, items, clientData, templatePreferences, pricing } = data;
-
-  const logoSection = templatePreferences.logoUrl 
-    ? `<img src="${templatePreferences.logoUrl}" alt="Logo" style="max-height: 80px;">`
-    : '<div style="font-size: 24px; font-weight: bold; color: #2563eb;">SUA EMPRESA</div>';
-
-  const primaryColor = templatePreferences.primaryColor || '#2563eb';
+}): string {
+  // Obter template específico do produto
+  const productType = data.pricing?.items?.[0]?.product || data.proposal.product_category || 'generic';
+  const template = getProductTemplate(productType);
+  const kpis = generateProductKPIs(productType, data.calculationData);
 
   return `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Proposta ${proposal.proposal_number}</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            line-height: 1.6; 
-            color: #333; 
-            max-width: 800px; 
-            margin: 0 auto; 
-            padding: 20px;
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Proposta - ${data.proposal.proposal_number}</title>
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
         }
+        
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          background: #f8f9fa;
+        }
+        
+        .proposal-container {
+          max-width: 900px;
+          margin: 0 auto;
+          background: white;
+          box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+          background: linear-gradient(135deg, ${template.primaryColor}, ${template.accentColor});
+          color: white;
+          padding: 40px 30px;
+          text-align: center;
+        }
+        
+        .header h1 {
+          font-size: 2.5rem;
+          margin-bottom: 10px;
+          font-weight: 700;
+        }
+        
+        .header p {
+          font-size: 1.2rem;
+          opacity: 0.9;
+        }
+        
+        .section {
+          padding: 30px;
+          border-bottom: 1px solid #eee;
+        }
+        
+        .section h2 {
+          color: ${template.primaryColor};
+          margin-bottom: 20px;
+          font-size: 1.8rem;
+          border-bottom: 3px solid ${template.accentColor};
+          padding-bottom: 10px;
+        }
+        
+        .kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 20px;
+          margin: 20px 0;
+        }
+        
+        .kpi-card {
+          background: #f8f9fa;
+          padding: 20px;
+          border-radius: 8px;
+          text-align: center;
+          border-left: 4px solid ${template.primaryColor};
+        }
+        
+        .kpi-card.highlight {
+          background: linear-gradient(135deg, ${template.primaryColor}15, ${template.accentColor}15);
+          border-left-color: ${template.accentColor};
+        }
+        
+        .kpi-value {
+          font-size: 2rem;
+          font-weight: bold;
+          color: ${template.primaryColor};
+        }
+        
+        .kpi-label {
+          font-size: 0.9rem;
+          color: #666;
+          margin-top: 5px;
+        }
+        
+        .items-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 20px 0;
+        }
+        
+        .items-table th,
+        .items-table td {
+          padding: 12px;
+          text-align: left;
+          border-bottom: 1px solid #ddd;
+        }
+        
+        .items-table th {
+          background: ${template.primaryColor};
+          color: white;
+          font-weight: 600;
+        }
+        
+        .items-table tr:hover {
+          background: #f5f5f5;
+        }
+        
+        .financial-summary {
+          background: #f8f9fa;
+          padding: 20px;
+          border-radius: 8px;
+          margin: 20px 0;
+        }
+        
+        .total-row {
+          font-size: 1.2rem;
+          font-weight: bold;
+          color: ${template.primaryColor};
+          border-top: 2px solid ${template.primaryColor};
+          padding-top: 10px;
+        }
+        
+        .benefits-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 15px;
+          margin: 20px 0;
+        }
+        
+        .benefit-item {
+          display: flex;
+          align-items: center;
+          padding: 10px;
+          background: #f8f9fa;
+          border-radius: 5px;
+        }
+        
+        .benefit-item::before {
+          content: '✓';
+          color: ${template.primaryColor};
+          font-weight: bold;
+          margin-right: 10px;
+        }
+        
+        .warranty-grid {
+          display: grid;
+          gap: 20px;
+          margin: 20px 0;
+        }
+        
+        .warranty-item {
+          background: #f8f9fa;
+          padding: 20px;
+          border-radius: 8px;
+          border-left: 4px solid ${template.primaryColor};
+        }
+        
+        .warranty-component {
+          font-weight: bold;
+          color: ${template.primaryColor};
+          margin-bottom: 5px;
+        }
+        
+        .warranty-duration {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #333;
+          margin-bottom: 5px;
+        }
+        
+        .footer {
+          background: #333;
+          color: white;
+          padding: 30px;
+          text-align: center;
+        }
+        
         @media print {
-            body {
-                padding: 0;
-                margin: 0;
-                max-width: none;
-                width: 210mm;
-                min-height: 297mm;
-            }
-            .no-print { display: none !important; }
-            .page-break { page-break-before: always; }
+          body { background: white !important; }
+          .proposal-container { box-shadow: none !important; }
+          .section { page-break-inside: avoid; }
+          .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .benefits-grid { grid-template-columns: 1fr !important; }
         }
-        @page {
-            size: A4;
-            margin: 20mm;
-        }
-        .header { 
-            text-align: center; 
-            margin-bottom: 30px; 
-            padding: 20px; 
-            border-bottom: 3px solid ${primaryColor};
-        }
-        .client-info, .proposal-info { 
-            background: #f8f9fa; 
-            padding: 15px; 
-            margin: 20px 0; 
-            border-radius: 8px;
-        }
-        .items-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin: 20px 0;
-        }
-        .items-table th, .items-table td { 
-            border: 1px solid #ddd; 
-            padding: 12px; 
-            text-align: left;
-        }
-        .items-table th { 
-            background-color: ${primaryColor}; 
-            color: white;
-        }
-        .items-table tr:nth-child(even) { 
-            background-color: #f2f2f2;
-        }
-        .totals { 
-            text-align: right; 
-            margin: 20px 0;
-        }
-        .total-line { 
-            display: flex; 
-            justify-content: flex-end; 
-            margin: 5px 0;
-        }
-        .total-label { 
-            width: 150px; 
-            font-weight: bold;
-        }
-        .total-value { 
-            width: 120px; 
-            text-align: right;
-        }
-        .final-total { 
-            font-size: 1.2em; 
-            color: ${primaryColor}; 
-            border-top: 2px solid ${primaryColor}; 
-            padding-top: 10px;
-        }
-        .terms { 
-            margin-top: 30px; 
-            padding: 15px; 
-            background: #f8f9fa; 
-            border-radius: 8px;
-        }
-        .footer { 
-            text-align: center; 
-            margin-top: 30px; 
-            padding-top: 20px; 
-            border-top: 1px solid #ddd;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        ${logoSection}
-        <h1 style="color: ${primaryColor}; margin: 10px 0;">PROPOSTA COMERCIAL</h1>
-        <p style="margin: 0; color: #666;">Proposta Nº ${proposal.proposal_number}</p>
-    </div>
-
-    <div class="client-info">
-        <h3 style="color: ${primaryColor};">DADOS DO CLIENTE</h3>
-        <p><strong>Nome:</strong> ${clientData.name}</p>
-        <p><strong>WhatsApp:</strong> ${clientData.phone}</p>
-        ${clientData.email ? `<p><strong>E-mail:</strong> ${clientData.email}</p>` : ''}
-    </div>
-
-    <div class="proposal-info">
-        <h3 style="color: ${primaryColor};">INFORMAÇÕES DA PROPOSTA</h3>
-        <p><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
-        <p><strong>Validade:</strong> ${pricing.validityDays} dias</p>
-        <p><strong>Condições de Pagamento:</strong> ${pricing.paymentTerms}</p>
-        <p><strong>Prazo de Entrega:</strong> ${pricing.deliveryTime}</p>
-    </div>
-
-    <h3 style="color: ${primaryColor};">ITENS DA PROPOSTA</h3>
-    <table class="items-table">
-        <thead>
-            <tr>
+      </style>
+    </head>
+    <body>
+      <div class="proposal-container">
+        <div class="header">
+          <h1>${template.heroTitle}</h1>
+          <p>${template.heroSubtitle}</p>
+          <div style="margin-top: 20px; font-size: 1rem;">
+            <strong>Proposta Nº:</strong> ${data.proposal.proposal_number}<br>
+            <strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}
+          </div>
+        </div>
+        
+        <div class="section">
+          <h2>Informações do Cliente</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+            <div><strong>Nome:</strong> ${data.clientData.name}</div>
+            <div><strong>Telefone:</strong> ${data.clientData.phone}</div>
+            ${data.clientData.email ? `<div><strong>Email:</strong> ${data.clientData.email}</div>` : ''}
+          </div>
+        </div>
+        
+        ${kpis.length > 0 ? `
+        <div class="section">
+          <h2>Destaques do Projeto</h2>
+          <div class="kpi-grid">
+            ${kpis.map(kpi => `
+              <div class="kpi-card ${kpi.highlight ? 'highlight' : ''}">
+                <div class="kpi-value">${kpi.value}${kpi.unit ? kpi.unit : ''}</div>
+                <div class="kpi-label">${kpi.label}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ` : ''}
+        
+        <div class="section">
+          <h2>Itens da Proposta</h2>
+          <table class="items-table">
+            <thead>
+              <tr>
                 <th>Item</th>
                 <th>Descrição</th>
                 <th>Qtd</th>
-                <th>Unidade</th>
                 <th>Valor Unit.</th>
-                <th>Valor Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${items.map((item, index) => `
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.items.map(item => `
                 <tr>
-                    <td>${index + 1}</td>
-                    <td>${item.name}<br><small style="color: #666;">${item.category}</small></td>
-                    <td>${item.quantity}</td>
-                    <td>${item.unit}</td>
-                     <td>R$ ${(item.unitPrice ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                     <td>R$ ${(item.totalPrice ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td>${item.name}</td>
+                  <td>${item.description || item.name}</td>
+                  <td>${item.quantity}</td>
+                  <td>R$ ${item.unitPrice?.toFixed(2) || '0,00'}</td>
+                  <td>R$ ${item.totalPrice?.toFixed(2) || '0,00'}</td>
                 </tr>
-            `).join('')}
-        </tbody>
-    </table>
-
-    <div class="totals">
-        <div class="total-line">
-            <span class="total-label">Subtotal:</span>
-            <span class="total-value">R$ ${(pricing.subtotal ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              `).join('')}
+            </tbody>
+          </table>
         </div>
-        ${pricing.discount ? `
-        <div class="total-line">
-            <span class="total-label">Desconto:</span>
-            <span class="total-value">- R$ ${(pricing.discount ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+        
+        <div class="section">
+          <h2>Resumo Financeiro</h2>
+          <div class="financial-summary">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span>Subtotal:</span>
+              <span>R$ ${data.proposal.total_value?.toFixed(2) || '0,00'}</span>
+            </div>
+            ${data.proposal.discount_value > 0 ? `
+              <div style="display: flex; justify-content: space-between; margin-bottom: 10px; color: #dc3545;">
+                <span>Desconto (${data.proposal.discount_percentage}%):</span>
+                <span>- R$ ${data.proposal.discount_value?.toFixed(2) || '0,00'}</span>
+              </div>
+            ` : ''}
+            <div class="total-row" style="display: flex; justify-content: space-between;">
+              <span>Total:</span>
+              <span>R$ ${data.proposal.final_value?.toFixed(2) || data.proposal.total_value?.toFixed(2) || '0,00'}</span>
+            </div>
+            <div style="margin-top: 15px; font-size: 0.9rem; color: #666;">
+              <strong>Validade:</strong> ${new Date(data.proposal.valid_until).toLocaleDateString('pt-BR')}
+            </div>
+          </div>
+        </div>
+        
+        ${template.benefits.length > 0 ? `
+        <div class="section">
+          <h2>Benefícios</h2>
+          <div class="benefits-grid">
+            ${template.benefits.map(benefit => `
+              <div class="benefit-item">${benefit}</div>
+            `).join('')}
+          </div>
         </div>
         ` : ''}
-        <div class="total-line final-total">
-            <span class="total-label">TOTAL GERAL:</span>
-            <span class="total-value">R$ ${(pricing.total ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+        
+        <div class="section">
+          <h2>Garantias</h2>
+          <div class="warranty-grid">
+            ${template.warranties.map(warranty => `
+              <div class="warranty-item">
+                <div class="warranty-component">${warranty.component}</div>
+                <div class="warranty-duration">${warranty.duration}</div>
+                <div>${warranty.details}</div>
+              </div>
+            `).join('')}
+          </div>
         </div>
-    </div>
-
-    ${templatePreferences.includeWarranty ? `
-    <div class="terms">
-        <h4 style="color: ${primaryColor};">GARANTIA</h4>
-        <p>Oferecemos garantia de 12 meses para todos os produtos e serviços, conforme especificações técnicas de cada fabricante.</p>
-    </div>
-    ` : ''}
-
-    <div class="terms">
-        <h4 style="color: ${primaryColor};">TERMOS E CONDIÇÕES</h4>
-        <ul>
-            <li>Esta proposta tem validade de ${pricing.validityDays} dias a partir da data de emissão;</li>
-            <li>Os preços estão sujeitos a alterações sem aviso prévio após o vencimento;</li>
-            <li>O início dos trabalhos está condicionado à aprovação desta proposta;</li>
-            <li>Condições de pagamento: ${pricing.paymentTerms};</li>
-            <li>Prazo de entrega: ${pricing.deliveryTime}.</li>
-        </ul>
-    </div>
-
-    <div class="footer">
-        <p style="margin: 0; color: #666;">Obrigado pela oportunidade!</p>
-        <p style="margin: 0; color: #666; font-size: 14px;">Proposta gerada automaticamente em ${new Date().toLocaleDateString('pt-BR')}</p>
-    </div>
-</body>
-</html>
+        
+        <div class="section">
+          <h2>Termos e Condições</h2>
+          <div style="font-size: 0.9rem; line-height: 1.6;">
+            <p><strong>Condições de Pagamento:</strong> ${data.proposal.payment_terms}</p>
+            <p><strong>Prazo de Execução:</strong> ${data.proposal.delivery_time}</p>
+            <p><strong>Validade da Proposta:</strong> ${new Date(data.proposal.valid_until).toLocaleDateString('pt-BR')}</p>
+            <p><strong>Observações:</strong> Esta proposta está sujeita à aprovação técnica e disponibilidade de materiais.</p>
+          </div>
+        </div>
+        
+        <div class="footer">
+          <p>Proposta gerada em ${new Date().toLocaleDateString('pt-BR')}</p>
+          <p>Proposta Nº: ${data.proposal.proposal_number}</p>
+          <p style="margin-top: 10px; font-size: 0.9rem;">
+            Esta é uma proposta automatizada. Para dúvidas, entre em contato conosco.
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
   `;
 }
 

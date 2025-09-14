@@ -10,6 +10,11 @@ export { AdminLayout, MetasPage, ApprovacoesPage } from './pages/admin';
 export { useAIGeneration } from './hooks/useAIGeneration';
 export { useProposalCalculator } from './hooks/useProposalCalculator';
 export { useSavedCalculations } from './hooks/useSavedCalculations';
+export { useProductTemplate, useAllProductTemplates, useTemplatePreview } from './hooks/useProductTemplates';
+
+// Services
+export { ProductTemplateService } from './services/product-templates.service';
+export { TemplateRendererService } from './services/template-renderer.service';
 
 // Types
 export * from './types';

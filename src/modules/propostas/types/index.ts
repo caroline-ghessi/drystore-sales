@@ -35,12 +35,11 @@ export type {
   CalculationResult
 } from './calculation.types';
 
-// Generation types - now properly exported
 export type {
-  AIGenerationRequest,
-  AIGenerationResult,
-  ContextAnalysis,
-  PDFGenerationOptions,
-  PDFGenerationResult,
-  ExportOptions
-} from './generation.types';
+  ProductSpecificTemplate,
+  ProductTemplateConfig,
+  ProductKPI,
+  ProductWarranty,
+  ProductTechnicalSpec,
+  TemplateRenderData
+} from './product-templates.types';
