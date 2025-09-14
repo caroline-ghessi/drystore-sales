@@ -242,11 +242,11 @@ function selectInverterFromProducts(powerKW: number, inverters: UnifiedProduct[]
   
   inverters.forEach(inverter => {
     const specs = ProductCalculationService.getProductSpecs(inverter);
-    const power = (specs.power_continuous || specs.power_peak || specs.power_rating || 0) / 1000;
+    const power = (specs.power_continuous || specs.power_peak || specs.power || specs.power_rating || 0) / 1000;
     console.log(`🔋 Inversor: ${inverter.name}`, {
       power_continuous: specs.power_continuous,
       power_peak: specs.power_peak,
-      power_rating: specs.power_rating,
+      power_rating: specs.power || specs.power_rating,
       final_power: power,
       specifications: specs
     });
@@ -256,7 +256,7 @@ function selectInverterFromProducts(powerKW: number, inverters: UnifiedProduct[]
   const suitableInverter = inverters.find(inverter => {
     const specs = ProductCalculationService.getProductSpecs(inverter);
     // Usar power_continuous primeiro, depois power_peak como fallback
-    const inverterPower = (specs.power_continuous || specs.power_peak || specs.power_rating || 0) / 1000;
+    const inverterPower = (specs.power_continuous || specs.power_peak || specs.power || specs.power_rating || 0) / 1000;
     
     const isAdequate = inverterPower >= powerKW && inverterPower <= powerKW * 2;
     console.log(`🔋 ${inverter.name} - Potência: ${inverterPower} kW, adequada: ${isAdequate}`);
@@ -270,7 +270,7 @@ function selectInverterFromProducts(powerKW: number, inverters: UnifiedProduct[]
   // Se não encontrar adequado, usar primeiro disponível que tenha potência válida
   const fallbackInverter = inverters.find(inverter => {
     const specs = ProductCalculationService.getProductSpecs(inverter);
-    const power = specs.power_continuous || specs.power_peak || specs.power_rating || 0;
+    const power = specs.power_continuous || specs.power_peak || specs.power || specs.power_rating || 0;
     const hasValidPower = power > 0;
     console.log(`🔋 Fallback check ${inverter.name}:`, { power, hasValidPower });
     return hasValidPower;

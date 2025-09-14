@@ -4,8 +4,9 @@ export interface ProductCalculationSpecs {
   // Rendimentos e características técnicas
   coverage_area?: number;  // m² por unidade/pacote/rolo
   yield_per_unit?: number; // Rendimento específico
-  efficiency?: number;     // Eficiência (0-1)
-  power_rating?: number;   // Potência (kW, W)
+  efficiency?: number;     // Eficiência (0-1)  
+  power?: number;          // Potência (W) - campo padrão
+  power_rating?: number;   // Potência (kW, W) - compatibilidade
   power_continuous?: number; // Potência contínua (W)
   power_peak?: number;     // Potência de pico (W)
   capacity?: number;       // Capacidade (kWh, Ah)
@@ -90,6 +91,14 @@ export class ProductCalculationService {
           cycles: specs.cycles,
           specs_after: specs 
         });
+      }
+      
+      // Mapear power_rating para power para compatibilidade (caso tenha ambos, power tem prioridade)
+      if (specs.power_rating && !specs.power) {
+        specs.power = specs.power_rating;
+      }
+      if (specs.power && !specs.power_rating) {
+        specs.power_rating = specs.power;
       }
       
       return specs;

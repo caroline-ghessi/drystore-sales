@@ -95,24 +95,24 @@ export const PRODUCT_SPECIFICATION_SCHEMAS: ProductSpecificationSchema[] = [
     description: 'Propriedades técnicas para sistemas de backup e baterias',
     fields: [
       {
-        key: 'capacity_ah',
-        label: 'Capacidade',
-        type: 'number',
-        unit: 'Ah',
-        description: 'Capacidade nominal da bateria em Ampere-hora',
-        required: true,
-        min: 50,
-        max: 1000
-      },
-      {
         key: 'capacity_kwh',
         label: 'Capacidade Energética',
         type: 'number',
         unit: 'kWh',
-        description: 'Capacidade energética da bateria',
+        description: 'Capacidade energética da bateria (campo principal)',
         required: true,
         min: 1,
         max: 100
+      },
+      {
+        key: 'capacity_ah',
+        label: 'Capacidade (Ah)',
+        type: 'number',
+        unit: 'Ah',
+        description: 'Capacidade nominal em Ampere-hora (opcional - calculado automaticamente se não fornecido)',
+        required: false,
+        min: 50,
+        max: 1000
       },
       {
         key: 'voltage',
@@ -324,16 +324,6 @@ export const PRODUCT_SPECIFICATION_SCHEMAS: ProductSpecificationSchema[] = [
         defaultValue: 2
       },
       {
-        key: 'coverage_per_kg',
-        label: 'Rendimento por kg',
-        type: 'number',
-        unit: 'm²/kg',
-        description: 'Área coberta por quilograma do produto',
-        required: true,
-        min: 1,
-        max: 50
-      },
-      {
         key: 'drying_time',
         label: 'Tempo de Secagem',
         type: 'text',
@@ -436,84 +426,24 @@ export const PRODUCT_SPECIFICATION_SCHEMAS: ProductSpecificationSchema[] = [
     ]
   },
 
-  // Energia Solar
-  {
-    category: 'energia_solar',
-    title: 'Especificações de Energia Solar',
-    description: 'Propriedades técnicas para equipamentos de energia solar',
-    fields: [
-      {
-        key: 'power_rating',
-        label: 'Potência Nominal',
-        type: 'number',
-        unit: 'W',
-        description: 'Potência nominal do equipamento',
-        required: true,
-        min: 100,
-        max: 1000000
-      },
-      {
-        key: 'efficiency',
-        label: 'Eficiência',
-        type: 'number',
-        unit: '%',
-        description: 'Eficiência do equipamento',
-        min: 10,
-        max: 30
-      },
-      {
-        key: 'voltage',
-        label: 'Tensão',
-        type: 'number',
-        unit: 'V',
-        description: 'Tensão nominal de operação',
-        min: 12,
-        max: 1500
-      },
-      {
-        key: 'current',
-        label: 'Corrente',
-        type: 'number',
-        unit: 'A',
-        description: 'Corrente nominal de operação',
-        min: 1,
-        max: 100
-      },
-      {
-        key: 'dimensions',
-        label: 'Dimensões',
-        type: 'text',
-        description: 'Dimensões físicas do equipamento (LxAxP)',
-        defaultValue: '0x0x0 mm'
-      },
-      {
-        key: 'weight',
-        label: 'Peso',
-        type: 'number',
-        unit: 'kg',
-        description: 'Peso do equipamento',
-        min: 0.1,
-        max: 1000
-      },
-      {
-        key: 'warranty_years',
-        label: 'Garantia',
-        type: 'number',
-        unit: 'anos',
-        description: 'Período de garantia',
-        min: 1,
-        max: 30,
-        defaultValue: 10
-      }
-    ]
-  },
 
-  // Drywall
+  // Drywall (Divisórias e Forros)
   {
     category: 'drywall_divisorias',
     title: 'Especificações de Drywall',
-    description: 'Propriedades técnicas para materiais de drywall',
+    description: 'Propriedades técnicas para materiais de drywall (divisórias e forros)',
     fields: [
+      {
+        key: 'application_type',
+        label: 'Tipo de Aplicação',
+        type: 'select',
+        description: 'Tipo de aplicação do drywall',
+        options: [
+          { value: 'divisoria', label: 'Divisória' },
+          { value: 'forro', label: 'Forro' }
+        ],
+        defaultValue: 'divisoria'
+      },
       {
         key: 'coverage_area',
         label: 'Área de Cobertura',
@@ -576,55 +506,19 @@ export const PRODUCT_SPECIFICATION_SCHEMAS: ProductSpecificationSchema[] = [
         type: 'boolean',
         description: 'Produto resistente à umidade',
         defaultValue: false
-      }
-    ]
-  },
-
-  // Forro Drywall
-  {
-    category: 'forro_drywall',
-    title: 'Especificações de Forro Drywall',
-    description: 'Propriedades técnicas para materiais de forro drywall',
-    fields: [
-      {
-        key: 'coverage_area',
-        label: 'Área de Cobertura',
-        type: 'number',
-        unit: 'm²',
-        description: 'Área coberta por unidade',
-        required: true,
-        min: 0.1,
-        max: 50
-      },
-      {
-        key: 'length',
-        label: 'Comprimento',
-        type: 'number',
-        unit: 'mm',
-        description: 'Comprimento da peça',
-        min: 100,
-        max: 10000
-      },
-      {
-        key: 'width',
-        label: 'Largura',
-        type: 'number',
-        unit: 'mm',
-        description: 'Largura da peça',
-        min: 50,
-        max: 5000
       },
       {
         key: 'acoustic_performance',
         label: 'Performance Acústica',
         type: 'number',
         unit: 'dB',
-        description: 'Redução de ruído proporcionada',
+        description: 'Redução de ruído proporcionada (para forros)',
         min: 0,
         max: 60
       }
     ]
   },
+
 
   // Outras categorias (valores básicos)
   {
@@ -717,4 +611,16 @@ export function validateProductSpecifications(
     isValid: errors.length === 0,
     errors
   };
+}
+
+// Helper function to calculate coverage from consumption (for backward compatibility)
+export function calculateCoverageFromConsumption(consumptionPerM2: number): number {
+  if (!consumptionPerM2 || consumptionPerM2 <= 0) return 0;
+  return 1 / consumptionPerM2; // m²/kg = 1 / (kg/m²)
+}
+
+// Helper function to calculate Ah from kWh and voltage (for battery backup)
+export function calculateAhFromKwh(capacityKwh: number, voltage: number): number {
+  if (!capacityKwh || !voltage || voltage <= 0) return 0;
+  return (capacityKwh * 1000) / voltage; // Ah = (kWh × 1000) ÷ V
 }

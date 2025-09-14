@@ -128,7 +128,7 @@ export function calculateSimpleSolarSystem(input: SimpleSolarCalculationInput, p
       total_price: itemizedCosts.inverters,
       category: 'Inversores',
       specifications: {
-        power_rating: `${Math.ceil(systemPower / inverterQuantity)} kW`,
+        power: `${Math.ceil(systemPower / inverterQuantity)} kW`,
         type: 'String Grid-Tie',
         phases: '3',
         efficiency: '97%+',

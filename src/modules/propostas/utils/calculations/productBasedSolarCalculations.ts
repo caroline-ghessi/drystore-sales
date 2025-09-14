@@ -59,13 +59,13 @@ export function calculateSolarWithProducts(
   if (selectedPanel) {
     const specs = ProductCalculationService.getProductSpecs(selectedPanel);
     panelSpecs = {
-      power_rating: specs.power_rating || FALLBACK_SPECS.panel.power_rating,
+      power_rating: specs.power || specs.power_rating || FALLBACK_SPECS.panel.power_rating,
       efficiency: specs.efficiency || FALLBACK_SPECS.panel.efficiency,
       dimensions: specs.dimensions?.width && specs.dimensions?.height ? 
         { width: specs.dimensions.width, height: specs.dimensions.height } : 
         FALLBACK_SPECS.panel.dimensions,
       voltage: specs.voltage || FALLBACK_SPECS.panel.voltage,
-      current: specs.voltage ? (specs.power_rating || FALLBACK_SPECS.panel.power_rating) / specs.voltage : FALLBACK_SPECS.panel.current
+      current: specs.voltage ? (specs.power || specs.power_rating || FALLBACK_SPECS.panel.power_rating) / specs.voltage : FALLBACK_SPECS.panel.current
     };
     // SEMPRE usar o preço do produto cadastrado (pode ser zero)
     panelPrice = selectedPanel.base_price || 0;
@@ -216,7 +216,7 @@ function selectInverterFromProducts(systemPower: number, inverters: UnifiedProdu
   // Buscar inversor adequado para a potência
   const suitableInverter = inverters.find(inverter => {
     const specs = ProductCalculationService.getProductSpecs(inverter);
-    const inverterPower = specs.power_rating ? specs.power_rating / 1000 : 0;
+    const inverterPower = (specs.power || specs.power_rating) ? (specs.power || specs.power_rating)! / 1000 : 0;
     
     // Inversor deve suportar pelo menos a potência do sistema
     return inverterPower >= systemPower && inverterPower <= systemPower * 1.3;
