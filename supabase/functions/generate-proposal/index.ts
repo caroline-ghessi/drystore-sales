@@ -435,6 +435,12 @@ function generateProposalHTML(data: {
 }): string {
   // Obter template específico do produto
   const productType = data.pricing?.items?.[0]?.product || data.proposal.product_category || 'generic';
+  
+  // Para telhas shingle, usar template premium personalizado
+  if (productType === 'shingle') {
+    return generatePremiumShingleHTML(data);
+  }
+  
   const template = getProductTemplate(productType);
   const kpis = generateProductKPIs(productType, data.calculationData);
 
@@ -758,6 +764,675 @@ function generateProposalHTML(data: {
       </div>
     </body>
     </html>
+  `;
+}
+
+// Template Premium HTML para Telhas Shingle
+function generatePremiumShingleHTML(data: {
+  proposal: any;
+  items: any[];
+  clientData: any;
+  templatePreferences: any;
+  pricing: any;
+  calculationData: any;
+}): string {
+  const calc = data.calculationData || data.pricing;
+  const totalArea = calc?.totalRealArea || calc?.totalProjectedArea || 0;
+  const shingleBundles = calc?.shingleBundles || 0;
+  const osbSheets = calc?.osbSheets || 0;
+  const rhinoroofRolls = calc?.rhinoroofRolls || 0;
+  const ridgeCapBundles = calc?.ridgeCapBundles || 0;
+  
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposta Comercial - Telhas Shingle Premium | Drystore</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+        }
+
+        .container {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: white;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #FF6B00 0%, #ff8533 100%);
+            color: white;
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            right: -20px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(45deg);
+        }
+
+        .logo-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: -1px;
+        }
+
+        .proposta-numero {
+            text-align: right;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+
+        .header-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .badge-premium {
+            position: absolute;
+            top: 20px;
+            right: 200px;
+            background: #D4AF37;
+            color: #1a1a1a;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .cliente-info {
+            padding: 25px 30px;
+            background: #fafafa;
+            border-left: 4px solid #FF6B00;
+        }
+
+        .cliente-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: #707070;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .solucao-section {
+            padding: 30px;
+            flex: 1;
+        }
+
+        .section-title {
+            font-size: 18px;
+            color: #FF6B00;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #FF6B00;
+            font-weight: 600;
+        }
+
+        .sistema-camadas {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .camadas-titulo {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #1a1a1a;
+        }
+
+        .camadas-legenda {
+            margin-top: 30px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .legenda-item {
+            display: flex;
+            align-items: start;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .legenda-item:last-child {
+            border-bottom: none;
+        }
+
+        .legenda-numero {
+            width: 30px;
+            height: 30px;
+            background: #FF6B00;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .legenda-texto {
+            flex: 1;
+        }
+
+        .legenda-nome {
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 3px;
+        }
+
+        .legenda-funcao {
+            font-size: 11px;
+            color: #707070;
+        }
+
+        .produto-destaque {
+            background: linear-gradient(to right, #f9f9f9, #fff);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #D4AF37;
+        }
+
+        .produto-nome {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1a1a1a;
+            margin-bottom: 10px;
+        }
+
+        .produto-origem {
+            font-size: 12px;
+            color: #707070;
+            margin-bottom: 15px;
+        }
+
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .spec-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+
+        .spec-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .spec-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #FF6B00;
+        }
+
+        .spec-label {
+            font-size: 10px;
+            color: #707070;
+            margin-top: 3px;
+        }
+
+        .componentes-list {
+            margin: 20px 0;
+        }
+
+        .componente-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            background: white;
+            margin-bottom: 8px;
+            border-left: 3px solid #FF6B00;
+            border-radius: 4px;
+        }
+
+        .componente-nome {
+            font-size: 13px;
+            flex: 1;
+        }
+
+        .componente-qtd {
+            font-size: 13px;
+            color: #707070;
+            margin: 0 20px;
+        }
+
+        .componente-valor {
+            font-size: 13px;
+            font-weight: bold;
+            min-width: 100px;
+            text-align: right;
+        }
+
+        .diferenciais-box {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .diferencial-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .diferencial-item {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .check-icon {
+            color: #4CAF50;
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        .investimento-section {
+            padding: 30px;
+            background: #1a1a1a;
+            color: white;
+        }
+
+        .valores-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .valor-total {
+            font-size: 32px;
+            font-weight: bold;
+            color: #FF6B00;
+            margin: 10px 0;
+        }
+
+        .forma-pagamento {
+            font-size: 13px;
+            margin-top: 10px;
+            line-height: 1.6;
+        }
+
+        .valor-m2 {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 107, 0, 0.1);
+            border-radius: 8px;
+            border: 1px solid #FF6B00;
+        }
+
+        .nota-instalacao {
+            background: #fff3e0;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #FF6B00;
+            font-size: 12px;
+        }
+
+        .garantias-section {
+            padding: 25px 30px;
+            background: #fafafa;
+        }
+
+        .garantia-principal {
+            text-align: center;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #D4AF37;
+        }
+
+        .garantia-anos {
+            font-size: 36px;
+            font-weight: bold;
+            color: #D4AF37;
+        }
+
+        .garantia-texto {
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .footer-section {
+            padding: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .assinatura-box {
+            flex: 1;
+            margin-right: 30px;
+        }
+
+        .assinatura-linha {
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 5px;
+            min-width: 200px;
+        }
+
+        .assinatura-label {
+            font-size: 11px;
+            color: #707070;
+        }
+
+        .aceite-digital {
+            text-align: center;
+            padding: 15px;
+            background: #FF6B00;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .aceite-digital:hover {
+            background: #e55a00;
+        }
+
+        .validade {
+            text-align: center;
+            font-size: 11px;
+            color: #707070;
+            margin-top: 20px;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .container {
+                width: 100%;
+                margin: 0;
+                box-shadow: none;
+            }
+            .aceite-digital {
+                display: none;
+            }
+            .header {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+
+        @media screen and (max-width: 800px) {
+            .container {
+                width: 100%;
+                min-height: auto;
+            }
+            .specs-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .valores-grid {
+                grid-template-columns: 1fr;
+            }
+            .diferencial-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="badge-premium">Premium Quality</div>
+            <div class="logo-section">
+                <div class="logo">DRYSTORE</div>
+                <div class="proposta-numero">
+                    <div>PROPOSTA Nº ${data.proposal.proposal_number}</div>
+                    <div>Data: ${new Date().toLocaleDateString('pt-BR')}</div>
+                </div>
+            </div>
+            <h1 class="header-title">Telhas Shingle Premium Owens Corning</h1>
+            <p class="header-subtitle">A telha que valoriza seu imóvel - Importada dos EUA com garantia real de 50 anos</p>
+        </div>
+
+        <div class="cliente-info">
+            <div class="cliente-grid">
+                <div>
+                    <div class="info-label">Cliente</div>
+                    <div class="info-value">${data.clientData.name}</div>
+                </div>
+                <div>
+                    <div class="info-label">Telefone</div>
+                    <div class="info-value">${data.clientData.phone}</div>
+                </div>
+                <div>
+                    <div class="info-label">Email</div>
+                    <div class="info-value">${data.clientData.email || 'Não informado'}</div>
+                </div>
+                <div>
+                    <div class="info-label">Área do Telhado</div>
+                    <div class="info-value">${totalArea.toFixed(1)} m²</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="solucao-section">
+            <h2 class="section-title">SISTEMA COMPLETO DE COBERTURA</h2>
+            
+            <div class="sistema-camadas">
+                <h3 class="camadas-titulo">🏗️ ANATOMIA DO SISTEMA SHINGLE PREMIUM</h3>
+                
+                <div class="camadas-legenda">
+                    <div class="legenda-item">
+                        <div class="legenda-numero">1</div>
+                        <div class="legenda-texto">
+                            <div class="legenda-nome">Telha Shingle Owens Corning Duration®</div>
+                            <div class="legenda-funcao">PROTEÇÃO PRINCIPAL: Resistência a ventos de 130mph, granizo e raios UV. Tecnologia SureNail® exclusiva com faixa de fixação reforçada. Vida útil de 50 anos.</div>
+                        </div>
+                    </div>
+                    <div class="legenda-item">
+                        <div class="legenda-numero">2</div>
+                        <div class="legenda-texto">
+                            <div class="legenda-nome">Cumeeira ProEdge® Hip & Ridge</div>
+                            <div class="legenda-funcao">VENTILAÇÃO E ACABAMENTO: Permite saída do ar quente, evitando condensação. Protege pontos críticos contra infiltração.</div>
+                        </div>
+                    </div>
+                    <div class="legenda-item">
+                        <div class="legenda-numero">3</div>
+                        <div class="legenda-texto">
+                            <div class="legenda-nome">Manta Asfáltica WeatherLock®</div>
+                            <div class="legenda-funcao">IMPERMEABILIZAÇÃO: Barreira 100% impermeável. Auto-adesiva e auto-selante ao redor dos pregos. Proteção extra em vales e beirais.</div>
+                        </div>
+                    </div>
+                    <div class="legenda-item">
+                        <div class="legenda-numero">4</div>
+                        <div class="legenda-texto">
+                            <div class="legenda-nome">Deck OSB Estrutural 18mm</div>
+                            <div class="legenda-funcao">BASE SÓLIDA: Superfície uniforme para fixação. Distribuição de cargas. Isolamento térmico adicional.</div>
+                        </div>
+                    </div>
+                    <div class="legenda-item">
+                        <div class="legenda-numero">5</div>
+                        <div class="legenda-texto">
+                            <div class="legenda-nome">Estrutura de Suporte</div>
+                            <div class="legenda-funcao">SUSTENTAÇÃO: Caibros e ripas dimensionados para suportar o sistema. Inclinação mínima de 15° para perfeito escoamento.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="produto-destaque">
+                <div class="produto-nome">OWENS CORNING TruDefinition® Duration®</div>
+                <div class="produto-origem">Fabricada nos EUA • Tecnologia SureNail® Exclusiva</div>
+                
+                <div class="specs-grid">
+                    <div class="spec-card">
+                        <div class="spec-icon">🛡️</div>
+                        <div class="spec-value">130</div>
+                        <div class="spec-label">MPH RESISTÊNCIA</div>
+                    </div>
+                    <div class="spec-card">
+                        <div class="spec-icon">⏱️</div>
+                        <div class="spec-value">50</div>
+                        <div class="spec-label">ANOS GARANTIA</div>
+                    </div>
+                    <div class="spec-card">
+                        <div class="spec-icon">🎨</div>
+                        <div class="spec-value">15</div>
+                        <div class="spec-label">CORES DISPONÍVEIS</div>
+                    </div>
+                    <div class="spec-card">
+                        <div class="spec-icon">🏠</div>
+                        <div class="spec-value">A+</div>
+                        <div class="spec-label">VALORIZAÇÃO</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="componentes-list">
+                ${data.items.map(item => `
+                    <div class="componente-item">
+                        <span class="componente-nome">${item.custom_name || item.name}</span>
+                        <span class="componente-qtd">${item.quantity} ${item.specifications?.unit || 'un'}</span>
+                        <span class="componente-valor">R$ ${(item.total_price || 0).toFixed(2)}</span>
+                    </div>
+                `).join('')}
+            </div>
+
+            <div class="nota-instalacao">
+                <strong>📦 FORNECIMENTO DE MATERIAIS PREMIUM</strong><br>
+                A Drystore fornece todos os componentes do sistema Owens Corning, importados diretamente dos EUA. 
+                Recomendamos instaladores certificados para garantir a correta aplicação e validação da garantia de 50 anos. 
+                Podemos indicar profissionais especializados em sua região.
+            </div>
+
+            <div class="diferenciais-box">
+                <h3 style="font-size: 14px; margin-bottom: 15px; color: #FF6B00;">Por que Owens Corning é superior?</h3>
+                <div class="diferencial-grid">
+                    <div class="diferencial-item">
+                        <span class="check-icon">✓</span>
+                        <span>Tecnologia SureNail® - Resistência extra na fixação</span>
+                    </div>
+                    <div class="diferencial-item">
+                        <span class="check-icon">✓</span>
+                        <span>130 mph vs 110 mph da IKO - 18% mais resistente</span>
+                    </div>
+                    <div class="diferencial-item">
+                        <span class="check-icon">✓</span>
+                        <span>Garantia real de 50 anos com documento oficial</span>
+                    </div>
+                    <div class="diferencial-item">
+                        <span class="check-icon">✓</span>
+                        <span>Valorização de até R$ 100.000 no imóvel</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="investimento-section">
+            <h2 class="section-title" style="color: white; border-color: white;">INVESTIMENTO</h2>
+            <div class="valores-grid">
+                <div>
+                    <div class="info-label" style="color: #ccc;">Investimento Total em Materiais</div>
+                    <div class="valor-total">R$ ${(data.proposal.final_value || data.proposal.total_value || 0).toFixed(2)}</div>
+                    <div class="forma-pagamento">
+                        • Entrada: R$ ${((data.proposal.final_value || data.proposal.total_value || 0) * 0.2).toFixed(2)}<br>
+                        • Saldo em até 10x sem juros<br>
+                        • Desconto de 5% à vista
+                    </div>
+                </div>
+                <div class="valor-m2">
+                    <div style="font-size: 20px; font-weight: bold; color: #FF6B00;">R$ ${totalArea > 0 ? ((data.proposal.final_value || data.proposal.total_value || 0) / totalArea).toFixed(2) : '0,00'}</div>
+                    <div style="font-size: 11px; color: #ccc; margin-top: 5px;">por m² de material</div>
+                </div>
+                <div class="valor-m2" style="background: rgba(212, 175, 55, 0.1); border-color: #D4AF37;">
+                    <div style="font-size: 16px; font-weight: bold; color: #D4AF37;">IKO: R$ 75/m²</div>
+                    <div style="font-size: 11px; color: #ccc; margin-top: 5px;">47% mais valor</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="garantias-section">
+            <div class="garantia-principal">
+                <div class="garantia-anos">50 ANOS</div>
+                <div class="garantia-texto">
+                    Garantia Limitada Owens Corning<br>
+                    <span style="font-size: 12px; color: #707070;">Documento oficial emitido pelo fabricante nos EUA</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-section">
+            <div class="assinatura-box">
+                <div class="assinatura-linha"></div>
+                <div class="assinatura-label">Drystore Soluções Inteligentes</div>
+            </div>
+            <div class="assinatura-box">
+                <div class="assinatura-linha"></div>
+                <div class="assinatura-label">Cliente</div>
+            </div>
+        </div>
+
+        <div class="validade">
+            Esta proposta é válida por 15 dias | Drystore - Parceira exclusiva Owens Corning no Sul do Brasil
+        </div>
+    </div>
+</body>
+</html>
   `;
 }
 
