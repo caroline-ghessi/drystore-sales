@@ -289,7 +289,22 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Generate unique proposal number and acceptance link
     const proposalNumber = `PROP-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    const acceptanceLink = `https://groqsnnytvjabgeaekkw--client-app.web.app/proposta/${proposalNumber}`;
+    
+    // Get the app URL from environment or detect from request headers
+    const origin = req.headers.get('origin') || req.headers.get('referer');
+    let appUrl = 'https://groqsnnytvjabgeaekkw.lovableproject.com';
+    
+    // If we can detect the origin from the request, use it
+    if (origin) {
+      try {
+        const url = new URL(origin);
+        appUrl = `${url.protocol}//${url.host}`;
+      } catch (e) {
+        console.log('Could not parse origin, using default app URL');
+      }
+    }
+    
+    const acceptanceLink = `${appUrl}/proposta/${proposalNumber}`;
 
     // Map product type to database category
     const productCategory = mapProductTypeToDbCategory(body.productType || 'generic');
