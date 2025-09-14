@@ -567,28 +567,27 @@ export function useProposalCalculator(productType: ProductType) {
         
       case 'shingle':
         const shingle = calculationResult as any;
-        const inputData = calculationInput as any;
-        const shingleArea = inputData?.roofArea || (shingle.shingleQuantity * 3.33); // 3.33 m² por fardo aproximadamente
+        const shingleArea = shingle?.totalRealArea || shingle?.totalProjectedArea || 0;
         const metrics = [
           { label: 'Área Total', value: `${shingleArea.toFixed(0)} m²` },
-          { label: 'Total de Fardos', value: `${shingle.shingleQuantity} unidades` },
-          { label: 'Subcobertura', value: `${shingle.underlaymentQuantity} rolos` },
-          { label: 'Placas OSB', value: `${shingle.osbQuantity} unidades` }
+          { label: 'Total de Fardos', value: `${shingle?.shingleBundles || 0} unidades` },
+          { label: 'Subcobertura', value: `${shingle?.rhinoroofRolls || 0} rolos` },
+          { label: 'Placas OSB', value: `${shingle?.osbSheets || 0} unidades` }
         ];
         
         // Adicionar métricas condicionais
-        if (shingle.valleyRolls > 0) {
-          metrics.push({ label: 'Águas Furtadas', value: `${shingle.valleyRolls} rolos` });
+        if (shingle?.valleyTapeRolls > 0) {
+          metrics.push({ label: 'Águas Furtadas', value: `${shingle.valleyTapeRolls} rolos` });
         }
-        if (shingle.stepFlashingPieces > 0) {
-          metrics.push({ label: 'Step Flashing', value: `${shingle.stepFlashingPieces} peças` });
+        if (shingle?.stepFlashPieces > 0) {
+          metrics.push({ label: 'Step Flashing', value: `${shingle.stepFlashPieces} peças` });
         }
-        if (shingle.rufosMeters) {
-          metrics.push({ label: 'Rufos', value: `${shingle.rufosMeters.toFixed(1)} m` });
+        if (shingle?.ridgeCapBundles > 0) {
+          metrics.push({ label: 'Cumeeiras', value: `${shingle.ridgeCapBundles} fardos` });
         }
         
         return {
-          totalCost: shingle.totalCost,
+          totalCost: shingle?.totalCost || 0,
           keyMetrics: metrics,
           proposalItems: generateProposalItems()
         };
