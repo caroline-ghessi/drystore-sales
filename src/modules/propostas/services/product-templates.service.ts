@@ -88,7 +88,7 @@ const createShingleTemplate = (): ProductSpecificTemplate => ({
   ]
 });
 
-// Template para Energia Solar
+// Template Solar Inteligente - Unificado para calculadoras simples e avançadas
 const createSolarTemplate = (): ProductSpecificTemplate => ({
   config: {
     productType: 'solar',
@@ -140,39 +140,125 @@ const createSolarTemplate = (): ProductSpecificTemplate => ({
       compliance: ['Resolução Normativa ANEEL 482/2012']
     }
   },
-  generateKPIs: (calc) => [
-    { label: 'Potência Instalada', value: calc?.systemPower || 0, unit: 'kWp', highlight: true },
-    { label: 'Geração Mensal', value: calc?.monthlyGeneration || 0, unit: 'kWh' },
-    { label: 'Economia Mensal', value: calc?.monthlySavings || 0, unit: 'R$', highlight: true },
-    { label: 'Payback', value: calc?.paybackYears || 0, unit: 'anos' },
-    { label: 'ROI 25 anos', value: calc?.roi25Years || 0, unit: '%', highlight: true }
-  ],
-  generateTechnicalSpecs: (calc) => [
-    {
-      category: 'Painéis Solares',
-      specifications: [
-        { name: 'Modelo', value: calc?.panelModel || 'Amerisolar 550W' },
-        { name: 'Potência', value: '550', unit: 'W' },
-        { name: 'Quantidade', value: calc?.numberOfPanels?.toString() || '0', unit: 'unidades' }
-      ]
-    },
-    {
-      category: 'Inversor',
-      specifications: [
-        { name: 'Marca', value: 'Livoltek' },
-        { name: 'Modelo', value: calc?.inverterModel || 'Não especificado' },
-        { name: 'Potência', value: calc?.inverterPower?.toString() || '0', unit: 'W' }
-      ]
+  generateKPIs: (calc) => {
+    if (!calc) return [];
+    
+    // Detecção inteligente do tipo de dados
+    const isAdvancedCalc = calc.stringConfiguration || calc.batteryConfiguration || calc.performanceMetrics;
+    const isSimpleCalc = calc.economicMetrics || calc.monthlyBillBefore !== undefined;
+    
+    const baseKPIs = [
+      { label: 'Potência Instalada', value: calc.systemPower || 0, unit: 'kWp', highlight: true },
+      { label: 'Geração Mensal', value: calc.monthlyGeneration || 0, unit: 'kWh' },
+      { label: 'Economia Mensal', value: calc.monthlySavings || 0, unit: 'R$', highlight: true }
+    ];
+
+    if (isSimpleCalc) {
+      return [
+        ...baseKPIs,
+        { label: 'Conta Antes', value: calc.monthlyBillBefore || 0, unit: 'R$' },
+        { label: 'Conta Depois', value: calc.monthlyBillAfter || 0, unit: 'R$' },
+        { label: 'Payback', value: calc.paybackPeriod ? (calc.paybackPeriod / 12).toFixed(1) : 0, unit: 'anos', highlight: true },
+        { label: 'ROI 25 anos', value: calc.roi25Years || 0, unit: '%' }
+      ];
     }
-  ],
-  generateBenefits: (calc) => [
-    `Economia mensal de R$ ${calc?.monthlySavings?.toFixed(2) || '0,00'}`,
-    `Payback em ${calc?.paybackYears || 'N/A'} anos`,
-    'Redução de emissões de CO2',
-    'Valorização do imóvel em até 8%',
-    'Monitoramento remoto do sistema',
-    'Baixíssima manutenção'
-  ]
+
+    if (isAdvancedCalc) {
+      return [
+        ...baseKPIs,
+        { label: 'Painéis', value: calc.panelQuantity || 0, unit: 'unidades' },
+        { label: 'Strings', value: calc.stringConfiguration?.totalStrings || 0, unit: 'unidades' },
+        { label: 'Performance Ratio', value: calc.performanceMetrics?.performanceRatio || 0, unit: '%' },
+        { label: 'Payback', value: calc.paybackPeriod ? (calc.paybackPeriod / 12).toFixed(1) : 0, unit: 'anos', highlight: true },
+        { label: 'ROI 25 anos', value: calc.roi25Years || 0, unit: '%' }
+      ];
+    }
+
+    // Fallback para dados básicos
+    return [
+      ...baseKPIs,
+      { label: 'Payback', value: calc.paybackPeriod ? (calc.paybackPeriod / 12).toFixed(1) : 0, unit: 'anos', highlight: true }
+    ];
+  },
+  generateTechnicalSpecs: (calc) => {
+    if (!calc) return [];
+    
+    const isAdvancedCalc = calc.stringConfiguration || calc.batteryConfiguration || calc.performanceMetrics;
+    
+    const baseSpecs = [
+      {
+        category: 'Sistema Solar',
+        specifications: [
+          { name: 'Potência Total', value: calc.systemPower?.toFixed(2) || '0', unit: 'kWp' },
+          { name: 'Painéis', value: calc.panelQuantity?.toString() || '0', unit: 'unidades' },
+          { name: 'Inversores', value: calc.inverterQuantity?.toString() || '0', unit: 'unidades' }
+        ]
+      }
+    ];
+
+    if (isAdvancedCalc && calc.stringConfiguration) {
+      baseSpecs.push({
+        category: 'Configuração Avançada',
+        specifications: [
+          { name: 'Strings', value: calc.stringConfiguration.totalStrings.toString(), unit: 'unidades' },
+          { name: 'Painéis por String', value: calc.stringConfiguration.panelsPerString.toString(), unit: 'unidades' },
+          { name: 'Tensão da String', value: calc.stringConfiguration.stringVoltage.toString(), unit: 'V' }
+        ]
+      });
+    }
+
+    if (isAdvancedCalc && calc.batteryConfiguration) {
+      baseSpecs.push({
+        category: 'Sistema de Baterias',
+        specifications: [
+          { name: 'Capacidade', value: calc.batteryConfiguration.totalCapacityKwh.toString(), unit: 'kWh' },
+          { name: 'Autonomia', value: calc.batteryConfiguration.autonomyHours.toString(), unit: 'horas' },
+          { name: 'Quantidade', value: calc.batteryConfiguration.batteryQuantity.toString(), unit: 'unidades' }
+        ]
+      });
+    }
+
+    return baseSpecs;
+  },
+  generateBenefits: (calc) => {
+    if (!calc) return [
+      'Redução de até 95% na conta de energia',
+      'Valorização do imóvel',
+      'Contribuição para sustentabilidade',
+      'Tecnologia de ponta',
+      'Monitoramento em tempo real'
+    ];
+
+    const isAdvancedCalc = calc.stringConfiguration || calc.batteryConfiguration || calc.performanceMetrics;
+    const monthlySavings = calc.monthlySavings || 0;
+    const paybackYears = calc.paybackPeriod ? (calc.paybackPeriod / 12).toFixed(1) : 'N/A';
+
+    const baseBenefits = [
+      `Economia mensal de R$ ${monthlySavings.toFixed(2)}`,
+      `Payback em ${paybackYears} anos`,
+      'Redução significativa de emissões de CO2',
+      'Valorização do imóvel em até 8%'
+    ];
+
+    if (isAdvancedCalc) {
+      return [
+        ...baseBenefits,
+        'Sistema dimensionado com precisão avançada',
+        'Configuração otimizada de strings',
+        'Monitoramento detalhado de performance',
+        calc.batteryConfiguration ? 'Sistema híbrido com backup de energia' : 'Sistema conectado à rede elétrica',
+        'Baixíssima manutenção'
+      ];
+    }
+
+    return [
+      ...baseBenefits,
+      'Cálculo simplificado e rápido',
+      'Estimativa confiável de economia',
+      'Instalação profissional',
+      'Suporte técnico especializado'
+    ];
+  }
 });
 
 // Template para Forro Drywall
@@ -305,7 +391,7 @@ export class ProductTemplateService {
     // Registrar templates específicos
     this.templates.set('shingle', createShingleTemplate());
     this.templates.set('solar', createSolarTemplate());
-    this.templates.set('solar_advanced', createSolarTemplate());
+    this.templates.set('solar_advanced', createSolarTemplate()); // Mesmo template inteligente
     this.templates.set('forro_drywall', createDrywallTemplate());
   }
 
