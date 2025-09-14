@@ -580,12 +580,16 @@ export const PRODUCT_SPECIFICATION_SCHEMAS: ProductSpecificationSchema[] = [
 
 // Função para obter o esquema de especificações para uma categoria
 export function getSpecificationSchema(category: UnifiedProductCategory): ProductSpecificationSchema | null {
-  return PRODUCT_SPECIFICATION_SCHEMAS.find(schema => schema.category === category) || null;
+  // Mapear forro_drywall para o schema unificado de drywall_divisorias
+  const mappedCategory = category === 'forro_drywall' ? 'drywall_divisorias' : category;
+  return PRODUCT_SPECIFICATION_SCHEMAS.find(schema => schema.category === mappedCategory) || null;
 }
 
 // Função para obter todas as categorias que possuem especificações editáveis
 export function getCategoriesWithSpecifications(): UnifiedProductCategory[] {
-  return PRODUCT_SPECIFICATION_SCHEMAS.map(schema => schema.category);
+  const baseCategories = PRODUCT_SPECIFICATION_SCHEMAS.map(schema => schema.category);
+  // Adicionar forro_drywall que usa o schema de drywall_divisorias
+  return [...baseCategories, 'forro_drywall'];
 }
 
 // Função para validar especificações de um produto
