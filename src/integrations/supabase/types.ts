@@ -1846,6 +1846,8 @@ export type Database = {
         Row: {
           acceptance_link: string | null
           accepted_at: string | null
+          calculation_data: Json | null
+          client_data: Json | null
           conversation_id: string | null
           created_at: string | null
           created_by: string | null
@@ -1867,6 +1869,8 @@ export type Database = {
         Insert: {
           acceptance_link?: string | null
           accepted_at?: string | null
+          calculation_data?: Json | null
+          client_data?: Json | null
           conversation_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -1888,6 +1892,8 @@ export type Database = {
         Update: {
           acceptance_link?: string | null
           accepted_at?: string | null
+          calculation_data?: Json | null
+          client_data?: Json | null
           conversation_id?: string | null
           created_at?: string | null
           created_by?: string | null
