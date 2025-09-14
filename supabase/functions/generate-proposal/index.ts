@@ -289,7 +289,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Generate unique proposal number and acceptance link
     const proposalNumber = `PROP-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    const acceptanceLink = `https://groqsnnytvjabgeaekkw.supabase.co/proposal/${proposalNumber}`;
+    const acceptanceLink = `https://groqsnnytvjabgeaekkw--client-app.web.app/proposta/${proposalNumber}`;
 
     // Map product type to database category
     const productCategory = mapProductTypeToDbCategory(body.productType || 'generic');

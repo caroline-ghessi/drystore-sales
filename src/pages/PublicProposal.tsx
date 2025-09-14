@@ -137,7 +137,7 @@ export default function PublicProposal() {
 
   const fetchProposal = async () => {
     try {
-      // Fetch proposal by acceptance_link containing the unique ID
+      // Fetch proposal by proposal_number
       const { data: proposalData, error: proposalError } = await supabase
         .from('proposals')
         .select(`
@@ -146,7 +146,7 @@ export default function PublicProposal() {
             *
           )
         `)
-        .contains('acceptance_link', id)
+        .eq('proposal_number', id)
         .single();
 
       if (proposalError) {
@@ -168,7 +168,7 @@ export default function PublicProposal() {
           valid_until: proposalData.valid_until,
           status: proposalData.status,
           created_at: proposalData.created_at,
-          product_category: (proposalData as any).product_category || 'generic',
+          product_category: proposalData.project_type || 'generic',
           calculation_data: (proposalData as any).calculation_data || {},
           client_data: (proposalData as any).client_data || {},
           items: proposalData.proposal_items || []
