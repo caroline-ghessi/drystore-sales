@@ -81,8 +81,8 @@ export function useUnifiedProducts(category?: UnifiedProductCategory) {
         solarQuery = solarQuery.in('category', ['panel', 'inverter']);
         console.log('📦 Filtrando solar_equipment para energia_solar: [panel, inverter]');
       } else if (category === 'battery_backup') {
-        solarQuery = solarQuery.in('category', ['battery', 'inverter']);
-        console.log('📦 Filtrando solar_equipment para battery_backup: [battery, inverter]');
+        solarQuery = solarQuery.in('category', ['battery']);
+        console.log('🔋 Filtrando solar_equipment para battery_backup: [battery] apenas');
       } else if (!category) {
         console.log('📦 Buscando todos os solar_equipment (sem filtro de categoria)');
         // Include all solar equipment when no specific category
@@ -144,8 +144,7 @@ export function useUnifiedProducts(category?: UnifiedProductCategory) {
             return result;
           })();
              
-          const convertedCategory = equipment.category === 'battery' ? 'battery_backup' : 
-                                   isHybridInverter ? 'battery_backup' : 'energia_solar';
+          const convertedCategory = equipment.category === 'battery' ? 'battery_backup' : 'energia_solar';
           
           console.log(`📦 Convertendo ${equipment.brand} ${equipment.model}:`, {
             original_category: equipment.category,

@@ -171,44 +171,29 @@ export const PRODUCT_SPECIFICATION_SCHEMAS: ProductSpecificationSchema[] = [
         description: 'Peso da bateria',
         min: 5,
         max: 200
-      },
-      {
-        key: 'power_continuous',
-        label: 'Potência Contínua',
-        type: 'number',
-        unit: 'W',
-        description: 'Potência contínua do inversor (para inversores)',
-        min: 1000,
-        max: 50000
-      },
-      {
-        key: 'power_peak',
-        label: 'Potência de Pico',
-        type: 'number',
-        unit: 'W',
-        description: 'Potência de pico do inversor (para inversores)',
-        min: 2000,
-        max: 100000
-      },
-      {
-        key: 'efficiency',
-        label: 'Eficiência',
-        type: 'number',
-        unit: '%',
-        description: 'Eficiência do inversor (0-1)',
-        min: 0.8,
-        max: 1.0,
-        defaultValue: 0.95
       }
     ]
   },
 
-  // Energia Solar
+  // Energia Solar - Painéis
   {
     category: 'energia_solar',
     title: 'Especificações de Energia Solar',
     description: 'Propriedades técnicas para painéis solares e inversores',
     fields: [
+      {
+        key: 'product_type',
+        label: 'Tipo de Produto',
+        type: 'select',
+        description: 'Tipo do produto solar',
+        options: [
+          { value: 'panel', label: 'Painel Solar' },
+          { value: 'inverter', label: 'Inversor Solar' },
+          { value: 'structure', label: 'Estrutura de Fixação' },
+          { value: 'cable', label: 'Cabo Solar' }
+        ],
+        defaultValue: 'panel'
+      },
       {
         key: 'power',
         label: 'Potência',
@@ -228,6 +213,7 @@ export const PRODUCT_SPECIFICATION_SCHEMAS: ProductSpecificationSchema[] = [
         min: 0.15,
         max: 1.0
       },
+      // Campos específicos para painéis
       {
         key: 'vmp',
         label: 'Tensão no Ponto de Máxima Potência',
@@ -268,15 +254,21 @@ export const PRODUCT_SPECIFICATION_SCHEMAS: ProductSpecificationSchema[] = [
         key: 'technology',
         label: 'Tecnologia',
         type: 'select',
-        description: 'Tecnologia do painel solar',
+        description: 'Tecnologia do painel solar ou tipo do inversor',
         options: [
+          // Painéis
           { value: 'Monocristalino', label: 'Monocristalino' },
           { value: 'Policristalino', label: 'Policristalino' },
           { value: 'Filme Fino', label: 'Filme Fino' },
           { value: 'Half-Cell', label: 'Half-Cell' },
-          { value: 'Bifacial', label: 'Bifacial' }
+          { value: 'Bifacial', label: 'Bifacial' },
+          // Inversores
+          { value: 'string', label: 'String (Grid-tie)' },
+          { value: 'hybrid', label: 'Híbrido (Grid-tie + Bateria)' },
+          { value: 'off-grid', label: 'Off-grid (Isolado)' }
         ]
       },
+      // Campos específicos para inversores
       {
         key: 'mppt_voltage',
         label: 'Faixa MPPT',
@@ -293,6 +285,33 @@ export const PRODUCT_SPECIFICATION_SCHEMAS: ProductSpecificationSchema[] = [
           { value: '1', label: 'Monofásico (1 fase)' },
           { value: '3', label: 'Trifásico (3 fases)' }
         ]
+      },
+      {
+        key: 'power_continuous',
+        label: 'Potência Contínua',
+        type: 'number',
+        unit: 'W',
+        description: 'Potência contínua do inversor (para inversores híbridos)',
+        min: 1000,
+        max: 50000
+      },
+      {
+        key: 'power_peak',
+        label: 'Potência de Pico',
+        type: 'number',
+        unit: 'W',
+        description: 'Potência de pico do inversor (para inversores híbridos)',
+        min: 2000,
+        max: 100000
+      },
+      {
+        key: 'battery_voltage',
+        label: 'Tensão da Bateria',
+        type: 'number',
+        unit: 'V',
+        description: 'Tensão da bateria suportada pelo inversor híbrido',
+        min: 12,
+        max: 800
       }
     ]
   },

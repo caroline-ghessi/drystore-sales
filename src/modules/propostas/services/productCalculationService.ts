@@ -178,27 +178,51 @@ export class ProductCalculationService {
     console.log('🔋 ProductCalculationService.getBatteryProducts chamado');
     console.log('🔋 Total de produtos recebidos:', products.length);
     
+    // Buscar baterias na categoria battery_backup
     const batteryBackupProducts = this.findProductsByCategory(products, 'battery_backup');
     console.log('🔋 Produtos com categoria battery_backup:', batteryBackupProducts.length);
-    console.log('🔋 Produtos battery_backup:', batteryBackupProducts.map(p => ({
-      id: p.id,
-      name: p.name,
-      category: p.category,
-      solar_category: p.solar_category,
-      subcategory: p.subcategory
-    })));
+    
+    // Buscar inversores híbridos na categoria energia_solar (mudança principal)
+    const solarProducts = this.findProductsByCategory(products, 'energia_solar');
+    console.log('🔋 Produtos solares encontrados:', solarProducts.length);
     
     const batteries = batteryBackupProducts.filter(p => 
       p.solar_category === 'battery' || p.subcategory === 'bateria'
     );
     console.log('🔋 Baterias filtradas:', batteries.length);
-    console.log('🔋 Baterias:', batteries.map(p => ({ name: p.name, solar_category: p.solar_category, subcategory: p.subcategory })));
     
-    const inverters = batteryBackupProducts.filter(p => 
-      p.solar_category === 'inverter' || p.subcategory === 'inversor'
-    );
-    console.log('🔋 Inversores filtrados:', inverters.length);
-    console.log('🔋 Inversores:', inverters.map(p => ({ name: p.name, solar_category: p.solar_category, subcategory: p.subcategory })));
+    // Buscar inversores híbridos nos produtos solares
+    const hybridInverters = solarProducts.filter(p => {
+      if (p.solar_category !== 'inverter' && p.subcategory !== 'inversor') return false;
+      
+      // Verificar se é inversor híbrido usando especificações raw
+      const rawSpecs = p.specifications;
+      let isHybridBySpecs = false;
+      
+      if (rawSpecs && typeof rawSpecs === 'object' && !Array.isArray(rawSpecs)) {
+        const specsObj = rawSpecs as { [key: string]: any };
+        isHybridBySpecs = specsObj.type === 'hybrid' || specsObj.tipo === 'híbrido';
+      }
+      
+      const modelLower = (p.model || p.name || '').toLowerCase();
+      const isHybridByModel = modelLower.includes('híbrido') || 
+                             modelLower.includes('hibrido') ||
+                             modelLower.includes('hybrid');
+      const brandLower = (p.brand || '').toLowerCase();
+      const isHybridByBrand = brandLower.includes('growatt') ||
+                             brandLower.includes('deye') ||
+                             brandLower.includes('livoltek');
+      
+      return isHybridBySpecs || isHybridByModel || isHybridByBrand;
+    });
+    
+    console.log('🔋 Inversores híbridos encontrados:', hybridInverters.length);
+    console.log('🔋 Inversores:', hybridInverters.map(p => ({ 
+      name: p.name, 
+      category: p.category,
+      solar_category: p.solar_category, 
+      subcategory: p.subcategory 
+    })));
     
     const protection = this.findProductsByCategory(products, 'battery_backup', 'protecao');
     console.log('🔋 Proteção encontrada:', protection.length);
@@ -208,7 +232,7 @@ export class ProductCalculationService {
     
     const result = {
       batteries,
-      inverters,
+      inverters: hybridInverters,
       protection,
       monitoring
     };
