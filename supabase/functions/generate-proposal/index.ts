@@ -1046,6 +1046,159 @@ function generatePremiumShingleHTML(data: {
             color: #707070;
         }
 
+        /* === NOVOS ESTILOS PARA SEÇÃO DE IMAGENS === */
+        
+        .sistema-principal {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .sistema-image-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .sistema-image-placeholder {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .placeholder-content {
+            text-align: center;
+            color: #666;
+        }
+
+        .placeholder-content p {
+            font-weight: bold;
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .placeholder-content small {
+            font-size: 11px;
+            color: #888;
+        }
+
+        .legenda-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #FF6B00;
+            text-transform: uppercase;
+        }
+
+        .conheca-sistema {
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #FF6B00;
+        }
+
+        .sistema-products-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #FF6B00;
+            margin: 0 0 5px 0;
+            text-transform: uppercase;
+        }
+
+        .sistema-products-subtitle {
+            font-size: 11px;
+            color: #666;
+            margin: 0 0 20px 0;
+        }
+
+        .sistema-products-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .product-card {
+            text-align: center;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            transition: transform 0.2s ease;
+        }
+
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .product-image-placeholder {
+            width: 100%;
+            height: 80px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .product-image-placeholder.osb {
+            background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+        }
+
+        .product-image-placeholder.rhinoroof {
+            background: linear-gradient(135deg, #2F4F4F 0%, #708090 100%);
+        }
+
+        .product-image-placeholder.shingle {
+            background: linear-gradient(135deg, #8B0000 0%, #DC143C 100%);
+        }
+
+        .product-image-placeholder p {
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+            margin: 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .product-info h5 {
+            font-size: 11px;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+
+        .product-info p {
+            font-size: 9px;
+            color: #666;
+            margin: 0;
+            line-height: 1.3;
+        }
+
+        /* Responsividade para impressão */
+        @media print {
+            .sistema-products-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+            
+            .product-card {
+                padding: 10px;
+            }
+            
+            .sistema-image-placeholder {
+                height: 150px;
+            }
+        }
+
         .produto-destaque {
             background: linear-gradient(to right, #f9f9f9, #fff);
             padding: 20px;
@@ -1342,9 +1495,23 @@ function generatePremiumShingleHTML(data: {
             <h2 class="section-title">SISTEMA COMPLETO DE COBERTURA</h2>
             
             <div class="sistema-camadas">
-                <h3 class="camadas-titulo">🏗️ ANATOMIA DO SISTEMA SHINGLE PREMIUM</h3>
+                <h3 class="camadas-titulo">🏗️ SISTEMA COMPLETO DE COBERTURA</h3>
                 
+                <!-- Área da Imagem Principal do Sistema -->
+                <div class="sistema-principal">
+                    <div class="sistema-image-container">
+                        <div class="sistema-image-placeholder">
+                            <div class="placeholder-content">
+                                <p>📋 IMAGEM PRINCIPAL DO SISTEMA SHINGLE</p>
+                                <small>Sistema 3D com numeração das camadas</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Legenda Detalhada -->
                 <div class="camadas-legenda">
+                    <h4 class="legenda-title">COMPOSIÇÃO DO SISTEMA POR CAMADAS</h4>
                     <div class="legenda-item">
                         <div class="legenda-numero">1</div>
                         <div class="legenda-texto">
@@ -1378,6 +1545,50 @@ function generatePremiumShingleHTML(data: {
                         <div class="legenda-texto">
                             <div class="legenda-nome">Estrutura de Suporte</div>
                             <div class="legenda-funcao">SUSTENTAÇÃO: Caibros e ripas dimensionados para suportar o sistema. Inclinação mínima de 15° para perfeito escoamento.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção Conheça o Sistema -->
+                <div class="conheca-sistema">
+                    <h4 class="sistema-products-title">CONHEÇA O SISTEMA</h4>
+                    <p class="sistema-products-subtitle">Os produtos principais que compõem esta solução premium</p>
+                    
+                    <div class="sistema-products-grid">
+                        <div class="product-card">
+                            <div class="product-image-placeholder osb">
+                                <div class="placeholder-content">
+                                    <p>🏗️ OSB APA PLUS</p>
+                                </div>
+                            </div>
+                            <div class="product-info">
+                                <h5>OSB APA PLUS</h5>
+                                <p>Base estrutural de alta resistência e durabilidade</p>
+                            </div>
+                        </div>
+                        
+                        <div class="product-card">
+                            <div class="product-image-placeholder rhinoroof">
+                                <div class="placeholder-content">
+                                    <p>🛡️ RHINOROOF</p>
+                                </div>
+                            </div>
+                            <div class="product-info">
+                                <h5>MEMB. SUBCOBERTURA</h5>
+                                <p>Manta impermeabilizante de proteção avançada</p>
+                            </div>
+                        </div>
+                        
+                        <div class="product-card">
+                            <div class="product-image-placeholder shingle">
+                                <div class="placeholder-content">
+                                    <p>🏠 TELHAS SHINGLE</p>
+                                </div>
+                            </div>
+                            <div class="product-info">
+                                <h5>TELHAS SHINGLE</h5>
+                                <p>Cobertura premium com garantia estendida</p>
+                            </div>
                         </div>
                     </div>
                 </div>
