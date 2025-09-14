@@ -6,33 +6,40 @@ import { useCalculatorValidation } from '../../hooks/useCalculatorValidation';
 import { ValidationService } from '../../services/validationService';
 import { useUnifiedProducts } from '../../hooks/useUnifiedProducts';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, Shield, Info } from 'lucide-react';
+import { AlertTriangle, Shield, Info, CheckCircle2 } from 'lucide-react';
 
-interface ShingleCalculatorWrapperProps {
-  onCalculate?: (input: ShingleCalculationInput, result?: ShingleCalculationResult) => void;
+interface DrystoreShingleCalculatorWrapperProps {
+  onCalculate?: (input: ShingleCalculationInput, result: ShingleCalculationResult) => void;
 }
 
-export function ShingleCalculatorWrapper({ onCalculate }: ShingleCalculatorWrapperProps) {
+export function DrystoreShingleCalculatorWrapper({ onCalculate }: DrystoreShingleCalculatorWrapperProps) {
   const [result, setResult] = useState<ShingleCalculationResult | null>(null);
   const { config: validationConfig, isLoading: configLoading } = useCalculatorValidation();
   const { products, isLoading: productsLoading } = useUnifiedProducts();
 
   const handleCalculate = async (input: ShingleCalculationInput) => {
     try {
-      // Validação básica de inclinação mínima
+      // Validação de inclinação mínima
       const invalidSections = input.roofSections.filter(section => section.slope < 17);
       if (invalidSections.length > 0) {
         console.error('Águas com inclinação inferior ao mínimo:', invalidSections.map(s => s.name));
         return;
       }
 
-      // Validar produtos antes do cálculo se disponíveis
+      // Validar área total
+      const totalArea = input.roofSections.reduce((sum, section) => sum + section.area, 0);
+      if (totalArea <= 0) {
+        console.error('Área total deve ser maior que zero');
+        return;
+      }
+
+      // Validar produtos se disponíveis
       if (products && !configLoading) {
         const requiredCategories = ['telha-shingle', 'osb', 'rhinoroof'];
         const validation = ValidationService.validateProducts(products, requiredCategories, validationConfig);
         
         if (validationConfig?.strictValidation && !validation.canProceed) {
-          console.error('Validação falhou:', validation.errors);
+          console.error('Validação rigorosa falhou:', validation.errors);
           return;
         }
       }
@@ -45,7 +52,7 @@ export function ShingleCalculatorWrapper({ onCalculate }: ShingleCalculatorWrapp
         onCalculate(input, calculationResult);
       }
     } catch (error) {
-      console.error('Erro no cálculo de shingle:', error);
+      console.error('Erro no cálculo de shingle Drystore:', error);
     }
   };
 
@@ -53,7 +60,7 @@ export function ShingleCalculatorWrapper({ onCalculate }: ShingleCalculatorWrapp
   const validation = products && !configLoading ? 
     ValidationService.validateProducts(
       products, 
-      ['telha-shingle', 'osb', 'rhinoroof', 'cumeeira', 'pregos'], 
+      ['telha-shingle', 'osb', 'rhinoroof'], 
       validationConfig
     ) : null;
 
@@ -100,6 +107,51 @@ export function ShingleCalculatorWrapper({ onCalculate }: ShingleCalculatorWrapp
       )}
 
       <DrystoreShingleCalculator onCalculate={handleCalculate} />
+
+      {/* Resultado do Cálculo */}
+      {result && (
+        <div className="space-y-4">
+          {/* Validações do resultado */}
+          {(!result.validations.minimumSlopeCheck.passed || 
+            !result.validations.areaConsistencyCheck.passed ||
+            !result.validations.productAvailability.passed) && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-1">
+                  <p className="font-medium">Problemas no cálculo:</p>
+                  <ul className="list-disc list-inside text-sm">
+                    {!result.validations.minimumSlopeCheck.passed && (
+                      <li>{result.validations.minimumSlopeCheck.message}</li>
+                    )}
+                    {!result.validations.areaConsistencyCheck.passed && (
+                      <li>{result.validations.areaConsistencyCheck.message}</li>
+                    )}
+                    {!result.validations.productAvailability.passed && (
+                      <li>Produtos faltantes: {result.validations.productAvailability.missing?.join(', ')}</li>
+                    )}
+                  </ul>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Resumo do cálculo */}
+          <Alert>
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>
+              <div className="space-y-1">
+                <p className="font-medium">Cálculo realizado com sucesso!</p>
+                <p className="text-sm">
+                  Área total real: {result.totalRealArea.toFixed(1)}m² | 
+                  Telhas: {result.shingleBundles} fardos | 
+                  Custo total: R$ {result.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
     </div>
   );
 }

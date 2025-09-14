@@ -264,62 +264,102 @@ export interface BatteryBackupResult {
 
 // ============= Shingle Roofing =============
 
+// Definição de uma água do telhado
+export interface RoofSection {
+  id: string;
+  name: string;
+  area: number; // m²
+  slope: number; // % (17-80%)
+  isProjectedArea: boolean; // true = área projetada, false = área real
+}
+
+// Dados de elementos lineares por metro
+export interface ShingleLinearElements {
+  ridgeLength: number; // Cumeeira (m)
+  hipLength: number; // Espigões (m) - sempre Supreme recortada
+  valleyLength: number; // Águas furtadas (m)
+  stepFlashingLength: number; // Encontros com parede (m)
+  stepFlashingHeight: number; // Altura das águas nos encontros (m)
+  dripEdgePerimeter?: number; // Perímetro para rufos (opcional em m)
+}
+
+// Complexidade do telhado para fator de perdas
+export type RoofComplexity = 'simple' | 'complex' | 'very_complex';
+
 export interface ShingleCalculationInput extends BaseCalculationInput {
-  roofArea: number; // m²
-  roofSlope: number; // degrees
+  // Múltiplas águas com área e inclinação individuais
+  roofSections: RoofSection[];
+  
+  // Tipo de telha Drystore
   shingleType: 'oakridge' | 'supreme';
   
-  // Roof details
-  roofDetails: {
-    perimeterLength: number; // m
-    ridgeLength: number; // m
-    valleyLength: number; // m
-    hipLength: number; // m
-    numberOfPenetrations: number; // vents, chimneys, etc.
-  };
+  // Elementos lineares do telhado
+  linearElements: ShingleLinearElements;
   
-  // Additional features
-  features: {
-    gutters: boolean;
-    underlayment: 'standard' | 'premium' | 'rhinoroof';
-    ventilation: boolean;
-    insulation: boolean;
-  };
+  // Complexidade para cálculo de perdas
+  complexity: RoofComplexity;
   
-  // Labor configuration
-  laborConfig?: {
-    includeLabor: boolean;
-    laborCostPerM2?: number;
-    customLaborCost?: number;
-  };
+  // Cumeeiras ventiladas ou não ventiladas (Supreme recortada)
+  ridgeVentilated: boolean;
+  
+  // Rufos opcionais
+  includeDripEdge: boolean;
 }
 
 export interface ShingleCalculationResult {
-  // Material quantities
-  shingleQuantity: number; // m²
-  osbQuantity: number; // m²
-  underlaymentQuantity: number; // m²
-  ridgeCapQuantity: number; // m
-  startingStripQuantity: number; // m
-  flashingQuantity: number; // m
-  nailsQuantity: number; // kg
-  sealantQuantity: number; // tubes
+  // Dados básicos do cálculo
+  totalRealArea: number; // Área total real calculada com correções (m²)
+  totalProjectedArea: number; // Área projetada original (m²)
+  appliedWasteFactor: number; // Fator de perdas aplicado
+  slopeCorrections: { sectionId: string; factor: number }[]; // Correções por água
   
-  // Optional materials
-  gutterQuantity?: number; // m
-  insulationQuantity?: number; // m²
-  ventilationUnits?: number;
+  // Material quantities - seguindo padrão Drystore
+  shingleBundles: number; // Fardos de telhas (Oakridge ou Supreme)
+  osbSheets: number; // Placas OSB
+  rhinoroofRolls: number; // Rolos RhinoRoof 86m²
+  ridgeCapBundles: number; // Fardos Supreme para cumeeira (recortada)
+  hipCapBundles: number; // Fardos Supreme para espigões (recortada)
+  valleyTapeRolls: number; // Rolos fita autoadesiva 0,91x10m para águas furtadas
+  stepFlashPieces: number; // Peças step flash fabricadas
+  dripEdgeLength?: number; // Metros de rufo (opcional)
+  aluminumCoilArea: number; // m² de bobina alumínio para step flash e rufos
+  nailsKg: number; // kg de pregos rolo 18x25mm
+  monopolSealantTubes: number; // Tubos Monopol Asfáltico PT 310ML
   
-  // Cost breakdown
+  // Breakdown detalhado por aplicação
+  materialBreakdown: {
+    shingles: { quantity: number; unit: string; coverage: number };
+    osb: { quantity: number; unit: string; coverage: number };
+    rhinoroof: { quantity: number; unit: string; coverage: number };
+    ridgeCaps: { quantity: number; linearMeters: number };
+    hipCaps: { quantity: number; linearMeters: number };
+    valleyTape: { quantity: number; linearMeters: number };
+    stepFlash: { quantity: number; pieces: number };
+    dripEdge?: { quantity: number; linearMeters: number };
+    nails: { quantity: number; application: string };
+    sealant: { quantity: number; applications: string[] };
+  };
+  
+  // Cost breakdown sem mão de obra
   itemizedCosts: {
     shingles: number;
     osb: number;
-    underlayment: number;
-    accessories: number;
-    labor: number;
-    equipment: number;
+    rhinoroof: number;
+    ridgeAndHip: number;
+    valleySystem: number;
+    stepFlashing: number;
+    dripEdge: number;
+    fasteners: number;
+    sealant: number;
   };
   totalCost: number;
+
+  // Validações e avisos conforme manual
+  validations: {
+    minimumSlopeCheck: { passed: boolean; message?: string };
+    areaConsistencyCheck: { passed: boolean; message?: string };
+    productAvailability: { passed: boolean; missing?: string[] };
+  };
 
   // Quantified items for proposal generation
   quantified_items: QuantifiedItem[];
