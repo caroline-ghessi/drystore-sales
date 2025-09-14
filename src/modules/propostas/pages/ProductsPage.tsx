@@ -5,10 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
+import { Badge } from '@/components/ui/badge';
 import { DryStoreButton } from '../components/ui/DryStoreButton';
 import { DryStoreBadge } from '../components/ui/DryStoreBadge';
 import { NewProductModal, NewProductData } from '../components/products/NewProductModal';
+import { SpecificationEditor } from '../components/products/SpecificationEditor';
 import { useUnifiedProducts, UnifiedProduct } from '../hooks/useUnifiedProducts';
+import { getCategoriesWithSpecifications } from '../utils/productSpecificationSchemas';
 import { 
   Search,
   Plus,
@@ -84,6 +88,7 @@ export default function ProductsPage() {
   const [showNewProductModal, setShowNewProductModal] = useState(false);
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [advancedEditingId, setAdvancedEditingId] = useState<string | null>(null);
 
   const { products, isLoading, updateProduct, isUpdating, createProduct, isCreating } = useUnifiedProducts();
 
@@ -205,6 +210,20 @@ export default function ProductsPage() {
     };
     createProduct(unifiedData);
     setShowNewProductModal(false);
+  };
+
+  // Funções para edição avançada de especificações
+  const handleToggleAdvancedEdit = (productId: string) => {
+    setAdvancedEditingId(prevId => prevId === productId ? null : productId);
+  };
+
+  const handleSpecificationChange = (productId: string, specifications: any) => {
+    // Update in real-time - could be optimized with debouncing if needed
+    updateProduct({ id: productId, updates: { specifications } });
+  };
+
+  const hasAdvancedSpecifications = (category: UnifiedProductCategory) => {
+    return getCategoriesWithSpecifications().includes(category);
   };
 
   const EditableCell = ({ 
@@ -367,6 +386,19 @@ export default function ProductsPage() {
                 >
                   <Edit2 className="h-3 w-3" />
                 </Button>
+                
+                {hasAdvancedSpecifications(product.category) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleToggleAdvancedEdit(product.id)}
+                    className={`h-8 ${advancedEditingId === product.id ? 'bg-primary/10 border-primary/50' : ''}`}
+                    title="Editar especificações técnicas"
+                  >
+                    <Settings className="h-3 w-3" />
+                  </Button>
+                )}
+                
                 <DryStoreButton size="sm" className="h-8">
                   <Eye className="h-3 w-3 mr-1" />
                   Usar
@@ -495,11 +527,41 @@ export default function ProductsPage() {
                           <TableHead className="w-[140px]">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
-                      <TableBody>
-                        {getProductsByCategory(category.key).map((product) => (
-                          <ProductTableRow key={product.id} product={product} />
-                        ))}
-                      </TableBody>
+                       <TableBody>
+                         {getProductsByCategory(category.key).map((product) => (
+                           <React.Fragment key={product.id}>
+                             <ProductTableRow product={product} />
+                             
+                             {/* Linha expandida para especificações avançadas */}
+                             {advancedEditingId === product.id && hasAdvancedSpecifications(product.category) && (
+                               <TableRow>
+                                 <TableCell colSpan={7} className="p-0">
+                                   <Collapsible open={true}>
+                                     <CollapsibleContent>
+                                       <div className="p-6 bg-muted/20 border-t">
+                                         <div className="flex items-center gap-2 mb-4">
+                                           <Settings className="h-4 w-4" />
+                                           <h4 className="font-medium">Especificações Técnicas</h4>
+                                           <Badge variant="outline" className="text-xs">
+                                             {categories.find(c => c.key === product.category)?.label || product.category}
+                                           </Badge>
+                                         </div>
+                                         
+                                         <SpecificationEditor
+                                           category={product.category}
+                                           specifications={product.specifications}
+                                           onChange={(specs) => handleSpecificationChange(product.id, specs)}
+                                           compact={true}
+                                         />
+                                       </div>
+                                     </CollapsibleContent>
+                                   </Collapsible>
+                                 </TableCell>
+                               </TableRow>
+                             )}
+                           </React.Fragment>
+                         ))}
+                       </TableBody>
                     </Table>
                   </div>
                 </CardContent>
