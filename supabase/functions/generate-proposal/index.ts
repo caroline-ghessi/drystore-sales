@@ -296,23 +296,20 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Pricing data received:', JSON.stringify(body.pricing, null, 2));
 
-    // Insert proposal record
+    // Insert proposal record - using only existing columns
     const proposalData = {
       proposal_number: proposalNumber,
       title: `${body.clientData.name} - ${body.productType || 'Proposta'}`,
-      description: `Proposta para ${body.clientData.name}`,
-      product_category: productCategory,
-      client_data: body.clientData,
-      template_preferences: body.templatePreferences,
+      description: `Proposta para ${body.clientData.name} - ${productCategory}`,
+      project_type: productCategory,
       total_value: body.pricing?.totalCost || body.pricing?.total || 0,
       discount_value: body.pricing?.discount || 0,
       discount_percentage: body.pricing?.discountPercentage || 0,
       final_value: (body.pricing?.totalCost || body.pricing?.total || 0) - (body.pricing?.discount || 0),
       valid_until: new Date(Date.now() + (body.pricing?.validityDays || 30) * 24 * 60 * 60 * 1000).toISOString(),
-      payment_terms: body.pricing?.paymentTerms || 'A combinar',
-      delivery_time: body.pricing?.deliveryTime || 'A combinar',
       acceptance_link: acceptanceLink,
-      status: 'draft'
+      status: 'draft',
+      created_by: body.userId || null
     };
 
     const { data: proposalResult, error: proposalError } = await supabase
