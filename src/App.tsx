@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +11,7 @@ import SetPasswordPage from "@/pages/SetPassword";
 import ResetPasswordPage from "@/pages/ResetPassword";
 import HomePage from "@/pages/Home";
 import PublicProposal from "@/pages/PublicProposal";
+const PremiumProposal = React.lazy(() => import("@/pages/PremiumProposal"));
 import { useStorageCleanup } from "@/hooks/useStorageCleanup";
 import { StorageDiagnostic } from "@/components/StorageDiagnostic";
 
@@ -65,6 +66,11 @@ function AppContent() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth" element={<Index />} /> {/* Fallback para links de auth */}
         <Route path="/proposta/:id" element={<PublicProposal />} /> {/* Página pública de proposta */}
+        <Route path="/proposta-premium/:id" element={
+          <Suspense fallback={<div>Carregando...</div>}>
+            <PremiumProposal />
+          </Suspense>
+        } /> {/* Página premium HTML para shingle */}
         
         {/* Protected main home for module selection */}
         <Route path="/home" element={

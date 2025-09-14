@@ -42,6 +42,10 @@ interface ProposalGenerationRequest {
     paymentTerms: string;
     deliveryTime: string;
   };
+  
+  // Para regeneração
+  proposalId?: string;
+  regenerate?: boolean;
 }
 
 interface ProductKPI {
@@ -260,6 +264,62 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Handle regeneration requests
+    if (body.regenerate && body.proposalId) {
+      console.log('Regenerating proposal for ID:', body.proposalId);
+      
+      const { data: existingProposal, error: fetchError } = await supabase
+        .from('proposals')
+        .select(`
+          *,
+          proposal_items (*)
+        `)
+        .eq('id', body.proposalId)
+        .single();
+
+      if (fetchError || !existingProposal) {
+        console.error('Error fetching existing proposal:', fetchError);
+        return new Response(JSON.stringify({ error: 'Proposal not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Generate HTML using existing proposal data
+      const calculationData = existingProposal.calculation_data || {};
+      const clientData = existingProposal.client_data || {};
+      const productType = existingProposal.project_type || 'generic';
+      const items = existingProposal.proposal_items || [];
+
+      let proposalHtml;
+      if (productType === 'telha_shingle') {
+        proposalHtml = generatePremiumShingleHTML({
+          proposal: existingProposal,
+          items: items,
+          clientData: clientData,
+          templatePreferences: { tone: 'professional', includeWarranty: true, includeTestimonials: false, includeTechnicalSpecs: true },
+          pricing: { items: items },
+          calculationData: calculationData
+        });
+      } else {
+        proposalHtml = generateProposalHTML({
+          proposal: existingProposal,
+          items: items,
+          clientData: clientData,
+          templatePreferences: { tone: 'professional', includeWarranty: true, includeTestimonials: false, includeTechnicalSpecs: true },
+          pricing: { items: items },
+          calculationData: calculationData
+        });
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        htmlContent: proposalHtml
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     let calculationData = null;
 
     // Try to fetch existing calculation if calculationId is provided
@@ -304,7 +364,13 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
     
-    const acceptanceLink = `${appUrl}/proposta/${proposalNumber}`;
+    // Generate acceptance link based on product type (check proposalResult.project_type)
+    let acceptanceLink;
+    if (body.productType === 'shingle') {
+      acceptanceLink = `${appUrl}/proposta-premium/${proposalNumber}`;
+    } else {
+      acceptanceLink = `${appUrl}/proposta/${proposalNumber}`;
+    }
 
     // Map product type to database category
     const productCategory = mapProductTypeToDbCategory(body.productType || 'generic');
@@ -324,7 +390,9 @@ const handler = async (req: Request): Promise<Response> => {
       valid_until: new Date(Date.now() + (body.pricing?.validityDays || 30) * 24 * 60 * 60 * 1000).toISOString(),
       acceptance_link: acceptanceLink,
       status: 'draft',
-      created_by: body.userId || null
+      created_by: body.userId || null,
+      client_data: body.clientData,
+      calculation_data: calculationData
     };
 
     const { data: proposalResult, error: proposalError } = await supabase
