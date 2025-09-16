@@ -28,7 +28,7 @@ import { ProposalResult } from './ProposalResult';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
-import { useVendorPermissions } from '@/hooks/useVendorPermissions';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useCreateVendorApproval } from '../../hooks/useVendorApprovals';
 import { DiscountApprovalModal } from '../modals/DiscountApprovalModal';
 import { ProposalSendModal } from '../modals/ProposalSendModal';
@@ -67,7 +67,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   const { isGenerating, generatedProposal, generateFromContext, generateProposal } = useAIGeneration();
   const calculator = useProposalCalculator(productType);  
   const savedCalculations = useSavedCalculations();
-  const vendorPermissions = useVendorPermissions();
+  const permissions = useUserPermissions();
   const createApprovalRequest = useCreateVendorApproval();
 
   useEffect(() => {
@@ -86,19 +86,34 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   };
 
   const handleGenerateProposal = async () => {
-    // Validar se há permissões de vendedor
-    if (!vendorPermissions.data) {
+    // Validar permissões do usuário
+    if (permissions.loading) {
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Não foi possível verificar suas permissões."
+        description: "Carregando permissões do usuário..."
       });
       return;
     }
 
-    const maxDiscount = vendorPermissions.data.max_discount_percentage || 0;
+    if (!permissions.canGenerateProposals) {
+      toast({
+        variant: "destructive",
+        title: "Acesso Negado",
+        description: "Você não tem permissão para gerar propostas."
+      });
+      return;
+    }
+
+    // Admins não têm limitação de desconto
+    if (permissions.isAdmin) {
+      await executeProposalGeneration();
+      return;
+    }
+
+    // Para vendedores, verificar limite de desconto
+    const maxDiscount = permissions.maxDiscountPercentage;
     
-    // Se o desconto excede o limite, solicitar aprovação
     if (discountPercent > maxDiscount) {
       setShowApprovalModal(true);
       return;
@@ -188,7 +203,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   const handleApprovalSubmit = async (justification: string, requestedDiscount: number) => {
     try {
       await createApprovalRequest.mutateAsync({
-        user_id: vendorPermissions.data?.user_id || '',
+        user_id: user?.id || '',
         approval_type: 'discount',
         requested_amount: requestedDiscount,
         justification
@@ -1053,7 +1068,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                           Desconto para o Cliente
                         </Label>
                         <span className="text-sm text-muted-foreground">
-                          Seu limite: {vendorPermissions.data?.max_discount_percentage || 0}%
+                          Seu limite: {permissions.isAdmin ? 'Ilimitado' : `${permissions.maxDiscountPercentage}%`}
                         </span>
                       </div>
                       
@@ -1087,7 +1102,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                             R$ {((calculator.calculationResult?.totalCost || 0) - ((calculator.calculationResult?.totalCost || 0) * discountPercent / 100)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </span>
                         </div>
-                        {discountPercent > (vendorPermissions.data?.max_discount_percentage || 0) && (
+                        {!permissions.isAdmin && discountPercent > permissions.maxDiscountPercentage && (
                           <p className="text-sm text-orange-600 mt-2">
                             ⚠️ Desconto acima do seu limite - será necessária aprovação
                           </p>
@@ -1117,7 +1132,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                         ) : (
                           <>
                             <FileText className="mr-2 h-4 w-4" />
-                            {discountPercent > (vendorPermissions.data?.max_discount_percentage || 0) 
+                            {!permissions.isAdmin && discountPercent > permissions.maxDiscountPercentage
                               ? 'Solicitar Aprovação' 
                               : 'Gerar Proposta'
                             }
@@ -1202,7 +1217,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
         isOpen={showApprovalModal}
         onClose={() => setShowApprovalModal(false)}
         onSubmit={handleApprovalSubmit}
-        maxAllowedDiscount={vendorPermissions.data?.max_discount_percentage || 0}
+        maxAllowedDiscount={permissions.isAdmin ? 100 : permissions.maxDiscountPercentage}
         currentDiscount={discountPercent}
         totalValue={calculator.calculationResult?.totalCost || 0}
       />

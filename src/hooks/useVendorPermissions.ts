@@ -12,13 +12,7 @@ export function useVendorPermissions() {
       
       const { data, error } = await supabase
         .from('vendor_permissions')
-        .select(`
-          *,
-          vendor_user_mapping!inner(
-            vendor_id,
-            vendors(name, email)
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .single();
 
