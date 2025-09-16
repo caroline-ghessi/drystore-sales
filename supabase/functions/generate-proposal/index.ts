@@ -1467,7 +1467,7 @@ function generatePremiumShingleHTML(data: {
                 </div>
             </div>
             <h1 class="header-title">Telhas Shingle Premium Owens Corning</h1>
-            <p class="header-subtitle">A telha que valoriza seu imóvel - Importada dos EUA com garantia real de 50 anos</p>
+            <p class="header-subtitle">TOP 2 no Ranking Forbes Home - A telha que valoriza seu imóvel</p>
         </div>
 
         <div class="cliente-info">
@@ -1582,9 +1582,9 @@ function generatePremiumShingleHTML(data: {
                         <div class="spec-label">MPH RESISTÊNCIA</div>
                     </div>
                     <div class="spec-card">
-                        <div class="spec-icon">⏱️</div>
-                        <div class="spec-value">50</div>
-                        <div class="spec-label">ANOS GARANTIA</div>
+                        <div class="spec-icon">🏆</div>
+                        <div class="spec-value">TOP 2</div>
+                        <div class="spec-label">RANKING FORBES</div>
                     </div>
                     <div class="spec-card">
                         <div class="spec-icon">🎨</div>
@@ -1612,29 +1612,47 @@ function generatePremiumShingleHTML(data: {
             <div class="nota-instalacao">
                 <strong>📦 FORNECIMENTO DE MATERIAIS PREMIUM</strong><br>
                 A Drystore fornece todos os componentes do sistema Owens Corning, importados diretamente dos EUA. 
-                Recomendamos instaladores certificados para garantir a correta aplicação e validação da garantia de 50 anos. 
+                Recomendamos instaladores certificados para garantir a correta aplicação e validação das garantias oficiais. 
                 Podemos indicar profissionais especializados em sua região.
             </div>
 
-            <div class="diferenciais-box">
-                <h3 style="font-size: 14px; margin-bottom: 15px; color: #FF6B00;">Por que Owens Corning é superior?</h3>
-                <div class="diferencial-grid">
-                    <div class="diferencial-item">
-                        <span class="check-icon">✓</span>
-                        <span>Tecnologia SureNail® - Resistência extra na fixação</span>
+            <div class="forbes-ranking-box" style="background: #2c2c2c; padding: 25px; border-radius: 12px; color: white; margin: 20px 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                    <div>
+                        <div style="color: #FF6B00; font-size: 18px; font-weight: bold; margin-bottom: 5px;">🏆 RECONHECIMENTO OFICIAL</div>
+                        <div style="color: white; font-size: 24px; font-weight: bold;">TOP 2 Ranking Forbes Home</div>
+                        <div style="color: #ccc; font-size: 14px;">Melhor Custo-Benefício em Telhas Shingle 2024</div>
                     </div>
-                    <div class="diferencial-item">
-                        <span class="check-icon">✓</span>
-                        <span>130 mph vs 110 mph da IKO - 18% mais resistente</span>
+                    <div style="background: #FF6B00; color: white; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold;">
+                        FORBES HOME
                     </div>
-                    <div class="diferencial-item">
-                        <span class="check-icon">✓</span>
-                        <span>Garantia real de 50 anos com documento oficial</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px;">
+                    <div class="diferencial-item" style="display: flex; align-items: center; color: white;">
+                        <span style="color: #FF6B00; margin-right: 10px; font-weight: bold;">✓</span>
+                        <span>Garantias oficiais de 25-30 anos</span>
                     </div>
-                    <div class="diferencial-item">
-                        <span class="check-icon">✓</span>
+                    <div class="diferencial-item" style="display: flex; align-items: center; color: white;">
+                        <span style="color: #FF6B00; margin-right: 10px; font-weight: bold;">✓</span>
+                        <span>Durabilidade comprovada de 50 anos</span>
+                    </div>
+                    <div class="diferencial-item" style="display: flex; align-items: center; color: white;">
+                        <span style="color: #FF6B00; margin-right: 10px; font-weight: bold;">✓</span>
+                        <span>Tecnologia SureNail® exclusiva</span>
+                    </div>
+                    <div class="diferencial-item" style="display: flex; align-items: center; color: white;">
+                        <span style="color: #FF6B00; margin-right: 10px; font-weight: bold;">✓</span>
                         <span>Valorização de até R$ 100.000 no imóvel</span>
                     </div>
+                </div>
+
+                <div style="text-align: center; padding-top: 15px; border-top: 1px solid #444;">
+                    <a href="https://www.forbes.com/home-improvement/roofing/best-roofing-shingles/" 
+                       target="_blank" 
+                       style="color: #FF6B00; text-decoration: none; font-size: 12px; font-weight: bold;">
+                        → Ver ranking completo Forbes Home 2024
+                    </a>
                 </div>
             </div>
         </div>
@@ -1664,10 +1682,10 @@ function generatePremiumShingleHTML(data: {
 
         <div class="garantias-section">
             <div class="garantia-principal">
-                <div class="garantia-anos">50 ANOS</div>
+                <div class="garantia-anos">25-30 ANOS</div>
                 <div class="garantia-texto">
-                    Garantia Limitada Owens Corning<br>
-                    <span style="font-size: 12px; color: #707070;">Documento oficial emitido pelo fabricante nos EUA</span>
+                    Garantia Oficial Owens Corning<br>
+                    <span style="font-size: 12px; color: #707070;">Documento oficial + Durabilidade de 50 anos comprovada</span>
                 </div>
             </div>
         </div>
