@@ -32,6 +32,7 @@ import { useVendorPermissions } from '@/hooks/useVendorPermissions';
 import { useCreateVendorApproval } from '../../hooks/useVendorApprovals';
 import { DiscountApprovalModal } from '../modals/DiscountApprovalModal';
 import { ProposalSendModal } from '../modals/ProposalSendModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ProposalGeneratorProps {
   projectContextId?: string;
@@ -62,6 +63,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { isGenerating, generatedProposal, generateFromContext, generateProposal } = useAIGeneration();
   const calculator = useProposalCalculator(productType);  
   const savedCalculations = useSavedCalculations();
@@ -132,6 +134,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
       
       const request = {
         calculationId: undefined,
+        userId: user?.id,
         clientData,
         productType,
         calculationInput: calculator.calculationInput!,

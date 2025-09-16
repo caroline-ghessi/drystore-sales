@@ -14,6 +14,7 @@ export { useAIGeneration } from './hooks/useAIGeneration';
 export { useProposalCalculator } from './hooks/useProposalCalculator';
 export { useSavedCalculations } from './hooks/useSavedCalculations';
 export { useProductTemplate, useAllProductTemplates, useTemplatePreview } from './hooks/useProductTemplates';
+export { useProposals, useProposalStats } from './hooks/useProposals';
 
 // Services
 export { ProductTemplateService } from './services/product-templates.service';

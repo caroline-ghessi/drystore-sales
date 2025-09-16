@@ -1,122 +1,75 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DryStoreButton } from '../components/ui/DryStoreButton';
-import { DryStoreBadge } from '../components/ui/DryStoreBadge';
+import { Search, Plus, Download, Eye, MessageCircle, MoreHorizontal, Loader2, Calculator } from 'lucide-react';
+import { DryStoreBadge } from '@/modules/propostas/components/ui/DryStoreBadge';
+import { useNavigate } from 'react-router-dom';
+import { Separator } from '@/components/ui/separator';
 import { 
-  Search,
-  Plus,
-  Eye,
-  Download,
-  MessageSquare,
-  Calendar,
-  DollarSign,
-  Calculator
-} from 'lucide-react';
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { useProposals, useProposalStats } from '../hooks/useProposals';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-interface Proposal {
-  id: string;
-  clientName: string;
-  value: number;
-  status: 'enviada' | 'visualizada' | 'aprovada' | 'rejeitada' | 'pendente';
-  type: 'solar' | 'shingle' | 'drywall' | 'steel_frame' | 'ceiling';
-  date: string;
-  lastUpdate: string;
-}
-
-export default function ProposalsListPage() {
+const ProposalsListPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+  
+  // Buscar dados reais das propostas
+  const { data: proposalsData = [], isLoading, error } = useProposals();
+  const stats = useProposalStats();
 
-  // Mock data - would come from database
-  const proposals: Proposal[] = [
-    {
-      id: '1',
-      clientName: 'João Silva',
-      value: 125000,
-      status: 'visualizada',
-      type: 'solar',
-      date: '2024-01-15',
-      lastUpdate: '2024-01-16'
-    },
-    {
-      id: '2',
-      clientName: 'Maria Santos',
-      value: 89000,
-      status: 'enviada',
-      type: 'shingle',
-      date: '2024-01-12',
-      lastUpdate: '2024-01-12'
-    },
-    {
-      id: '3',
-      clientName: 'Pedro Costa',
-      value: 250000,
-      status: 'aprovada',
-      type: 'drywall',
-      date: '2024-01-10',
-      lastUpdate: '2024-01-14'
-    },
-    {
-      id: '4',
-      clientName: 'Ana Oliveira',
-      value: 95000,
-      status: 'pendente',
-      type: 'steel_frame',
-      date: '2024-01-08',
-      lastUpdate: '2024-01-08'
-    },
-    {
-      id: '5',
-      clientName: 'Carlos Ferreira',
-      value: 45000,
-      status: 'rejeitada',
-      type: 'ceiling',
-      date: '2024-01-05',
-      lastUpdate: '2024-01-07'
+  // Função para extrair dados do cliente do JSON
+  const getClientData = (clientData: any) => {
+    if (typeof clientData === 'string') {
+      try {
+        return JSON.parse(clientData);
+      } catch {
+        return { name: 'Cliente não informado', phone: '', email: '' };
+      }
     }
-  ];
-
-  const filteredProposals = proposals.filter(proposal =>
-    proposal.clientName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const getStatusBadge = (status: Proposal['status']) => {
-    switch (status) {
-      case 'aprovada':
-        return <DryStoreBadge variant="success">Aprovada</DryStoreBadge>;
-      case 'visualizada':
-        return <DryStoreBadge variant="info">Visualizada</DryStoreBadge>;
-      case 'enviada':
-        return <DryStoreBadge variant="drystore">Enviada</DryStoreBadge>;
-      case 'pendente':
-        return <DryStoreBadge variant="warning">Pendente</DryStoreBadge>;
-      case 'rejeitada':
-        return <DryStoreBadge variant="danger">Rejeitada</DryStoreBadge>;
-      default:
-        return <DryStoreBadge variant="info">Desconhecido</DryStoreBadge>;
-    }
+    return clientData || { name: 'Cliente não informado', phone: '', email: '' };
   };
 
-  const getTypeLabel = (type: Proposal['type']) => {
-    const types = {
-      solar: 'Energia Solar',
-      shingle: 'Telha Shingle',
-      drywall: 'Drywall',
-      steel_frame: 'Steel Frame',
-      ceiling: 'Forros'
+  // Filtrar propostas baseado no termo de busca
+  const filteredProposals = proposalsData.filter(proposal => {
+    const clientData = getClientData(proposal.client_data);
+    return clientData?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  // Função para renderizar badge baseado no status
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      draft: { variant: 'drystore-outline' as const, label: 'Rascunho' },
+      sent: { variant: 'drystore' as const, label: 'Enviada' },
+      accepted: { variant: 'success' as const, label: 'Aceita' },
+      rejected: { variant: 'danger' as const, label: 'Rejeitada' },
+      expired: { variant: 'warning' as const, label: 'Expirada' },
+      viewed: { variant: 'info' as const, label: 'Visualizada' },
+      under_review: { variant: 'warning' as const, label: 'Em Análise' }
     };
-    return types[type];
+    
+    const config = statusConfig[status as keyof typeof statusConfig];
+    return <DryStoreBadge variant={config?.variant || 'drystore-outline'}>{config?.label || status}</DryStoreBadge>;
   };
 
-  const getTotalValue = () => {
-    return proposals.reduce((acc, proposal) => acc + proposal.value, 0);
-  };
-
-  const getStatusCount = (status: Proposal['status']) => {
-    return proposals.filter(p => p.status === status).length;
+  // Função para obter label do tipo de proposta
+  const getTypeLabel = (type: string) => {
+    const typeLabels = {
+      energia_solar: 'Energia Solar',
+      telha_shingle: 'Telha Shingle', 
+      drywall: 'Drywall',
+      forro_drywall: 'Forro Drywall',
+      impermeabilizacao_mapei: 'Impermeabilização MAPEI',
+      preparacao_piso_mapei: 'Preparação de Piso MAPEI',
+      forro_mineral_acustico: 'Forro Mineral Acústico'
+    };
+    return typeLabels[type as keyof typeof typeLabels] || type;
   };
 
   return (
@@ -138,42 +91,35 @@ export default function ProposalsListPage() {
             <Calculator className="mr-2 h-4 w-4" />
             Cálculos Salvos
           </Button>
-          <DryStoreButton onClick={() => navigate('/propostas')}>
+          <Button 
+            onClick={() => navigate('/propostas')}
+            className="bg-drystore-orange hover:bg-drystore-orange/90 text-white"
+          >
             <Plus className="mr-2 h-4 w-4" />
             Nova Proposta
-          </DryStoreButton>
+          </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+      {/* Estatísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <Card className="border-0 shadow-md">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-drystore-medium-gray">Total</p>
-                <p className="text-2xl font-bold text-drystore-dark-gray">
-                  {proposals.length}
-                </p>
-              </div>
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-blue-600" />
+                <p className="text-sm text-drystore-medium-gray">Total de Propostas</p>
+                <p className="text-2xl font-bold text-drystore-dark-gray">{stats.total}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
+        
         <Card className="border-0 shadow-md">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-drystore-medium-gray">Aprovadas</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {getStatusCount('aprovada')}
-                </p>
-              </div>
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <Eye className="h-5 w-5 text-green-600" />
+                <p className="text-sm text-drystore-medium-gray">Aceitas</p>
+                <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
               </div>
             </div>
           </CardContent>
@@ -184,12 +130,7 @@ export default function ProposalsListPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-drystore-medium-gray">Pendentes</p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {getStatusCount('pendente')}
-                </p>
-              </div>
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Calendar className="h-5 w-5 text-orange-600" />
+                <p className="text-2xl font-bold text-orange-600">{stats.pending}</p>
               </div>
             </div>
           </CardContent>
@@ -199,13 +140,8 @@ export default function ProposalsListPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-drystore-medium-gray">Visualizadas</p>
-                <p className="text-2xl font-bold text-drystore-orange">
-                  {getStatusCount('visualizada')}
-                </p>
-              </div>
-              <div className="w-10 h-10 bg-drystore-orange/10 rounded-lg flex items-center justify-center">
-                <Eye className="h-5 w-5 text-drystore-orange" />
+                <p className="text-sm text-drystore-medium-gray">Enviadas</p>
+                <p className="text-2xl font-bold text-drystore-orange">{stats.visualized}</p>
               </div>
             </div>
           </CardContent>
@@ -217,11 +153,13 @@ export default function ProposalsListPage() {
               <div>
                 <p className="text-sm text-drystore-medium-gray">Valor Total</p>
                 <p className="text-2xl font-bold text-drystore-dark-gray">
-                  R$ {(getTotalValue() / 1000).toFixed(0)}K
+                  {new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                    notation: 'compact',
+                    maximumFractionDigits: 0
+                  }).format(stats.totalValue)}
                 </p>
-              </div>
-              <div className="w-10 h-10 bg-drystore-orange/10 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-drystore-orange" />
               </div>
             </div>
           </CardContent>
@@ -246,68 +184,128 @@ export default function ProposalsListPage() {
             </div>
           </div>
 
-          {/* Proposals Table */}
-          <div className="space-y-4">
-            {filteredProposals.map((proposal) => (
-              <div 
-                key={proposal.id} 
-                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-all duration-200 bg-white"
-              >
-                <div className="flex items-center space-x-4 flex-1">
-                  <div className="w-12 h-12 bg-drystore-orange/10 rounded-lg flex items-center justify-center">
-                    <span className="text-lg font-semibold text-drystore-orange">
-                      {proposal.clientName.charAt(0)}
-                    </span>
-                  </div>
-                  
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-1">
-                      <h3 className="font-semibold text-drystore-dark-gray">
-                        {proposal.clientName}
-                      </h3>
-                      {getStatusBadge(proposal.status)}
+          {/* Lista de Propostas */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin mr-2" />
+              <span>Carregando propostas...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8 text-red-600">
+              <p>Erro ao carregar propostas.</p>
+              <p className="text-sm">Tente recarregar a página.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredProposals.map((proposal) => {
+                const clientData = getClientData(proposal.client_data);
+                return (
+                  <div 
+                    key={proposal.id} 
+                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-all duration-200 bg-white"
+                  >
+                    <div className="flex items-center space-x-4 flex-1">
+                      <div className="w-12 h-12 bg-drystore-orange/10 rounded-lg flex items-center justify-center">
+                        <span className="text-lg font-semibold text-drystore-orange">
+                          {(clientData?.name || 'C').charAt(0)}
+                        </span>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-1">
+                          <h3 className="font-semibold text-drystore-dark-gray">
+                            {clientData?.name || 'Cliente não informado'}
+                          </h3>
+                          {getStatusBadge(proposal.status)}
+                        </div>
+                        
+                        <div className="flex items-center space-x-4 text-sm text-drystore-medium-gray">
+                          <span>{getTypeLabel(proposal.project_type)}</span>
+                          <span>•</span>
+                          <span>Criada em {format(new Date(proposal.created_at), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                          {proposal.profiles?.display_name && (
+                            <>
+                              <span>•</span>
+                              <span>Por: {proposal.profiles.display_name}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    
-                    <div className="flex items-center space-x-4 text-sm text-drystore-medium-gray">
-                      <span>{getTypeLabel(proposal.type)}</span>
-                      <span>•</span>
-                      <span>Criada em {new Date(proposal.date).toLocaleDateString('pt-BR')}</span>
+
+                    <div className="flex items-center space-x-6 text-sm">
+                      <div className="text-center">
+                        <p className="font-semibold text-drystore-dark-gray">
+                          {new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL'
+                          }).format(proposal.final_value || 0)}
+                        </p>
+                        <p className="text-drystore-medium-gray">Valor</p>
+                        {proposal.discount_percentage > 0 && (
+                          <p className="text-xs text-green-600">
+                            Desconto: {proposal.discount_percentage}%
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="text-center">
+                        <p className="font-semibold text-drystore-dark-gray">
+                          {format(new Date(proposal.updated_at), 'dd/MM/yyyy', { locale: ptBR })}
+                        </p>
+                        <p className="text-drystore-medium-gray">Atualizada</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2 ml-6">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-drystore-medium-gray hover:text-drystore-orange" 
+                        title="Visualizar"
+                        onClick={() => window.open(proposal.acceptance_link, '_blank')}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-drystore-medium-gray hover:text-drystore-orange" title="Download">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-drystore-medium-gray hover:text-drystore-orange" title="Follow-up">
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="text-drystore-medium-gray hover:text-drystore-orange">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem>Editar</DropdownMenuItem>
+                          <DropdownMenuItem>Duplicar</DropdownMenuItem>
+                          <DropdownMenuItem>Arquivar</DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-600">
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
+                );
+              })}
+              
+              {filteredProposals.length === 0 && !isLoading && (
+                <div className="text-center py-8 text-drystore-medium-gray">
+                  <p>Nenhuma proposta encontrada.</p>
+                  <p className="text-sm">Tente ajustar os filtros ou criar uma nova proposta.</p>
                 </div>
-
-                <div className="flex items-center space-x-6 text-sm">
-                  <div className="text-center">
-                    <p className="font-semibold text-drystore-dark-gray">
-                      R$ {proposal.value.toLocaleString('pt-BR')}
-                    </p>
-                    <p className="text-drystore-medium-gray">Valor</p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <p className="font-semibold text-drystore-dark-gray">
-                      {new Date(proposal.lastUpdate).toLocaleDateString('pt-BR')}
-                    </p>
-                    <p className="text-drystore-medium-gray">Atualizada</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2 ml-6">
-                  <Button variant="ghost" size="sm" className="text-drystore-medium-gray hover:text-drystore-orange" title="Visualizar">
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-drystore-medium-gray hover:text-drystore-orange" title="Download">
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-drystore-medium-gray hover:text-drystore-orange" title="Follow-up">
-                    <MessageSquare className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   );
-}
+};
+
+export default ProposalsListPage;
