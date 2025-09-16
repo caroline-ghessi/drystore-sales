@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useVendorPermissions } from '@/hooks/useVendorPermissions';
 
 export interface VendorApproval {
   id: string;
@@ -92,6 +93,7 @@ export function useCreateVendorApproval() {
 
 export function useApproveVendorApproval() {
   const queryClient = useQueryClient();
+  const vendorPermissions = useVendorPermissions();
 
   return useMutation({
     mutationFn: async ({ 
@@ -103,9 +105,21 @@ export function useApproveVendorApproval() {
       approvedAmount?: number;
       notes?: string;
     }) => {
-      // Mock por enquanto
-      console.log('Approve approval (mock):', { id, approvedAmount, notes });
-      return { id, status: 'approved' };
+      const { data, error } = await supabase
+        .from('vendor_approvals')
+        .update({
+          status: 'approved',
+          approved_amount: approvedAmount,
+          approver_id: vendorPermissions.data?.user_id,
+          responded_at: new Date().toISOString(),
+          notes
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendor-approvals'] });
@@ -115,6 +129,7 @@ export function useApproveVendorApproval() {
 
 export function useRejectVendorApproval() {
   const queryClient = useQueryClient();
+  const vendorPermissions = useVendorPermissions();
 
   return useMutation({
     mutationFn: async ({ 
@@ -124,9 +139,20 @@ export function useRejectVendorApproval() {
       id: string; 
       notes?: string;
     }) => {
-      // Mock por enquanto
-      console.log('Reject approval (mock):', { id, notes });
-      return { id, status: 'rejected' };
+      const { data, error } = await supabase
+        .from('vendor_approvals')
+        .update({
+          status: 'rejected',
+          approver_id: vendorPermissions.data?.user_id,
+          responded_at: new Date().toISOString(),
+          notes
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendor-approvals'] });
