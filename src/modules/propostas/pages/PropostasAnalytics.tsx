@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -13,9 +15,12 @@ import {
   Activity,
   UserCheck,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Download,
+  Calendar
 } from 'lucide-react';
-import { usePropostasAnalytics } from '@/modules/propostas/hooks/usePropostasAnalytics';
+import { usePropostasAnalytics, AnalyticsPeriod, DateRange } from '@/modules/propostas/hooks/usePropostasAnalytics';
+import { DateRangePicker } from '@/modules/propostas/components/ui/DateRangePicker';
 import VendorPerformanceMatrix from '@/modules/propostas/components/analytics/VendorPerformanceMatrix';
 import VendorQuotaProgress from '@/modules/propostas/components/analytics/VendorQuotaProgress';
 import VendorProductSpecialization from '@/modules/propostas/components/analytics/VendorProductSpecialization';
@@ -60,7 +65,7 @@ function KPICard({ title, value, change, icon, trend = 'up' }: KPICardProps) {
           <span className={isPositive ? 'text-green-600' : 'text-red-600'}>
             {change > 0 ? '+' : ''}{change}%
           </span>
-          <span className="ml-1">vs. mês anterior</span>
+          <span className="ml-1">vs. período anterior</span>
         </div>
       </CardContent>
     </Card>
@@ -161,8 +166,46 @@ function ProductPerformance({ products }: ProductPerformanceProps) {
   );
 }
 
+const PERIOD_OPTIONS = [
+  { value: 'today', label: 'Hoje' },
+  { value: '30d', label: 'Últimos 30 dias' },
+  { value: 'thisMonth', label: 'Este mês' },
+  { value: 'lastMonth', label: 'Mês passado' },
+  { value: 'custom', label: 'Período personalizado' }
+];
+
 export default function PropostasAnalytics() {
-  const { data: analytics, isLoading } = usePropostasAnalytics();
+  const [selectedPeriod, setSelectedPeriod] = useState<AnalyticsPeriod>('thisMonth');
+  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
+  
+  const { data: analytics, isLoading } = usePropostasAnalytics(selectedPeriod, customDateRange);
+
+  const handlePeriodChange = (period: string) => {
+    setSelectedPeriod(period as AnalyticsPeriod);
+    if (period !== 'custom') {
+      setCustomDateRange(undefined);
+    }
+  };
+
+  const handleDateRangeChange = (startDate: Date | null, endDate: Date | null) => {
+    if (startDate && endDate) {
+      setCustomDateRange({ startDate, endDate });
+      setSelectedPeriod('custom');
+    } else {
+      setCustomDateRange(undefined);
+    }
+  };
+
+  const getPeriodLabel = () => {
+    switch (selectedPeriod) {
+      case 'today': return 'Hoje';
+      case '30d': return 'Últimos 30 dias';
+      case 'thisMonth': return 'Este mês';
+      case 'lastMonth': return 'Mês passado';
+      case 'custom': return customDateRange ? 'Período personalizado' : 'Selecionar período';
+      default: return 'Este mês';
+    }
+  };
 
   if (isLoading) {
     return (
@@ -188,16 +231,46 @@ export default function PropostasAnalytics() {
   return (
     <div className="p-6 space-y-6 bg-background min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Analytics de Propostas</h1>
           <p className="text-muted-foreground mt-1">
-            Visão geral da performance e métricas da operação
+            Visão geral da performance e métricas da operação • {getPeriodLabel()}
           </p>
         </div>
-        <Badge variant="outline" className="text-sm">
-          Atualizado em tempo real
-        </Badge>
+        
+        <div className="flex items-center gap-3">
+          <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PERIOD_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {selectedPeriod === 'custom' && (
+            <DateRangePicker
+              onDateRangeChange={handleDateRangeChange}
+              startDate={customDateRange?.startDate}
+              endDate={customDateRange?.endDate}
+            />
+          )}
+          
+          <Button variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            Exportar
+          </Button>
+          
+          <Badge variant="outline" className="text-sm">
+            <Clock className="w-3 h-3 mr-1" />
+            Tempo real
+          </Badge>
+        </div>
       </div>
 
       {/* KPI Cards - Gerais */}

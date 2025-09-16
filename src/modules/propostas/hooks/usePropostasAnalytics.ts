@@ -1,6 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
+export type AnalyticsPeriod = 'today' | '30d' | 'thisMonth' | 'lastMonth' | 'custom';
+
+export interface DateRange {
+  startDate: Date;
+  endDate: Date;
+}
+
 interface VendorMetrics {
   id: string;
   name: string;
@@ -106,15 +113,68 @@ export interface PropostasAnalytics {
   };
 }
 
-async function fetchPropostasAnalytics(): Promise<PropostasAnalytics> {
+async function fetchPropostasAnalytics(period: AnalyticsPeriod = 'thisMonth', customRange?: DateRange): Promise<PropostasAnalytics> {
   const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-  const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+  
+  // Calculate date ranges based on period
+  const getDateRange = (period: AnalyticsPeriod, customRange?: DateRange) => {
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    switch (period) {
+      case 'today':
+        return {
+          start: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+          end: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1),
+          compareStart: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1),
+          compareEnd: new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        };
+      case '30d':
+        return {
+          start: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+          end: now,
+          compareStart: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000),
+          compareEnd: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        };
+      case 'thisMonth':
+        return {
+          start: new Date(currentYear, currentMonth, 1),
+          end: new Date(currentYear, currentMonth + 1, 1),
+          compareStart: currentMonth === 0 ? new Date(currentYear - 1, 11, 1) : new Date(currentYear, currentMonth - 1, 1),
+          compareEnd: currentMonth === 0 ? new Date(currentYear, 0, 1) : new Date(currentYear, currentMonth, 1)
+        };
+      case 'lastMonth':
+        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+        return {
+          start: new Date(lastMonthYear, lastMonth, 1),
+          end: new Date(lastMonthYear, lastMonth + 1, 1),
+          compareStart: lastMonth === 0 ? new Date(lastMonthYear - 1, 11, 1) : new Date(lastMonthYear, lastMonth - 1, 1),
+          compareEnd: new Date(lastMonthYear, lastMonth, 1)
+        };
+      case 'custom':
+        if (!customRange) throw new Error('Custom range required for custom period');
+        const rangeDays = Math.ceil((customRange.endDate.getTime() - customRange.startDate.getTime()) / (24 * 60 * 60 * 1000));
+        return {
+          start: customRange.startDate,
+          end: customRange.endDate,
+          compareStart: new Date(customRange.startDate.getTime() - rangeDays * 24 * 60 * 60 * 1000),
+          compareEnd: customRange.startDate
+        };
+      default:
+        return {
+          start: new Date(currentYear, currentMonth, 1),
+          end: new Date(currentYear, currentMonth + 1, 1),
+          compareStart: currentMonth === 0 ? new Date(currentYear - 1, 11, 1) : new Date(currentYear, currentMonth - 1, 1),
+          compareEnd: currentMonth === 0 ? new Date(currentYear, 0, 1) : new Date(currentYear, currentMonth, 1)
+        };
+    }
+  };
 
-  // Buscar propostas do mês atual
-  const { data: currentMonthProposals, error: currentError } = await supabase
+  const { start, end, compareStart, compareEnd } = getDateRange(period, customRange);
+
+  // Buscar propostas do período atual
+  const { data: currentPeriodProposals, error: currentError } = await supabase
     .from('proposals')
     .select(`
       id,
@@ -128,22 +188,22 @@ async function fetchPropostasAnalytics(): Promise<PropostasAnalytics> {
         total_price
       )
     `)
-    .gte('created_at', new Date(currentYear, currentMonth, 1).toISOString())
-    .lt('created_at', new Date(currentYear, currentMonth + 1, 1).toISOString());
+    .gte('created_at', start.toISOString())
+    .lt('created_at', end.toISOString());
 
   if (currentError) {
-    console.error('Error fetching current month proposals:', currentError);
+    console.error('Error fetching current period proposals:', currentError);
   }
 
-  // Buscar propostas do mês anterior para comparação
-  const { data: lastMonthProposals, error: lastError } = await supabase
+  // Buscar propostas do período de comparação
+  const { data: comparePeriodProposals, error: compareError } = await supabase
     .from('proposals')
     .select('id, total_value, status, created_at')
-    .gte('created_at', new Date(lastMonthYear, lastMonth, 1).toISOString())
-    .lt('created_at', new Date(lastMonthYear, lastMonth + 1, 1).toISOString());
+    .gte('created_at', compareStart.toISOString())
+    .lt('created_at', compareEnd.toISOString());
 
-  if (lastError) {
-    console.error('Error fetching last month proposals:', lastError);
+  if (compareError) {
+    console.error('Error fetching compare period proposals:', compareError);
   }
 
   // Buscar dados dos vendedores
@@ -170,7 +230,7 @@ async function fetchPropostasAnalytics(): Promise<PropostasAnalytics> {
       created_at,
       updated_at
     `)
-    .gte('created_at', new Date(currentYear, currentMonth, 1).toISOString());
+    .gte('created_at', start.toISOString());
 
   // Buscar aprovações de vendedores
   const { data: vendorApprovals, error: approvalsError } = await supabase
@@ -185,7 +245,7 @@ async function fetchPropostasAnalytics(): Promise<PropostasAnalytics> {
       requested_at,
       responded_at
     `)
-    .gte('requested_at', new Date(currentYear, currentMonth, 1).toISOString());
+    .gte('requested_at', start.toISOString());
 
   if (vendorError) {
     console.error('Error fetching vendor data:', vendorError);
@@ -201,39 +261,39 @@ async function fetchPropostasAnalytics(): Promise<PropostasAnalytics> {
   }
 
   // Calcular métricas
-  const currentRevenue = currentMonthProposals?.reduce((sum, proposal) => 
+  const currentRevenue = currentPeriodProposals?.reduce((sum, proposal) => 
     sum + (Number(proposal.total_value) || 0), 0) || 0;
   
-  const lastRevenue = lastMonthProposals?.reduce((sum, proposal) => 
+  const compareRevenue = comparePeriodProposals?.reduce((sum, proposal) => 
     sum + (Number(proposal.total_value) || 0), 0) || 0;
   
-  const revenueGrowth = lastRevenue > 0 ? ((currentRevenue - lastRevenue) / lastRevenue) * 100 : 0;
+  const revenueGrowth = compareRevenue > 0 ? ((currentRevenue - compareRevenue) / compareRevenue) * 100 : 0;
 
-  const activeProposalsCount = currentMonthProposals?.filter(p => 
+  const activeProposalsCount = currentPeriodProposals?.filter(p => 
     ['draft', 'pending', 'under_review'].includes(p.status)).length || 0;
   
-  const lastActiveCount = lastMonthProposals?.filter(p => 
+  const compareActiveCount = comparePeriodProposals?.filter(p => 
     ['draft', 'pending', 'under_review'].includes(p.status)).length || 0;
   
-  const proposalsGrowth = lastActiveCount > 0 ? 
-    ((activeProposalsCount - lastActiveCount) / lastActiveCount) * 100 : 0;
+  const proposalsGrowth = compareActiveCount > 0 ? 
+    ((activeProposalsCount - compareActiveCount) / compareActiveCount) * 100 : 0;
 
   // Calcular taxa de conversão
-  const acceptedProposals = currentMonthProposals?.filter(p => p.status === 'accepted').length || 0;
-  const totalProposals = currentMonthProposals?.length || 0;
+  const acceptedProposals = currentPeriodProposals?.filter(p => p.status === 'accepted').length || 0;
+  const totalProposals = currentPeriodProposals?.length || 0;
   const conversionRate = totalProposals > 0 ? (acceptedProposals / totalProposals) * 100 : 0;
 
-  const lastAccepted = lastMonthProposals?.filter(p => p.status === 'accepted').length || 0;
-  const lastTotal = lastMonthProposals?.length || 0;
-  const lastConversionRate = lastTotal > 0 ? (lastAccepted / lastTotal) * 100 : 0;
-  const conversionGrowth = lastConversionRate > 0 ? 
-    ((conversionRate - lastConversionRate) / lastConversionRate) * 100 : 0;
+  const compareAccepted = comparePeriodProposals?.filter(p => p.status === 'accepted').length || 0;
+  const compareTotal = comparePeriodProposals?.length || 0;
+  const compareConversionRate = compareTotal > 0 ? (compareAccepted / compareTotal) * 100 : 0;
+  const conversionGrowth = compareConversionRate > 0 ? 
+    ((conversionRate - compareConversionRate) / compareConversionRate) * 100 : 0;
 
   // Buscar clientes únicos
   const { data: clients, error: clientsError } = await supabase
     .from('crm_customers')
     .select('id')
-    .gte('created_at', new Date(currentYear, currentMonth, 1).toISOString());
+    .gte('created_at', start.toISOString());
 
   // Processar dados reais de vendedores
   const processVendorMetrics = (): VendorMetrics[] => {
@@ -241,7 +301,7 @@ async function fetchPropostasAnalytics(): Promise<PropostasAnalytics> {
     
     return vendorData.map(vendor => {
       const vendorCalculations = savedCalculations.filter(calc => calc.user_id === vendor.id);
-      const vendorProposals = currentMonthProposals?.filter(prop => prop.created_by === vendor.id) || [];
+      const vendorProposals = currentPeriodProposals?.filter(prop => prop.created_by === vendor.id) || [];
       
       const totalRevenue = vendorProposals.reduce((sum, prop) => sum + (Number(prop.total_value) || 0), 0);
       const acceptedProposals = vendorProposals.filter(prop => prop.status === 'accepted').length;
@@ -276,7 +336,7 @@ async function fetchPropostasAnalytics(): Promise<PropostasAnalytics> {
     if (!vendorData) return [];
     
     return vendorData.map(vendor => {
-      const vendorProposals = currentMonthProposals?.filter(prop => prop.created_by === vendor.id) || [];
+      const vendorProposals = currentPeriodProposals?.filter(prop => prop.created_by === vendor.id) || [];
       const achieved = vendorProposals.reduce((sum, prop) => sum + (Number(prop.total_value) || 0), 0);
       const target = 150000; // Mock - buscar meta real da base
       const percentage = target > 0 ? (achieved / target) * 100 : 0;
@@ -288,7 +348,7 @@ async function fetchPropostasAnalytics(): Promise<PropostasAnalytics> {
         achieved,
         percentage: Math.round(percentage),
         projectedClose: achieved * 1.2, // Mock - implementar projeção real
-        daysToTarget: percentage >= 100 ? 0 : Math.ceil((target - achieved) / (achieved / new Date().getDate())),
+        daysToTarget: percentage >= 100 ? 0 : Math.ceil((target - achieved) / Math.max(achieved / Math.max(new Date().getDate(), 1), 1)),
         trend: Math.random() > 0.3 ? 'up' : 'down' as 'up' | 'down',
         isTopPerformer: percentage >= 90
       };
@@ -427,7 +487,9 @@ async function fetchPropostasAnalytics(): Promise<PropostasAnalytics> {
       target: 1500000,
       achieved: currentRevenue,
       percentage: Math.round((currentRevenue / 1500000) * 100),
-      daysRemaining: new Date(currentYear, currentMonth + 1, 0).getDate() - now.getDate()
+      daysRemaining: period === 'thisMonth' ? 
+        new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate() : 
+        Math.ceil((end.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
     },
     // Novas métricas de vendedores
     vendorMetrics,
@@ -473,10 +535,10 @@ async function fetchPropostasAnalytics(): Promise<PropostasAnalytics> {
   return mockAnalytics;
 }
 
-export function usePropostasAnalytics() {
+export function usePropostasAnalytics(period: AnalyticsPeriod = 'thisMonth', customRange?: DateRange) {
   return useQuery({
-    queryKey: ['propostas-analytics'],
-    queryFn: fetchPropostasAnalytics,
+    queryKey: ['propostas-analytics', period, customRange],
+    queryFn: () => fetchPropostasAnalytics(period, customRange),
     refetchInterval: 5 * 60 * 1000, // Refetch a cada 5 minutos
     staleTime: 2 * 60 * 1000 // Dados ficam frescos por 2 minutos
   });
