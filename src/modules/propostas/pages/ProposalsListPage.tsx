@@ -138,7 +138,7 @@ export default function ProposalsListPage() {
             <Calculator className="mr-2 h-4 w-4" />
             Cálculos Salvos
           </Button>
-          <DryStoreButton>
+          <DryStoreButton onClick={() => navigate('/propostas')}>
             <Plus className="mr-2 h-4 w-4" />
             Nova Proposta
           </DryStoreButton>
