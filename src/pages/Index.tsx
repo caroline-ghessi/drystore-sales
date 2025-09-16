@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,20 +8,20 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, Bot, ArrowLeft } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { Loader2, Building2, ArrowLeft, Users, MessageCircle } from 'lucide-react';
 
 export default function Index() {
+  const [userType, setUserType] = useState<'client' | 'vendor'>('client');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetLoading, setResetLoading] = useState(false);
-  const [resetMessage, setResetMessage] = useState('');
   const [showResetForm, setShowResetForm] = useState(false);
+  
   const { signIn, signUp, user } = useAuth();
+  const { signInWithWhatsApp, client } = useClientAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -28,6 +29,9 @@ export default function Index() {
   useEffect(() => {
     if (user) {
       navigate('/home');
+    }
+    if (client) {
+      navigate('/cliente');
     }
 
     // Verificar se há erro na URL (ex: erro de convite)
@@ -41,7 +45,7 @@ export default function Index() {
         setError(errorDescription || 'Erro no processo de autenticação.');
       }
     }
-  }, [user, navigate, searchParams]);
+  }, [user, client, navigate, searchParams]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,57 +91,128 @@ export default function Index() {
     setLoading(false);
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
+  const handleClientSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setResetLoading(true);
-    setResetMessage('');
+    setLoading(true);
+    setError('');
+    setMessage('');
 
-    try {
-      // Garantir que usa a URL correta do Lovable em produção
-      const baseUrl = window.location.hostname === 'localhost' 
-        ? 'https://a8d68d6e-4efd-4093-966f-bddf0a89dc45.lovableproject.com'
-        : window.location.origin;
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${baseUrl}/reset-password`
-      });
-
-      if (error) {
-        setResetMessage(`Erro: ${error.message}`);
-      } else {
-        setResetMessage('Email de recuperação enviado! Verifique sua caixa de entrada.');
-      }
-    } catch (err) {
-      setResetMessage('Erro ao enviar email de recuperação. Tente novamente.');
+    // Normalizar WhatsApp para formato brasileiro
+    const normalizedWhatsApp = whatsapp.replace(/\D/g, '');
+    
+    if (normalizedWhatsApp.length !== 11) {
+      setError('Informe um WhatsApp válido com 11 dígitos (DDD + número)');
+      setLoading(false);
+      return;
     }
 
-    setResetLoading(false);
+    const { error } = await signInWithWhatsApp(normalizedWhatsApp);
+    
+    if (error) {
+      setError(error.message);
+    } else {
+      navigate('/cliente');
+    }
+    
+    setLoading(false);
   };
 
+  const formatWhatsApp = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 11) {
+      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    }
+    return value;
+  };
+
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-primary/10 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-xl mb-4">
-            <Bot className="w-8 h-8 text-primary-foreground" />
+            <Building2 className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">DryStore AI</h1>
-          <p className="text-muted-foreground mt-2">Sistema de Atendimento Inteligente</p>
+          <h1 className="text-3xl font-bold text-foreground">
+            <span className="text-primary">Dry</span>store Sales
+          </h1>
+          <p className="text-muted-foreground mt-2">Portal de Vendas e Atendimento</p>
+        </div>
+
+        {/* User Type Selector */}
+        <div className="mb-6">
+          <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-lg">
+            <Button
+              variant={userType === 'client' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setUserType('client')}
+              className="flex items-center gap-2"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Cliente
+            </Button>
+            <Button
+              variant={userType === 'vendor' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setUserType('vendor')}
+              className="flex items-center gap-2"
+            >
+              <Users className="w-4 h-4" />
+              Vendedor/Admin
+            </Button>
+          </div>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Acesso ao Sistema</CardTitle>
+            <CardTitle>
+              {userType === 'client' ? 'Acesso do Cliente' : 'Acesso de Vendedores e Admins'}
+            </CardTitle>
             <CardDescription>
-              Entre com suas credenciais ou crie uma nova conta
+              {userType === 'client' 
+                ? 'Digite seu WhatsApp para ver suas propostas' 
+                : 'Entre com suas credenciais ou crie uma nova conta'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Entrar</TabsTrigger>
-                <TabsTrigger value="signup">Cadastrar</TabsTrigger>
-              </TabsList>
+            {userType === 'client' ? (
+              // Client WhatsApp Login
+              <form onSubmit={handleClientSignIn} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp">WhatsApp (com DDD)</Label>
+                  <Input
+                    id="whatsapp"
+                    type="tel"
+                    placeholder="(11) 99999-9999"
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(formatWhatsApp(e.target.value))}
+                    required
+                    maxLength={15}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Digite o WhatsApp usado nas suas propostas
+                  </p>
+                </div>
+                
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Ver Minhas Propostas
+                </Button>
+              </form>
+            ) : (
+              // Vendor/Admin Login
+              <Tabs defaultValue="signin" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="signin">Entrar</TabsTrigger>
+                  <TabsTrigger value="signup">Cadastrar</TabsTrigger>
+                </TabsList>
               
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn} className="space-y-4">
@@ -233,52 +308,24 @@ export default function Index() {
                 </form>
               </TabsContent>
             </Tabs>
-            
-            {showResetForm && (
-              <div className="mt-6 p-4 border rounded-lg bg-muted/20">
-                <div className="flex items-center gap-2 mb-4">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setShowResetForm(false)}
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-1" />
-                    Voltar
-                  </Button>
-                  <h3 className="font-medium">Recuperar Senha</h3>
-                </div>
-                
-                <form onSubmit={handleForgotPassword} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="reset-email">Email</Label>
-                    <Input
-                      id="reset-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  
-                  {resetMessage && (
-                    <Alert variant={resetMessage.includes('Erro') ? 'destructive' : 'default'}>
-                      <AlertDescription>{resetMessage}</AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  <Button type="submit" className="w-full" disabled={resetLoading}>
-                    {resetLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Enviar Email de Recuperação
-                  </Button>
-                </form>
-              </div>
             )}
           </CardContent>
         </Card>
         
-        <div className="text-center text-sm text-muted-foreground mt-4">
-          <p>Para demonstração, você pode desabilitar "Confirm email" nas configurações do Supabase para acelerar o teste.</p>
+        <div className="text-center text-sm text-muted-foreground mt-6">
+          <p className="mb-2">
+            <span className="font-semibold text-primary">DryStore</span> - Mais de 22 anos construindo soluções
+          </p>
+          {userType === 'client' && (
+            <p className="text-xs">
+              Não encontrou suas propostas? Entre em contato conosco pelo WhatsApp
+            </p>
+          )}
+          {userType === 'vendor' && (
+            <p className="text-xs">
+              Para demonstração, você pode desabilitar "Confirm email" nas configurações do Supabase para acelerar o teste.
+            </p>
+          )}
         </div>
       </div>
     </div>

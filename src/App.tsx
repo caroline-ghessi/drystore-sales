@@ -11,6 +11,7 @@ import SetPasswordPage from "@/pages/SetPassword";
 import ResetPasswordPage from "@/pages/ResetPassword";
 import HomePage from "@/pages/Home";
 import PublicProposal from "@/pages/PublicProposal";
+import ClientPortal from "@/pages/client/ClientPortal";
 const PremiumProposal = React.lazy(() => import("@/pages/PremiumProposal"));
 import { useStorageCleanup } from "@/hooks/useStorageCleanup";
 import { StorageDiagnostic } from "@/components/StorageDiagnostic";
@@ -31,7 +32,9 @@ import Analytics from "@/modules/whatsapp/pages/Analytics";
 import LeadsQuentes from "@/modules/whatsapp/pages/LeadsQuentes";
 
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ClientAuthProvider } from "@/contexts/ClientAuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { ClientProtectedRoute } from "@/components/auth/ClientProtectedRoute";
 
 // Create QueryClient outside component to prevent recreation
 const queryClient = new QueryClient({
@@ -71,6 +74,13 @@ function AppContent() {
             <PremiumProposal />
           </Suspense>
         } /> {/* Página premium HTML para shingle */}
+        
+        {/* Client Portal */}
+        <Route path="/cliente" element={
+          <ClientProtectedRoute>
+            <ClientPortal />
+          </ClientProtectedRoute>
+        } />
         
         {/* Protected main home for module selection */}
         <Route path="/home" element={
@@ -121,11 +131,13 @@ const App: React.FC = () => {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <TooltipProvider>
-            <AppContent />
-            <Toaster />
-            <Sonner />
-          </TooltipProvider>
+          <ClientAuthProvider>
+            <TooltipProvider>
+              <AppContent />
+              <Toaster />
+              <Sonner />
+            </TooltipProvider>
+          </ClientAuthProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>
