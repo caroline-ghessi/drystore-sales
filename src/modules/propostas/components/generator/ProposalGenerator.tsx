@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, Zap, Calculator, FileText, Download, Save, Trash2, Sun } from 'lucide-react';
+import { Loader2, Zap, Calculator, FileText, Download, Save, Trash2, Sun, Send } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ProductType, ClientData } from '../../types/proposal.types';
@@ -28,6 +28,10 @@ import { ProposalResult } from './ProposalResult';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { useVendorPermissions } from '@/hooks/useVendorPermissions';
+import { useCreateVendorApproval } from '../../hooks/useVendorApprovals';
+import { DiscountApprovalModal } from '../modals/DiscountApprovalModal';
+import { ProposalSendModal } from '../modals/ProposalSendModal';
 
 interface ProposalGeneratorProps {
   projectContextId?: string;
@@ -50,11 +54,19 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   const [calculationName, setCalculationName] = useState('');
   const [isGeneratingProposal, setIsGeneratingProposal] = useState(false);
   
+  // Discount management
+  const [discountPercent, setDiscountPercent] = useState(0);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [generatedProposalId, setGeneratedProposalId] = useState<string | null>(null);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isGenerating, generatedProposal, generateFromContext, generateProposal } = useAIGeneration();
   const calculator = useProposalCalculator(productType);  
   const savedCalculations = useSavedCalculations();
+  const vendorPermissions = useVendorPermissions();
+  const createApprovalRequest = useCreateVendorApproval();
 
   useEffect(() => {
     if (projectContextId) {
@@ -71,10 +83,32 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
     }
   };
 
-  const handleManualGeneration = async () => {
-    console.log('=== INICIANDO GERAÇÃO MANUAL ===');
+  const handleGenerateProposal = async () => {
+    // Validar se há permissões de vendedor
+    if (!vendorPermissions.data) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível verificar suas permissões."
+      });
+      return;
+    }
+
+    const maxDiscount = vendorPermissions.data.max_discount_percentage || 0;
+    
+    // Se o desconto excede o limite, solicitar aprovação
+    if (discountPercent > maxDiscount) {
+      setShowApprovalModal(true);
+      return;
+    }
+
+    // Gerar proposta diretamente
+    await executeProposalGeneration();
+  };
+
+  const executeProposalGeneration = async () => {
+    console.log('=== INICIANDO GERAÇÃO DE PROPOSTA ===');
     console.log('Calculator result disponível:', !!calculator.calculationResult);
-    console.log('Calculator result:', calculator.calculationResult);
     
     if (!calculator.calculationResult) {
       toast({
@@ -88,12 +122,16 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
     try {
       setIsGeneratingProposal(true);
       
-      // Gerar itens da proposta usando a função do calculator
+      // Calcular valores com desconto  
+      const subtotal = calculator.calculationResult.totalCost || 0;
+      const discountValue = (subtotal * discountPercent) / 100;
+      const finalValue = subtotal - discountValue;
+      
+      // Gerar itens da proposta
       const proposalItems = calculator.generateProposalItems();
-      console.log('Itens da proposta gerados:', proposalItems);
       
       const request = {
-        calculationId: undefined, // Edge function precisará ser ajustada para lidar com isso
+        calculationId: undefined,
         clientData,
         productType,
         calculationInput: calculator.calculationInput!,
@@ -105,36 +143,35 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
         },
         pricing: {
           ...calculator.calculationResult,
-          items: proposalItems
-        }
+          items: proposalItems,
+          subtotal,
+          discountPercent,
+          discountValue,
+          finalValue
+        },
+        status: 'draft' // Proposta salva como rascunho
       };
-
-      console.log('Enviando request para edge function:', request);
 
       const { data, error } = await supabase.functions.invoke('generate-proposal', {
         body: request
       });
 
-      console.log('Resposta da edge function:', { data, error });
-
       if (error) {
-        console.error('Erro da edge function:', error);
         throw new Error(error.message || 'Falha na geração da proposta');
       }
 
       if (data && data.success) {
+        setGeneratedProposalId(data.proposalId);
         toast({
-          title: "Sucesso",
-          description: "Proposta gerada com sucesso!"
+          title: "Proposta Gerada",
+          description: "Proposta salva como rascunho. Clique em 'Enviar para Cliente' para finalizar o envio."
         });
-        if (data.acceptanceLink) {
-          window.open(data.acceptanceLink, '_blank');
-        }
+        setStep(4); // Ir para o step de envio
       } else {
         throw new Error(data?.error || 'Falha na geração da proposta');
       }
     } catch (error: any) {
-      console.error('Erro na geração manual:', error);
+      console.error('Erro na geração:', error);
       toast({
         variant: "destructive", 
         title: "Erro",
@@ -142,6 +179,59 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
       });
     } finally {
       setIsGeneratingProposal(false);
+    }
+  };
+
+  const handleApprovalSubmit = async (justification: string, requestedDiscount: number) => {
+    try {
+      await createApprovalRequest.mutateAsync({
+        user_id: vendorPermissions.data?.user_id || '',
+        approval_type: 'discount',
+        requested_amount: requestedDiscount,
+        justification
+      });
+
+      setShowApprovalModal(false);
+      toast({
+        title: "Solicitação Enviada",
+        description: "Sua solicitação de desconto foi enviada para aprovação. Você será notificado quando aprovada."
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Erro ao enviar solicitação de aprovação."
+      });
+    }
+  };
+
+  const handleSendProposal = async (sendOptions: { whatsapp: boolean; email: boolean }) => {
+    if (!generatedProposalId) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('send-proposal', {
+        body: {
+          proposalId: generatedProposalId,
+          sendOptions
+        }
+      });
+
+      if (error) throw new Error(error.message);
+
+      toast({
+        title: "Proposta Enviada",
+        description: `Proposta enviada com sucesso ${sendOptions.whatsapp ? 'via WhatsApp' : ''} ${sendOptions.whatsapp && sendOptions.email ? 'e' : ''} ${sendOptions.email ? 'via E-mail' : ''}!`
+      });
+
+      setShowSendModal(false);
+      // Navegar para lista de propostas
+      navigate('/propostas/lista');
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro no Envio",
+        description: error.message || 'Erro ao enviar proposta'
+      });
     }
   };
 
@@ -197,7 +287,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
           onCalculate={calculator.calculate}
           calculationResult={calculator.calculationResult as BatteryBackupResult}
           onSaveCalculation={handleSaveCalculation}
-          onGenerateProposal={handleManualGeneration}
+          onGenerateProposal={handleGenerateProposal}
         />;
       case 'shingle':
         console.log('✅ Renderizando ShingleCalculatorWrapper');
@@ -921,72 +1011,154 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
             </div>
           )}
 
-          {/* Step 4: Generation */}
+          {/* Step 4: Generation or Send */}
           {step === 4 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Finalizar Cálculo</CardTitle>
-                <CardDescription>
-                  Escolha o que fazer com os cálculos realizados
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 bg-muted/50 rounded-lg">
-                  <h4 className="font-semibold mb-2">Resumo do Cálculo:</h4>
-                  <ul className="text-sm space-y-1">
-                    <li>• Cliente: {clientData.name}</li>
-                    <li>• Produto: {productType}</li>
-                    <li>• Valor: R$ {calculator.calculationSummary?.totalCost.toLocaleString('pt-BR')}</li>
-                  </ul>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <Button 
-                    variant="outline"
-                    onClick={handleSaveCalculation}
-                    disabled={savedCalculations.isSaving}
-                  >
-                    {savedCalculations.isSaving ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="mr-2 h-4 w-4" />
-                    )}
-                    Salvar Cálculo
-                  </Button>
-                  
-                  <Button 
-                    variant="destructive"
-                    onClick={handleDiscardCalculation}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Descartar
-                  </Button>
-                  
-                  <Button 
-                    onClick={handleManualGeneration}
-                    disabled={isGenerating}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Gerando...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="mr-2 h-4 w-4" />
-                        Gerar Proposta
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                <div className="flex justify-center">
-                  <Button variant="ghost" onClick={() => setStep(3)}>
-                    Voltar aos Cálculos
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              {!generatedProposalId ? (
+                /* Geração da Proposta */
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Gerar Proposta</CardTitle>
+                    <CardDescription>
+                      Configure desconto e gere a proposta para o cliente
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Resumo dos Cálculos */}
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                      <h4 className="font-semibold mb-3">Resumo do Cálculo:</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Cliente:</span>
+                          <p className="font-medium">{clientData.name}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Produto:</span>
+                          <p className="font-medium">{productType}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Valor Base:</span>
+                          <p className="font-medium">R$ {calculator.calculationResult?.totalCost?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Configuração de Desconto */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="discount" className="text-base font-medium">
+                          Desconto para o Cliente
+                        </Label>
+                        <span className="text-sm text-muted-foreground">
+                          Seu limite: {vendorPermissions.data?.max_discount_percentage || 0}%
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="discount-percent">Percentual de Desconto (%)</Label>
+                          <Input
+                            id="discount-percent"
+                            type="number"
+                            min="0"
+                            max="50"
+                            step="0.1"
+                            value={discountPercent}
+                            onChange={(e) => setDiscountPercent(Number(e.target.value))}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label>Valor do Desconto</Label>
+                          <div className="mt-1 p-3 bg-muted rounded-md">
+                            R$ {((calculator.calculationResult?.totalCost || 0) * discountPercent / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Preview do valor final */}
+                      <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">Valor Final para o Cliente:</span>
+                          <span className="text-xl font-bold text-primary">
+                            R$ {((calculator.calculationResult?.totalCost || 0) - ((calculator.calculationResult?.totalCost || 0) * discountPercent / 100)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        {discountPercent > (vendorPermissions.data?.max_discount_percentage || 0) && (
+                          <p className="text-sm text-orange-600 mt-2">
+                            ⚠️ Desconto acima do seu limite - será necessária aprovação
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Ações */}
+                    <div className="flex space-x-3">
+                      <Button variant="outline" onClick={() => setStep(3)}>
+                        Voltar
+                      </Button>
+                      <Button variant="outline" onClick={handleSaveCalculation}>
+                        <Save className="mr-2 h-4 w-4" />
+                        Salvar Cálculo
+                      </Button>
+                      <Button 
+                        onClick={handleGenerateProposal}
+                        disabled={isGeneratingProposal}
+                        className="flex-1"
+                      >
+                        {isGeneratingProposal ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Gerando Proposta...
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="mr-2 h-4 w-4" />
+                            {discountPercent > (vendorPermissions.data?.max_discount_percentage || 0) 
+                              ? 'Solicitar Aprovação' 
+                              : 'Gerar Proposta'
+                            }
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                /* Envio da Proposta */
+                <Card>
+                  <CardHeader>
+                    <CardTitle>✅ Proposta Gerada com Sucesso!</CardTitle>
+                    <CardDescription>
+                      A proposta foi salva como rascunho. Agora você pode enviar para o cliente.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                      <h4 className="font-semibold text-green-800 mb-2">Proposta Criada:</h4>
+                      <div className="text-sm space-y-1">
+                        <p>• Cliente: {clientData.name}</p>
+                        <p>• Desconto: {discountPercent}%</p>
+                        <p>• Valor Final: R$ {((calculator.calculationResult?.totalCost || 0) - ((calculator.calculationResult?.totalCost || 0) * discountPercent / 100)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-3">
+                      <Button variant="outline" onClick={() => navigate('/propostas/lista')}>
+                        Ver Lista de Propostas
+                      </Button>
+                      <Button 
+                        onClick={() => setShowSendModal(true)}
+                        className="flex-1"
+                      >
+                        <Send className="mr-2 h-4 w-4" />
+                        Enviar para Cliente
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
         </>
       )}
@@ -997,64 +1169,54 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
           <DialogHeader>
             <DialogTitle>Salvar Cálculo</DialogTitle>
             <DialogDescription>
-              Digite um nome para identificar este cálculo posteriormente
+              Dê um nome para este cálculo para consultar depois
             </DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-4">
             <div>
-              <Label htmlFor="calculation-name">Nome do Cálculo</Label>
+              <Label htmlFor="calc-name">Nome do Cálculo</Label>
               <Input
-                id="calculation-name"
+                id="calc-name"
                 value={calculationName}
                 onChange={(e) => setCalculationName(e.target.value)}
-                placeholder="Ex: Projeto João Silva - Solar Residencial"
-                className="mt-1"
+                placeholder="Ex: Solar Residencial - João Silva"
               />
             </div>
-            
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-sm">
-                <strong>Cliente:</strong> {clientData.name}<br />
-                <strong>Produto:</strong> {productType}<br />
-                <strong>Valor:</strong> R$ {calculator.calculationSummary?.totalCost.toLocaleString('pt-BR')}
-              </p>
-            </div>
           </div>
-          
           <DialogFooter>
             <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button 
-              onClick={confirmSaveCalculation}
-              disabled={!calculationName.trim() || savedCalculations.isSaving}
-            >
-              {savedCalculations.isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button onClick={confirmSaveCalculation}>
               Salvar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Generated Proposal Preview */}
-      {generatedProposal && (
-        <ProposalResult 
-          proposal={{
-            id: generatedProposal.proposalId || '',
-            number: generatedProposal.proposalData?.id || 'N/A',
-            title: generatedProposal.proposalData?.client?.name ? `Proposta - ${generatedProposal.proposalData.client.name}` : 'Proposta',
-            total: generatedProposal.proposalData?.total || 0,
-            validUntil: generatedProposal.proposalData?.validityDays ? 
-              new Date(Date.now() + (generatedProposal.proposalData.validityDays * 24 * 60 * 60 * 1000)).toISOString().split('T')[0] : 
-              new Date().toISOString().split('T')[0],
-            status: generatedProposal.proposalData?.status || 'generated',
-            acceptanceLink: generatedProposal.acceptanceLink,
-            uniqueId: generatedProposal.uniqueId
-          }}
-          generatedContent={generatedProposal.generatedContent}
-        />
-      )}
+      {/* Modals */}
+      <DiscountApprovalModal
+        isOpen={showApprovalModal}
+        onClose={() => setShowApprovalModal(false)}
+        onSubmit={handleApprovalSubmit}
+        maxAllowedDiscount={vendorPermissions.data?.max_discount_percentage || 0}
+        currentDiscount={discountPercent}
+        totalValue={calculator.calculationResult?.totalCost || 0}
+      />
+
+      <ProposalSendModal
+        isOpen={showSendModal}
+        onClose={() => setShowSendModal(false)}
+        onSend={handleSendProposal}
+        clientData={clientData}
+        proposalSummary={generatedProposalId ? {
+          totalValue: calculator.calculationResult?.totalCost || 0,
+          discountPercent,
+          finalValue: (calculator.calculationResult?.totalCost || 0) - ((calculator.calculationResult?.totalCost || 0) * discountPercent / 100)
+        } : undefined}
+      />
+
+      {/* Generated Proposal Preview will be added later */}
     </div>
   );
 }

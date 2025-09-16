@@ -40,78 +40,20 @@ export function useVendorApprovals(status?: string) {
   return useQuery({
     queryKey: ['vendor-approvals', status],
     queryFn: async () => {
-      // Mock data até a migração ser executada
-      const mockApprovals: VendorApproval[] = [
-        {
-          id: '1',
-          proposal_id: 'prop-001',
-          user_id: 'user-001',
-          approver_id: null,
-          approval_type: 'discount',
-          status: 'pending',
-          requested_amount: 7500,
-          approved_amount: null,
-          justification: 'Cliente solicitou desconto para fechar hoje',
-          notes: null,
-          requested_at: '2024-01-15T10:30:00Z',
-          responded_at: null,
-          created_at: '2024-01-15T10:30:00Z',
-          updated_at: '2024-01-15T10:30:00Z',
-          user_profile: {
-            display_name: 'João Silva',
-            email: 'joao@empresa.com'
-          },
-          proposal: {
-            proposal_number: 'PROP-2024-001',
-            title: 'Proposta Solar Residencial',
-            total_value: 50000,
-            final_value: 42500,
-            customer: {
-              name: 'Construtora ABC Ltda'
-            }
-          }
-        },
-        {
-          id: '2',
-          proposal_id: 'prop-002',
-          user_id: 'user-002',
-          approver_id: 'admin-001',
-          approval_type: 'discount',
-          status: 'approved',
-          requested_amount: 9000,
-          approved_amount: 9000,
-          justification: 'Concorrência ofereceu preço menor',
-          notes: 'Aprovado considerando histórico do cliente',
-          requested_at: '2024-01-14T15:45:00Z',
-          responded_at: '2024-01-14T16:20:00Z',
-          created_at: '2024-01-14T15:45:00Z',
-          updated_at: '2024-01-14T16:20:00Z',
-          user_profile: {
-            display_name: 'Maria Santos',
-            email: 'maria@empresa.com'
-          },
-          approver_profile: {
-            display_name: 'Admin Master',
-            email: 'admin@empresa.com'
-          },
-          proposal: {
-            proposal_number: 'PROP-2024-002',
-            title: 'Proposta Drywall Comercial',
-            total_value: 75000,
-            final_value: 66000,
-            customer: {
-              name: 'Incorporadora XYZ'
-            }
-          }
-        }
-      ];
+      let query = supabase
+        .from('vendor_approvals')
+        .select('*')
+        .order('created_at', { ascending: false });
 
       // Filtrar por status se necessário
       if (status && status !== 'all') {
-        return mockApprovals.filter(approval => approval.status === status);
+        query = query.eq('status', status);
       }
 
-      return mockApprovals;
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return data || [];
     },
   });
 }
@@ -127,9 +69,20 @@ export function useCreateVendorApproval() {
       requested_amount: number;
       justification: string;
     }) => {
-      // Mock por enquanto
-      console.log('Create approval (mock):', approvalData);
-      return { id: 'new-approval', ...approvalData };
+      const { data, error } = await supabase
+        .from('vendor_approvals')
+        .insert({
+          user_id: approvalData.user_id,
+          approval_type: approvalData.approval_type,
+          requested_amount: approvalData.requested_amount,
+          justification: approvalData.justification,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendor-approvals'] });
