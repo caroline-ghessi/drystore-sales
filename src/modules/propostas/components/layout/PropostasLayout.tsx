@@ -14,6 +14,7 @@ import SavedCalculationsPage from "@/modules/propostas/pages/SavedCalculationsPa
 import RankingPage from "@/modules/propostas/pages/RankingPage";
 import ProductsPage from "@/modules/propostas/pages/ProductsPage";
 import PropostasAnalytics from "@/modules/propostas/pages/PropostasAnalytics";
+import ReportsPage from "@/modules/propostas/pages/ReportsPage";
 import AdminLayout from "@/modules/propostas/pages/admin/AdminLayout";
 
 export default function PropostasLayout() {
@@ -50,6 +51,14 @@ export default function PropostasLayout() {
               <Route path="templates" element={<div className="p-6 bg-drystore-light-gray min-h-full"><div className="text-center py-20 text-drystore-medium-gray">Templates - Em desenvolvimento</div></div>} />
               <Route path="configuracoes" element={<div className="p-6 bg-drystore-light-gray min-h-full"><div className="text-center py-20 text-drystore-medium-gray">Configurações - Em desenvolvimento</div></div>} />
               <Route path="notificacoes" element={<div className="p-6 bg-drystore-light-gray min-h-full"><div className="text-center py-20 text-drystore-medium-gray">Notificações - Em desenvolvimento</div></div>} />
+              <Route 
+                path="relatorios/geral" 
+                element={
+                  <RouteGuard requireAdmin={true}>
+                    <ReportsPage />
+                  </RouteGuard>
+                } 
+              />
               <Route 
                 path="administracao/*" 
                 element={

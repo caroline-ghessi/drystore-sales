@@ -13,7 +13,8 @@ import {
   Menu,
   X,
   CheckCircle2,
-  TrendingUp
+  TrendingUp,
+  FileDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
@@ -29,6 +30,7 @@ const dryStoreItems = [
 const adminItems = [
   { title: 'Visão Geral', url: '/propostas/administracao', icon: Settings },
   { title: 'Produtos', url: '/propostas/produtos', icon: ShoppingBag },
+  { title: 'Relatórios', url: '/propostas/relatorios/geral', icon: FileDown },
   { title: 'Analytics', url: '/propostas/analytics', icon: TrendingUp }
 ];
 
