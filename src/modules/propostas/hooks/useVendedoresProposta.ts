@@ -10,6 +10,7 @@ export interface VendorProposta {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  email?: string;
   // Dados do perfil via mapping (mock por enquanto)
   profile?: {
     user_id: string;
@@ -26,7 +27,7 @@ export function useVendedoresProposta() {
       // Buscar vendors ativos
       const { data: vendors, error: vendorError } = await supabase
         .from('vendors')
-        .select('*')
+        .select('id, name, phone_number, whapi_channel_id, token_configured, is_active, created_at, updated_at, email')
         .eq('is_active', true)
         .order('name');
 

@@ -80,7 +80,7 @@ export function QuickActions() {
       title: 'Gerenciar Equipe',
       description: 'Vendedores e metas',
       icon: Users,
-      onClick: () => navigate('/propostas/administracao/equipe'),
+      onClick: () => navigate('/propostas/administracao/vendedores'),
       color: 'blue'
     },
     {
