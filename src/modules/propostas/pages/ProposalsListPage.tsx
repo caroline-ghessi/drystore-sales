@@ -45,17 +45,17 @@ const ProposalsListPage = () => {
   // Função para renderizar badge baseado no status
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      draft: { variant: 'drystore-outline' as const, label: 'Rascunho' },
-      sent: { variant: 'drystore' as const, label: 'Enviada' },
-      accepted: { variant: 'success' as const, label: 'Aceita' },
-      rejected: { variant: 'danger' as const, label: 'Rejeitada' },
-      expired: { variant: 'warning' as const, label: 'Expirada' },
-      viewed: { variant: 'info' as const, label: 'Visualizada' },
-      under_review: { variant: 'warning' as const, label: 'Em Análise' }
+      draft: { variant: 'draft' as const, label: 'Rascunho' },
+      sent: { variant: 'sent' as const, label: 'Enviada' },
+      accepted: { variant: 'accepted' as const, label: 'Aceita' },
+      rejected: { variant: 'rejected' as const, label: 'Rejeitada' },
+      expired: { variant: 'expired' as const, label: 'Expirada' },
+      viewed: { variant: 'viewed' as const, label: 'Visualizada' },
+      under_review: { variant: 'under_review' as const, label: 'Em Análise' }
     };
     
     const config = statusConfig[status as keyof typeof statusConfig];
-    return <DryStoreBadge variant={config?.variant || 'drystore-outline'}>{config?.label || status}</DryStoreBadge>;
+    return <DryStoreBadge variant={config?.variant || 'default'}>{config?.label || status}</DryStoreBadge>;
   };
 
   // Função para obter label do tipo de proposta

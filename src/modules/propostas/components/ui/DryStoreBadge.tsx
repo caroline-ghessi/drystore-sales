@@ -8,12 +8,23 @@ const dryStoreBadgeVariants = cva(
   {
     variants: {
       variant: {
-        drystore: "border-transparent bg-drystore-orange text-drystore-white shadow hover:bg-drystore-orange-hover",
-        "drystore-outline": "border-drystore-orange text-drystore-orange",
-        success: "border-transparent bg-green-100 text-green-800",
-        warning: "border-transparent bg-amber-100 text-amber-800",
-        danger: "border-transparent bg-red-100 text-red-800",
-        info: "border-transparent bg-blue-100 text-blue-800"
+        // Status específicos com contraste garantido
+        draft: "border-orange-400 text-orange-600 bg-orange-50 dark:bg-orange-950 dark:text-orange-400",
+        sent: "border-transparent bg-orange-500 text-white shadow hover:bg-orange-600",
+        accepted: "border-transparent bg-green-500 text-white shadow hover:bg-green-600",
+        rejected: "border-transparent bg-red-500 text-white shadow hover:bg-red-600",
+        expired: "border-transparent bg-gray-500 text-white shadow hover:bg-gray-600",
+        viewed: "border-transparent bg-blue-500 text-white shadow hover:bg-blue-600",
+        under_review: "border-transparent bg-yellow-500 text-white shadow hover:bg-yellow-600",
+        
+        // Variantes genéricas
+        drystore: "border-transparent bg-orange-500 text-white shadow hover:bg-orange-600",
+        "drystore-outline": "border-orange-400 text-orange-600 bg-orange-50 dark:bg-orange-950 dark:text-orange-400",
+        success: "border-transparent bg-green-500 text-white shadow hover:bg-green-600",
+        warning: "border-transparent bg-yellow-500 text-white shadow hover:bg-yellow-600",
+        danger: "border-transparent bg-red-500 text-white shadow hover:bg-red-600",
+        info: "border-transparent bg-blue-500 text-white shadow hover:bg-blue-600",
+        default: "border-transparent bg-gray-500 text-white shadow hover:bg-gray-600"
       },
     },
     defaultVariants: {
