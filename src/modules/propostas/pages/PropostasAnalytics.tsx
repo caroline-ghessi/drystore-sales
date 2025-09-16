@@ -10,9 +10,16 @@ import {
   Users,
   Target,
   Award,
-  Activity
+  Activity,
+  UserCheck,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { usePropostasAnalytics } from '@/modules/propostas/hooks/usePropostasAnalytics';
+import VendorPerformanceMatrix from '@/modules/propostas/components/analytics/VendorPerformanceMatrix';
+import VendorQuotaProgress from '@/modules/propostas/components/analytics/VendorQuotaProgress';
+import VendorProductSpecialization from '@/modules/propostas/components/analytics/VendorProductSpecialization';
+import VendorActivityTimeline from '@/modules/propostas/components/analytics/VendorActivityTimeline';
 
 // Helper function to format currency
 const formatCurrency = (value: number) => {
@@ -193,7 +200,7 @@ export default function PropostasAnalytics() {
         </Badge>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards - Gerais */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
           title="Receita Total"
@@ -221,10 +228,76 @@ export default function PropostasAnalytics() {
         />
       </div>
 
+      {/* KPI Cards - Vendedores */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Vendedor do Mês
+            </CardTitle>
+            <Award className="h-4 w-4 text-yellow-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-800">
+              {analytics.vendorKPIs.topPerformer}
+            </div>
+            <div className="text-xs text-yellow-600 mt-1">
+              Melhor performance
+            </div>
+          </CardContent>
+        </Card>
+
+        <KPICard
+          title="Conversão da Equipe"
+          value={`${analytics.vendorKPIs.avgTeamConversion}%`}
+          change={5.2}
+          icon={<Target className="h-4 w-4" />}
+        />
+
+        <KPICard
+          title="Vendedores Ativos"
+          value={analytics.vendorKPIs.activeVendors}
+          change={0}
+          icon={<UserCheck className="h-4 w-4" />}
+        />
+
+        <Card className={`${analytics.vendorKPIs.pendingApprovals > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Aprovações Pendentes
+            </CardTitle>
+            <AlertCircle className={`h-4 w-4 ${analytics.vendorKPIs.pendingApprovals > 0 ? 'text-red-600' : 'text-green-600'}`} />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${analytics.vendorKPIs.pendingApprovals > 0 ? 'text-red-800' : 'text-green-800'}`}>
+              {analytics.vendorKPIs.pendingApprovals}
+            </div>
+            <div className={`text-xs mt-1 ${analytics.vendorKPIs.pendingApprovals > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {analytics.vendorKPIs.pendingApprovals > 0 ? 'Requer atenção' : 'Tudo em dia'}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Vendor Quotas Progress */}
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Progresso das Metas dos Vendedores</h2>
+        <VendorQuotaProgress vendors={analytics.vendorQuotas} />
+      </div>
+
+      {/* Vendor Performance Matrix */}
+      <VendorPerformanceMatrix vendors={analytics.vendorMetrics} />
+
       {/* Charts and Tables */}
       <div className="grid gap-4 lg:grid-cols-2">
         <VendorRanking vendors={analytics.vendorRanking} />
         <ProductPerformance products={analytics.productPerformance} />
+      </div>
+
+      {/* Vendor Specialization and Activity */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <VendorProductSpecialization vendors={analytics.vendorSpecializations} />
+        <VendorActivityTimeline activities={analytics.recentActivities} />
       </div>
 
       {/* Meta Progress */}
