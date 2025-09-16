@@ -31,7 +31,14 @@ export default function PropostasLayout() {
               <Route path="calculos-salvos" element={<SavedCalculationsPage />} />
               <Route path="clientes" element={<ClientsPage />} />
               <Route path="ranking" element={<RankingPage />} />
-              <Route path="produtos" element={<ProductsPage />} />
+              <Route 
+                path="produtos" 
+                element={
+                  <RouteGuard requireAdmin={true}>
+                    <ProductsPage />
+                  </RouteGuard>
+                } 
+              />
               <Route 
                 path="analytics" 
                 element={
@@ -43,7 +50,14 @@ export default function PropostasLayout() {
               <Route path="templates" element={<div className="p-6 bg-drystore-light-gray min-h-full"><div className="text-center py-20 text-drystore-medium-gray">Templates - Em desenvolvimento</div></div>} />
               <Route path="configuracoes" element={<div className="p-6 bg-drystore-light-gray min-h-full"><div className="text-center py-20 text-drystore-medium-gray">Configurações - Em desenvolvimento</div></div>} />
               <Route path="notificacoes" element={<div className="p-6 bg-drystore-light-gray min-h-full"><div className="text-center py-20 text-drystore-medium-gray">Notificações - Em desenvolvimento</div></div>} />
-              <Route path="administracao/*" element={<AdminLayout />} />
+              <Route 
+                path="administracao/*" 
+                element={
+                  <RouteGuard requireAdmin={true}>
+                    <AdminLayout />
+                  </RouteGuard>
+                } 
+              />
             </Routes>
           </main>
         </div>

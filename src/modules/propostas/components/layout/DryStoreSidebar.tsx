@@ -23,12 +23,12 @@ const dryStoreItems = [
   { title: 'Propostas', url: '/propostas/lista', icon: FileText },
   { title: 'Clientes', url: '/propostas/clientes', icon: Users },
   { title: 'Ranking', url: '/propostas/ranking', icon: Trophy },
-  { title: 'Produtos', url: '/propostas/produtos', icon: ShoppingBag },
   { title: 'Notificações', url: '/propostas/notificacoes', icon: Bell, badge: '3' },
-  { title: 'Administração', url: '/propostas/administracao', icon: Settings },
 ];
 
 const adminItems = [
+  { title: 'Visão Geral', url: '/propostas/administracao', icon: Settings },
+  { title: 'Produtos', url: '/propostas/produtos', icon: ShoppingBag },
   { title: 'Analytics', url: '/propostas/analytics', icon: TrendingUp }
 ];
 
