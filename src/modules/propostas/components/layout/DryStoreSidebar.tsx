@@ -12,9 +12,11 @@ import {
   ShoppingBag,
   Menu,
   X,
-  CheckCircle2
+  CheckCircle2,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 const dryStoreItems = [
   { title: 'Dashboard', url: '/propostas', icon: BarChart3, exact: true },
@@ -26,10 +28,15 @@ const dryStoreItems = [
   { title: 'Administração', url: '/propostas/administracao', icon: Settings },
 ];
 
+const adminItems = [
+  { title: 'Analytics', url: '/propostas/analytics', icon: TrendingUp }
+];
+
 export function DryStoreSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const currentPath = location.pathname;
+  const { isAdmin } = useUserPermissions();
 
   const isActive = (path: string, exact: boolean = false) => {
     if (exact) {
@@ -115,6 +122,42 @@ export function DryStoreSidebar() {
             </NavLink>
           );
         })}
+
+        {/* Admin Section */}
+        {isAdmin && (
+          <>
+            {!collapsed && (
+              <div className="px-4 py-4">
+                <h3 className="text-xs font-semibold text-drystore-medium-gray uppercase tracking-wider">
+                  Administração
+                </h3>
+              </div>
+            )}
+            
+            {adminItems.map((item) => {
+              const active = isActive(item.url, false);
+              return (
+                <NavLink
+                  key={item.title}
+                  to={item.url}
+                  className={cn(
+                    "flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
+                    active 
+                      ? "bg-drystore-orange text-white shadow-lg shadow-drystore-orange/20" 
+                      : "text-drystore-medium-gray hover:bg-gray-50 hover:text-drystore-dark-gray"
+                  )}
+                >
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  {!collapsed && (
+                    <div className="ml-3 flex items-center justify-between w-full">
+                      <span>{item.title}</span>
+                    </div>
+                  )}
+                </NavLink>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* Status Footer */}
