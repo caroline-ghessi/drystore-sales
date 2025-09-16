@@ -457,6 +457,39 @@ export type Database = {
         }
         Relationships: []
       }
+      commission_rules: {
+        Row: {
+          commission_rate: number
+          created_at: string
+          description: string | null
+          discount_max: number
+          discount_min: number
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          commission_rate: number
+          created_at?: string
+          description?: string | null
+          discount_max: number
+          discount_min?: number
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          commission_rate?: number
+          created_at?: string
+          description?: string | null
+          discount_max?: number
+          discount_min?: number
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       conversation_analytics: {
         Row: {
           avg_response_time_seconds: number | null

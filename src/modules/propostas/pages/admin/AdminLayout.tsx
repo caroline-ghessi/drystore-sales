@@ -13,12 +13,14 @@ import {
   Mail,
   UserPlus,
   AlertTriangle,
-  UserCheck
+  UserCheck,
+  Percent
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import MetasPage from './MetasPage';
 import ApprovacoesPage from './ApprovacoesPage';
 import ConfiguracoesPage from './ConfiguracoesPage';
+import ComissoesPage from './ComissoesPage';
 import VendorMappingModal from '../../components/admin/VendorMappingModal';
 import { VendorEmailSetupModal } from '../../components/admin/VendorEmailSetupModal';
 import { VendorAccountCreationModal } from '../../components/admin/VendorAccountCreationModal';
@@ -60,6 +62,11 @@ export default function AdminLayout() {
       path: '/propostas/administracao/aprovacoes',
       icon: CheckCircle,
       badge: `${pendingApprovals.length} pendentes`
+    },
+    {
+      title: 'Comissões',
+      path: '/propostas/administracao/comissoes',
+      icon: Percent
     },
     {
       title: 'Configurações',
@@ -159,6 +166,7 @@ export default function AdminLayout() {
           />} />
           <Route path="metas" element={<MetasPage />} />
           <Route path="aprovacoes" element={<ApprovacoesPage />} />
+          <Route path="comissoes" element={<ComissoesPage />} />
           <Route path="configuracoes" element={<ConfiguracoesPage />} />
         </Routes>
 
