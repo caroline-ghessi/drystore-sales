@@ -7,7 +7,7 @@ const createShingleTemplate = (): ProductSpecificTemplate => ({
     productType: 'shingle',
     displayName: 'Telha Shingle Premium Owens Corning',
     heroTitle: 'Telhas Shingle Premium Owens Corning',
-    heroSubtitle: 'A telha que valoriza seu imóvel - Importada dos EUA com garantia real de 50 anos',
+    heroSubtitle: 'TOP 2 no Ranking Forbes Home - A telha que valoriza seu imóvel',
     primaryColor: '#FF6B00',
     accentColor: '#D4AF37',
     kpiSection: {
@@ -18,9 +18,14 @@ const createShingleTemplate = (): ProductSpecificTemplate => ({
       title: 'Garantias Premium',
       warranties: [
         {
-          component: 'Telha Shingle Owens Corning Duration®',
-          duration: '50 anos',
-          details: 'Garantia limitada oficial do fabricante nos EUA. Resistência a ventos de 130mph, tecnologia SureNail® exclusiva'
+          component: 'Telha Shingle System Oakridge',
+          duration: '30 anos',
+          details: 'Garantia limitada oficial do fabricante. Resistência a ventos de 130mph, durabilidade média de 50 anos'
+        },
+        {
+          component: 'Telha Shingle System Supreme',
+          duration: '25 anos', 
+          details: 'Garantia limitada oficial do fabricante. Resistência a ventos de 130mph, durabilidade média de 50 anos'
         },
         {
           component: 'Cumeeira ProEdge® Hip & Ridge',
@@ -51,14 +56,11 @@ const createShingleTemplate = (): ProductSpecificTemplate => ({
     benefitsSection: {
       title: 'Por que Owens Corning é Superior?',
       benefits: [
-        'Tecnologia SureNail® - Resistência extra na fixação (+18% vs concorrentes)',
-        '130 mph vs 110 mph da IKO - Resistência superior aos ventos',
-        'Garantia real de 50 anos com documento oficial americano',
-        'Valorização comprovada de até R$ 100.000 no imóvel',
-        'Cores que não desbotam - Grânulos cerâmicos especiais',
-        'Sistema de ventilação integrado previne condensação',
-        'Instalação mais rápida com tecnologia SureNail®',
-        'Material sustentável e reciclável'
+        '🏆 TOP 2 no Ranking Forbes Home (Fabricantes de Telhas Shingle dos EUA)',
+        '📊 Avaliação baseada em qualidade, durabilidade, custo-benefício e atendimento',
+        '🇺🇸 Reconhecimento oficial da mídia americana especializada',
+        '📈 Posição mantida há mais de 5 anos consecutivos no ranking',
+        '🔗 Veja o ranking completo: https://www.forbes.com/home-improvement/roofing/best-roofing-shingles/'
       ]
     },
     additionalInfo: {
@@ -78,8 +80,8 @@ const createShingleTemplate = (): ProductSpecificTemplate => ({
     { label: 'Manta Asfáltica', value: calc?.rhinoroofRolls || 0, unit: 'rolos', icon: '🛡️' },
     { label: 'Cumeeira Ventilada', value: calc?.ridgeCapBundles || 0, unit: 'fardos', icon: '🌬️' },
     { label: 'Resistência ao Vento', value: '130', unit: 'mph', highlight: true, icon: '💨' },
-    { label: 'Garantia Premium', value: '50', unit: 'anos', highlight: true, icon: '⏱️' },
-    { label: 'Valorização Imóvel', value: 'A+', unit: 'categoria', highlight: true, icon: '🏆' }
+    { label: 'Durabilidade Média', value: '50', unit: 'anos', highlight: true, icon: '⏱️' },
+    { label: 'TOP Ranking Forbes', value: '2º', unit: 'posição', highlight: true, icon: '🏆' }
   ],
   generateTechnicalSpecs: (calc) => [
     {
@@ -91,7 +93,9 @@ const createShingleTemplate = (): ProductSpecificTemplate => ({
         { name: 'Cobertura por Fardo', value: '3', unit: 'm²' },
         { name: 'Resistência ao Vento', value: '130', unit: 'mph' },
         { name: 'Classificação Granizo', value: 'UL 2218 Classe 4' },
-        { name: 'Garantia', value: '50', unit: 'anos' }
+        { name: 'Garantia Oakridge', value: '30', unit: 'anos' },
+        { name: 'Garantia Supreme', value: '25', unit: 'anos' },
+        { name: 'Durabilidade Média', value: '50', unit: 'anos' }
       ]
     },
     {
@@ -140,19 +144,63 @@ const createShingleTemplate = (): ProductSpecificTemplate => ({
                        'R$ 20.000 - R$ 50.000';
     
     return [
-      `Valorização imediata do imóvel: ${valorização}`,
-      'Tecnologia SureNail® única no mercado - 18% mais resistente que IKO',
-      'Garantia real de 50 anos - não é marketing, é documento oficial',
-      'Resistência comprovada: 130 mph vs 110 mph dos concorrentes',
-      'Cores que não desbotam - tecnologia de grânulos cerâmicos',
-      'Sistema completo importado dos EUA - padrão americano',
-      'Instalação mais rápida - tecnologia facilita fixação',
-      'Economia em manutenção - durabilidade superior',
-      'Ventilação natural integrada - evita condensação',
-      'Sustentabilidade - material 100% reciclável'
+      `🏆 TOP 2 no Ranking Forbes Home - Reconhecimento internacional`,
+      `💰 Valorização imediata do imóvel: ${valorização}`,
+      '🔧 Tecnologia SureNail® única no mercado - 18% mais resistente',
+      '💨 Resistência comprovada: 130 mph vs 110 mph dos concorrentes',
+      '🎨 Cores que não desbotam - tecnologia de grânulos cerâmicos',
+      '🏠 Durabilidade média de 50 anos (garantias de 25-30 anos)',
+      '⚡ Instalação mais rápida - tecnologia facilita fixação',
+      '💸 Economia em manutenção - durabilidade superior',
+      '🌬️ Ventilação natural integrada - evita condensação',
+      '♻️ Sustentabilidade - material 100% reciclável'
     ];
   },
   customSections: [
+    {
+      title: 'TOP 2 Ranking Forbes Home',
+      content: `
+        <div class="forbes-ranking-section" style="background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 40px; border-radius: 16px; margin: 32px 0; color: white; position: relative; overflow: hidden;">
+          <div style="position: absolute; top: -50px; right: -50px; width: 150px; height: 150px; background: rgba(255, 107, 0, 0.1); border-radius: 50%;"></div>
+          <div style="position: absolute; bottom: -30px; left: -30px; width: 100px; height: 100px; background: rgba(255, 215, 0, 0.1); border-radius: 50%;"></div>
+          
+          <div style="position: relative; z-index: 2;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <div style="display: inline-flex; align-items: center; background: rgba(255, 107, 0, 0.2); padding: 12px 24px; border-radius: 50px; border: 2px solid #FF6B00; margin-bottom: 16px;">
+                <span style="font-size: 24px; margin-right: 8px;">🏆</span>
+                <span style="font-weight: bold; font-size: 18px; color: #FFD700;">TOP 2</span>
+              </div>
+              <h3 style="font-size: 28px; font-weight: bold; margin: 0; color: white;">Ranking Forbes Home</h3>
+              <p style="font-size: 16px; color: #B0BEC5; margin: 8px 0;">Fabricantes de Telhas Shingle dos EUA</p>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 32px 0;">
+              <div style="text-align: center; padding: 20px; background: rgba(255, 255, 255, 0.05); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                <div style="font-size: 32px; font-weight: bold; color: #FFD700; margin-bottom: 8px;">2º</div>
+                <div style="font-size: 14px; color: #B0BEC5;">Posição Nacional</div>
+              </div>
+              <div style="text-align: center; padding: 20px; background: rgba(255, 255, 255, 0.05); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                <div style="font-size: 32px; font-weight: bold; color: #4CAF50; margin-bottom: 8px;">5+</div>
+                <div style="font-size: 14px; color: #B0BEC5;">Anos Consecutivos</div>
+              </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 24px;">
+              <p style="margin: 16px 0; color: #E0E0E0; font-size: 14px;">
+                <strong>Critérios de Avaliação:</strong> Qualidade, Durabilidade, Custo-benefício, Atendimento
+              </p>
+              <a href="https://www.forbes.com/home-improvement/roofing/best-roofing-shingles/" target="_blank" 
+                 style="display: inline-block; background: linear-gradient(45deg, #FF6B00, #FF8C00); 
+                        color: white; padding: 12px 24px; border-radius: 25px; text-decoration: none; 
+                        font-weight: bold; font-size: 14px; transition: all 0.3s ease; border: none; cursor: pointer;">
+                📊 Ver Ranking Completo Forbes
+              </a>
+            </div>
+          </div>
+        </div>
+      `,
+      order: 0
+    },
     {
       title: 'Anatomia do Sistema Shingle Premium',
       content: `
