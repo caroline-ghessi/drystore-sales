@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { WhatsAppInput } from '@/components/ui/whatsapp-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -117,14 +118,6 @@ export default function Index() {
     setLoading(false);
   };
 
-  const formatWhatsApp = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 11) {
-      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-    }
-    return value;
-  };
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-primary/10 flex items-center justify-center p-4">
@@ -181,14 +174,11 @@ export default function Index() {
               <form onSubmit={handleClientSignIn} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="whatsapp">WhatsApp (com DDD)</Label>
-                  <Input
+                  <WhatsAppInput
                     id="whatsapp"
-                    type="tel"
-                    placeholder="(11) 99999-9999"
                     value={whatsapp}
-                    onChange={(e) => setWhatsapp(formatWhatsApp(e.target.value))}
+                    onChange={(e) => setWhatsapp(e.target.value)}
                     required
-                    maxLength={15}
                   />
                   <p className="text-xs text-muted-foreground">
                     Digite o WhatsApp usado nas suas propostas
