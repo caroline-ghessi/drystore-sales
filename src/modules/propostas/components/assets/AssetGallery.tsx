@@ -35,6 +35,8 @@ const ASSET_TYPES = [
   { value: 'logo', label: 'Logo/Marca' },
   { value: 'diagram', label: 'Diagrama/Esquema' },
   { value: 'certification', label: 'Certificação' },
+  { value: 'case_studies', label: 'Cases de Obra' },
+  { value: 'background', label: 'Fundo' },
 ];
 
 export const AssetGallery: React.FC = () => {
