@@ -1791,6 +1791,54 @@ export type Database = {
           },
         ]
       }
+      proposal_template_assets: {
+        Row: {
+          asset_type: string
+          created_at: string
+          description: string | null
+          display_order: number | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          is_active: boolean
+          mime_type: string | null
+          template_category: Database["public"]["Enums"]["product_category"]
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          asset_type: string
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          is_active?: boolean
+          mime_type?: string | null
+          template_category: Database["public"]["Enums"]["product_category"]
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          asset_type?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          is_active?: boolean
+          mime_type?: string | null
+          template_category?: Database["public"]["Enums"]["product_category"]
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       proposal_templates: {
         Row: {
           created_at: string
