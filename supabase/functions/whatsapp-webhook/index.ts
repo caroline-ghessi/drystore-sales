@@ -278,27 +278,51 @@ async function handleIncomingMessage(message: any, contact: any) {
       });
     }
 
-    // PROCESSAR MENSAGEM COM AGENTES DE IA
-    // Para mensagens novas: processar normalmente (skip áudio até transcrição)
-    // Para duplicatas: verificar se já foi processada pela IA
+    // PROCESSAR MENSAGEM COM SISTEMA DE BUFFER DE 60 SEGUNDOS
+    // Para mensagens novas de texto/interativas: usar sistema de buffer
+    // Para áudio: aguardar transcrição
     if (isNewMessage) {
       if (type !== 'audio' && type !== 'voice') {
-        await processMessageWithAI(conversation.id, content);
-        console.log('✅ NEW message processed with AI agents:', {
-          conversationId: conversation.id,
-          messageId: whatsappMessageId,
-          content: content.substring(0, 50)
-        });
+        // Usar sistema de buffer de 60 segundos
+        try {
+          await supabase.functions.invoke('process-whatsapp-message', {
+            body: {
+              conversationId: conversation.id,
+              message: content,
+              whatsappNumber: from
+            }
+          });
+          console.log('✅ NEW message sent to buffer system:', {
+            conversationId: conversation.id,
+            messageId: whatsappMessageId,
+            content: content.substring(0, 50)
+          });
+        } catch (bufferError) {
+          console.error('Buffer system failed, using direct processing:', bufferError);
+          // Fallback para processamento direto se buffer falhar
+          await processMessageWithAI(conversation.id, content);
+        }
       } else {
         console.log(`🎵 NEW audio message - waiting for transcription before AI processing`);
       }
     } else {
-      // Para duplicatas, verificar se já tem resposta da IA
+      // Para duplicatas, verificar se já foi processada pela IA
       const existingAgent = messageToProcess?.agent_id;
       if (!existingAgent) {
-        console.log(`🔄 Duplicate message but no AI processing found - processing now`);
+        console.log(`🔄 Duplicate message but no AI processing found - processing with buffer`);
         if (type !== 'audio' && type !== 'voice') {
-          await processMessageWithAI(conversation.id, content);
+          try {
+            await supabase.functions.invoke('process-whatsapp-message', {
+              body: {
+                conversationId: conversation.id,
+                message: content,
+                whatsappNumber: from
+              }
+            });
+          } catch (bufferError) {
+            console.error('Buffer system failed for duplicate, using direct processing:', bufferError);
+            await processMessageWithAI(conversation.id, content);
+          }
         }
       } else {
         console.log(`✅ Duplicate message already processed by AI agent: ${existingAgent}`);
