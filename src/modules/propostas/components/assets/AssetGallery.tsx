@@ -11,10 +11,10 @@ import { Edit, Trash2, Eye, Download, Upload, Search } from 'lucide-react';
 import { useTemplateAssets, TemplateAsset } from '../../hooks/useTemplateAssets';
 import { AssetUploadModal } from './AssetUploadModal';
 
-type CategoryFilter = '' | 'energia_solar' | 'drywall_divisorias' | 'steel_frame' | 'forros' | 'ferramentas' | 'impermeabilizacao_mapei' | 'preparacao_piso_mapei' | 'telha_shingle' | 'pisos' | 'acabamentos' | 'indefinido';
+type CategoryFilter = 'all' | 'energia_solar' | 'drywall_divisorias' | 'steel_frame' | 'forros' | 'ferramentas' | 'impermeabilizacao_mapei' | 'preparacao_piso_mapei' | 'telha_shingle' | 'pisos' | 'acabamentos' | 'indefinido';
 
 const PRODUCT_CATEGORIES = [
-  { value: '', label: 'Todas as Categorias' },
+  { value: 'all', label: 'Todas as Categorias' },
   { value: 'energia_solar', label: 'Energia Solar' },
   { value: 'drywall_divisorias', label: 'Drywall' },
   { value: 'steel_frame', label: 'Steel Frame' },
@@ -29,7 +29,7 @@ const PRODUCT_CATEGORIES = [
 ];
 
 const ASSET_TYPES = [
-  { value: '', label: 'Todos os Tipos' },
+  { value: 'all', label: 'Todos os Tipos' },
   { value: 'hero', label: 'Imagem Hero' },
   { value: 'product', label: 'Imagem de Produto' },
   { value: 'logo', label: 'Logo/Marca' },
@@ -38,8 +38,8 @@ const ASSET_TYPES = [
 ];
 
 export const AssetGallery: React.FC = () => {
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('');
-  const [typeFilter, setTypeFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [editingAsset, setEditingAsset] = useState<TemplateAsset | null>(null);
@@ -56,7 +56,7 @@ export const AssetGallery: React.FC = () => {
     getAssetUrl,
     isUpdating,
     isDeleting 
-  } = useTemplateAssets(categoryFilter || undefined, typeFilter || undefined);
+  } = useTemplateAssets(categoryFilter === 'all' ? undefined : categoryFilter, typeFilter === 'all' ? undefined : typeFilter);
 
   // Filtrar assets por termo de busca
   const filteredAssets = assets.filter(asset => 
@@ -198,8 +198,8 @@ export const AssetGallery: React.FC = () => {
               <Button 
                 variant="outline" 
                 onClick={() => {
-                  setCategoryFilter('' as CategoryFilter);
-                  setTypeFilter('');
+                  setCategoryFilter('all');
+                  setTypeFilter('all');
                   setSearchTerm('');
                 }}
                 className="w-full"
