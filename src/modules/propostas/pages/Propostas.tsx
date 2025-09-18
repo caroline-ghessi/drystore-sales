@@ -3,9 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calculator, FileText, Zap, Plus, Search } from 'lucide-react';
+import { Calculator, FileText, Zap } from 'lucide-react';
 import { ProposalGenerator } from '../components/generator/ProposalGenerator';
-import { TemplateManager } from '../components/templates/TemplateManager';
 
 export default function Propostas() {
   const [activeTab, setActiveTab] = useState('generator');
@@ -27,7 +26,7 @@ export default function Propostas() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="generator" className="flex items-center">
             <Zap className="mr-2 h-4 w-4" />
             Gerador IA
@@ -35,10 +34,6 @@ export default function Propostas() {
           <TabsTrigger value="list">
             <FileText className="mr-2 h-4 w-4" />
             Lista
-          </TabsTrigger>
-          <TabsTrigger value="templates">
-            <Search className="mr-2 h-4 w-4" />
-            Templates
           </TabsTrigger>
           <TabsTrigger value="analytics">
             <Calculator className="mr-2 h-4 w-4" />
@@ -60,10 +55,6 @@ export default function Propostas() {
               <p className="text-muted-foreground">Em desenvolvimento</p>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="templates">
-          <TemplateManager />
         </TabsContent>
 
         <TabsContent value="analytics">
