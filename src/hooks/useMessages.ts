@@ -15,6 +15,11 @@ export function useMessages(conversationId: string) {
         .order('created_at', { ascending: true });
       
       if (error) {
+        // Tratar erro específico de RLS
+        if (error.code === 'PGRST301' || error.code === '42501') {
+          console.warn(`Acesso restrito às mensagens da conversa ${conversationId}`);
+          return []; // Retorna array vazio se não tem acesso
+        }
         await logSystem('error', 'useMessages', `Failed to fetch messages for conversation ${conversationId}`, error);
         throw error;
       }
@@ -52,6 +57,10 @@ export function useCreateMessage() {
         .single();
       
       if (error) {
+        // Tratar erro específico de RLS
+        if (error.code === 'PGRST301' || error.code === '42501') {
+          throw new Error('Você não tem permissão para criar mensagens nesta conversa');
+        }
         await logSystem('error', 'useCreateMessage', 'Failed to create message', error);
         throw error;
       }
@@ -115,9 +124,10 @@ export function useCreateMessage() {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
     onError: (error) => {
+      const errorMessage = error instanceof Error ? error.message : 'Não foi possível enviar a mensagem. Tente novamente.';
       toast({
         title: 'Erro ao enviar mensagem',
-        description: 'Não foi possível enviar a mensagem. Tente novamente.',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
@@ -140,6 +150,10 @@ export function useMarkMessageAsRead() {
         .single();
       
       if (error) {
+        // Tratar erro específico de RLS
+        if (error.code === 'PGRST301' || error.code === '42501') {
+          throw new Error('Você não tem permissão para marcar esta mensagem como lida');
+        }
         await logSystem('error', 'useMarkMessageAsRead', `Failed to mark message ${messageId} as read`, error);
         throw error;
       }
@@ -168,6 +182,11 @@ export function useMarkAllMessagesAsRead() {
         .eq('is_read', false);
       
       if (error) {
+        // Tratar erro específico de RLS
+        if (error.code === 'PGRST301' || error.code === '42501') {
+          console.warn(`Acesso restrito às mensagens da conversa ${conversationId}`);
+          return; // Silencia o erro se não tem acesso
+        }
         await logSystem('error', 'useMarkAllMessagesAsRead', `Failed to mark all messages as read for conversation ${conversationId}`, error);
         throw error;
       }
@@ -191,6 +210,10 @@ export function useDeleteMessage() {
         .eq('id', messageId);
       
       if (error) {
+        // Tratar erro específico de RLS  
+        if (error.code === 'PGRST301' || error.code === '42501') {
+          throw new Error('Você não tem permissão para excluir esta mensagem');
+        }
         await logSystem('error', 'useDeleteMessage', `Failed to delete message ${messageId}`, error);
         throw error;
       }
@@ -204,9 +227,10 @@ export function useDeleteMessage() {
       });
     },
     onError: (error) => {
+      const errorMessage = error instanceof Error ? error.message : 'Não foi possível excluir a mensagem. Tente novamente.';
       toast({
         title: 'Erro ao excluir mensagem',
-        description: 'Não foi possível excluir a mensagem. Tente novamente.',
+        description: errorMessage,
         variant: 'destructive',
       });
     },
