@@ -10,34 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Edit, Trash2, Eye, Download, Upload, Search } from 'lucide-react';
 import { useTemplateAssets, TemplateAsset } from '../../hooks/useTemplateAssets';
 import { AssetUploadModal } from './AssetUploadModal';
+import { ASSET_TYPES_WITH_ALL, PRODUCT_CATEGORIES_WITH_ALL, getAssetTypeLabel, getCategoryLabel } from '@/lib/constants/asset-types';
 
 type CategoryFilter = 'all' | 'energia_solar' | 'drywall_divisorias' | 'steel_frame' | 'forros' | 'ferramentas' | 'impermeabilizacao_mapei' | 'preparacao_piso_mapei' | 'telha_shingle' | 'pisos' | 'acabamentos' | 'indefinido';
 
-const PRODUCT_CATEGORIES = [
-  { value: 'all', label: 'Todas as Categorias' },
-  { value: 'energia_solar', label: 'Energia Solar' },
-  { value: 'drywall_divisorias', label: 'Drywall' },
-  { value: 'steel_frame', label: 'Steel Frame' },
-  { value: 'forros', label: 'Forro/Teto' },
-  { value: 'ferramentas', label: 'Ferramentas' },
-  { value: 'impermeabilizacao_mapei', label: 'Impermeabilização' },
-  { value: 'preparacao_piso_mapei', label: 'Preparação de Piso' },
-  { value: 'telha_shingle', label: 'Telhas' },
-  { value: 'pisos', label: 'Pisos' },
-  { value: 'acabamentos', label: 'Acabamentos' },
-  { value: 'indefinido', label: 'Geral' },
-];
-
-const ASSET_TYPES = [
-  { value: 'all', label: 'Todos os Tipos' },
-  { value: 'hero', label: 'Imagem Hero' },
-  { value: 'product', label: 'Imagem de Produto' },
-  { value: 'logo', label: 'Logo/Marca' },
-  { value: 'diagram', label: 'Diagrama/Esquema' },
-  { value: 'certification', label: 'Certificação' },
-  { value: 'case_studies', label: 'Cases de Obra' },
-  { value: 'background', label: 'Fundo' },
-];
+// Constantes importadas do arquivo centralizado
 
 export const AssetGallery: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
@@ -109,13 +86,7 @@ export const AssetGallery: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getCategoryLabel = (value: string) => {
-    return PRODUCT_CATEGORIES.find(cat => cat.value === value)?.label || value;
-  };
-
-  const getTypeLabel = (value: string) => {
-    return ASSET_TYPES.find(type => type.value === value)?.label || value;
-  };
+  // Funções utilitárias importadas do arquivo centralizado
 
   if (isLoading) {
     return (
@@ -171,7 +142,7 @@ export const AssetGallery: React.FC = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {PRODUCT_CATEGORIES.map((category) => (
+                  {PRODUCT_CATEGORIES_WITH_ALL.map((category) => (
                     <SelectItem key={category.value} value={category.value}>
                       {category.label}
                     </SelectItem>
@@ -187,7 +158,7 @@ export const AssetGallery: React.FC = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ASSET_TYPES.map((type) => (
+                  {ASSET_TYPES_WITH_ALL.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
                       {type.label}
                     </SelectItem>
@@ -284,7 +255,7 @@ export const AssetGallery: React.FC = () => {
                     {getCategoryLabel(asset.template_category)}
                   </Badge>
                   <Badge variant="outline" className="text-xs">
-                    {getTypeLabel(asset.asset_type)}
+                    {getAssetTypeLabel(asset.asset_type)}
                   </Badge>
                 </div>
 
@@ -316,7 +287,7 @@ export const AssetGallery: React.FC = () => {
                               <strong>Categoria:</strong> {getCategoryLabel(asset.template_category)}
                             </div>
                             <div>
-                              <strong>Tipo:</strong> {getTypeLabel(asset.asset_type)}
+                              <strong>Tipo:</strong> {getAssetTypeLabel(asset.asset_type)}
                             </div>
                             <div>
                               <strong>Tamanho:</strong> {formatFileSize(asset.file_size)}

@@ -7,33 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
 import { useTemplateAssets, UploadAssetData } from '../../hooks/useTemplateAssets';
+import { ASSET_TYPES, PRODUCT_CATEGORIES } from '@/lib/constants/asset-types';
 
 interface AssetUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const ASSET_TYPES = [
-  { value: 'hero', label: 'Imagem Hero' },
-  { value: 'product', label: 'Imagem de Produto' },
-  { value: 'logo', label: 'Logo/Marca' },
-  { value: 'diagram', label: 'Diagrama/Esquema' },
-  { value: 'certification', label: 'Certificação' },
-];
-
-const PRODUCT_CATEGORIES = [
-  { value: 'energia_solar', label: 'Energia Solar' },
-  { value: 'drywall_divisorias', label: 'Drywall' },
-  { value: 'steel_frame', label: 'Steel Frame' },
-  { value: 'forros', label: 'Forro/Teto' },
-  { value: 'ferramentas', label: 'Ferramentas' },
-  { value: 'impermeabilizacao_mapei', label: 'Impermeabilização' },
-  { value: 'preparacao_piso_mapei', label: 'Preparação de Piso' },
-  { value: 'telha_shingle', label: 'Telhas' },
-  { value: 'pisos', label: 'Pisos' },
-  { value: 'acabamentos', label: 'Acabamentos' },
-  { value: 'indefinido', label: 'Geral' },
-];
+// Constantes importadas do arquivo centralizado
 
 export const AssetUploadModal: React.FC<AssetUploadModalProps> = ({
   isOpen,
