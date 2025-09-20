@@ -41,7 +41,12 @@ export function useConversationAnalytics(period: string) {
               completedConversations: 0,
               averageResponseTime: 0,
               conversionRate: 0,
-              dailyTrends: []
+              dailyTrends: [],
+              dailyConversations: [],
+              statusDistribution: [],
+              categoryDistribution: [],
+              avgMessagesPerConversation: 0,
+              responseTimeData: []
             };
           }
           
@@ -101,6 +106,7 @@ export function useConversationAnalytics(period: string) {
           
           const dayData = {
             date: date.toISOString().split('T')[0],
+            count: dayConversations.length,
             conversations: dayConversations.length,
             hot_leads: dayConversations.filter(c => c.lead_temperature === 'hot').length,
             warm_leads: dayConversations.filter(c => c.lead_temperature === 'warm').length,
