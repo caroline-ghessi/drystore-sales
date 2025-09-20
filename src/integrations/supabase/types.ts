@@ -2464,6 +2464,42 @@ export type Database = {
           },
         ]
       }
+      vendor_data_access_log: {
+        Row: {
+          accessed_data: Json | null
+          action_type: string
+          conversation_id: number | null
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          user_agent: string | null
+          user_id: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          accessed_data?: Json | null
+          action_type: string
+          conversation_id?: number | null
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          accessed_data?: Json | null
+          action_type?: string
+          conversation_id?: number | null
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: []
+      }
       vendor_messages: {
         Row: {
           chat_id: string
