@@ -341,6 +341,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "classification_history_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "classification_history_trigger_message_id_fkey"
             columns: ["trigger_message_id"]
             isOneToOne: false
@@ -489,6 +496,54 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      conversation_access_log: {
+        Row: {
+          access_type: string
+          accessed_data: Json | null
+          conversation_id: string | null
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          access_type: string
+          accessed_data?: Json | null
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          access_type?: string
+          accessed_data?: Json | null
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_access_log_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_access_log_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       conversation_analytics: {
         Row: {
@@ -730,6 +785,13 @@ export type Database = {
             referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "customers_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
+            referencedColumns: ["id"]
+          },
         ]
       }
       crm_opportunities: {
@@ -803,6 +865,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
             referencedColumns: ["id"]
           },
           {
@@ -922,6 +991,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tasks_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tasks_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
@@ -987,6 +1063,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_contexts_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
             referencedColumns: ["id"]
           },
           {
@@ -1167,6 +1250,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "knowledge_feedback_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "knowledge_feedback_knowledge_entry_id_fkey"
             columns: ["knowledge_entry_id"]
             isOneToOne: false
@@ -1222,6 +1312,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_usage_log_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
             referencedColumns: ["id"]
           },
         ]
@@ -1299,6 +1396,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_lead_distributions_conversation_id"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_lead_distributions_vendor_id"
             columns: ["vendor_id"]
             isOneToOne: false
@@ -1349,6 +1453,13 @@ export type Database = {
             referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "message_access_log_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
+            referencedColumns: ["id"]
+          },
         ]
       }
       message_buffers: {
@@ -1388,6 +1499,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_buffers_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
             referencedColumns: ["id"]
           },
         ]
@@ -1478,6 +1596,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
             referencedColumns: ["id"]
           },
         ]
@@ -1743,6 +1868,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: true
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_contexts_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: true
+            referencedRelation: "vendor_conversation_overview"
             referencedColumns: ["id"]
           },
         ]
@@ -2043,6 +2175,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
             referencedColumns: ["id"]
           },
           {
@@ -2871,6 +3010,13 @@ export type Database = {
             referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "customers_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
+            referencedColumns: ["id"]
+          },
         ]
       }
       message_analytics: {
@@ -2887,6 +3033,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
             referencedColumns: ["id"]
           },
         ]
@@ -2935,6 +3088,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "proposals_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversation_overview"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "proposals_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -2963,6 +3123,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vendor_conversation_overview: {
+        Row: {
+          created_at: string | null
+          customer_city: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_state: string | null
+          first_message_at: string | null
+          has_user_proposals: boolean | null
+          id: string | null
+          last_message_at: string | null
+          lead_score: number | null
+          lead_temperature:
+            | Database["public"]["Enums"]["lead_temperature"]
+            | null
+          product_group: Database["public"]["Enums"]["product_category"] | null
+          status: Database["public"]["Enums"]["conversation_status"] | null
+          updated_at: string | null
+          whatsapp_number: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_city?: never
+          customer_email?: never
+          customer_name?: never
+          customer_state?: never
+          first_message_at?: string | null
+          has_user_proposals?: never
+          id?: string | null
+          last_message_at?: string | null
+          lead_score?: number | null
+          lead_temperature?:
+            | Database["public"]["Enums"]["lead_temperature"]
+            | null
+          product_group?: Database["public"]["Enums"]["product_category"] | null
+          status?: Database["public"]["Enums"]["conversation_status"] | null
+          updated_at?: string | null
+          whatsapp_number?: never
+        }
+        Update: {
+          created_at?: string | null
+          customer_city?: never
+          customer_email?: never
+          customer_name?: never
+          customer_state?: never
+          first_message_at?: string | null
+          has_user_proposals?: never
+          id?: string | null
+          last_message_at?: string | null
+          lead_score?: number | null
+          lead_temperature?:
+            | Database["public"]["Enums"]["lead_temperature"]
+            | null
+          product_group?: Database["public"]["Enums"]["product_category"] | null
+          status?: Database["public"]["Enums"]["conversation_status"] | null
+          updated_at?: string | null
+          whatsapp_number?: never
+        }
+        Relationships: []
       }
     }
     Functions: {
