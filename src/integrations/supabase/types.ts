@@ -1307,6 +1307,50 @@ export type Database = {
           },
         ]
       }
+      message_access_log: {
+        Row: {
+          access_type: string
+          content_accessed: boolean | null
+          conversation_id: string | null
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          message_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          access_type: string
+          content_accessed?: boolean | null
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          message_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          access_type?: string
+          content_accessed?: boolean | null
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          message_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_access_log_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_buffers: {
         Row: {
           buffer_started_at: string | null
@@ -2822,6 +2866,24 @@ export type Database = {
           },
           {
             foreignKeyName: "customers_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_analytics: {
+        Row: {
+          avg_message_length: number | null
+          conversation_id: string | null
+          date: string | null
+          sender_type: Database["public"]["Enums"]["sender_type"] | null
+          total_messages: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
