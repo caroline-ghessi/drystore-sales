@@ -8,73 +8,91 @@ export function useConversations(filters?: ConversationFilters & { includeArchiv
   return useQuery({
     queryKey: ['conversations', filters],
     queryFn: async () => {
-      let query = supabase
-        .from('conversations')
-        .select(`
-          *,
-          lead_distributions(id, sent_at, vendor_id, vendors(name))
-        `)
-        .eq('source', 'whatsapp');
+      try {
+        let query = supabase
+          .from('conversations')
+          .select(`
+            *,
+            lead_distributions(id, sent_at, vendor_id, vendors(name))
+          `)
+          .eq('source', 'whatsapp');
 
-      // Exclude closed conversations by default unless specifically requested
-      if (!filters?.includeArchived) {
-        query = query.neq('status', 'closed');
-      }
+        // Exclude closed conversations by default unless specifically requested
+        if (!filters?.includeArchived) {
+          query = query.neq('status', 'closed');
+        }
 
-      // Apply search filter
-      if (filters?.search) {
-        query = query.or(
-          `customer_name.ilike.%${filters.search}%,whatsapp_name.ilike.%${filters.search}%,whatsapp_number.ilike.%${filters.search}%`
-        );
-      }
+        // Apply search filter
+        if (filters?.search) {
+          query = query.or(
+            `customer_name.ilike.%${filters.search}%,whatsapp_name.ilike.%${filters.search}%,whatsapp_number.ilike.%${filters.search}%`
+          );
+        }
 
-      // Apply status filter
-      if (filters?.status && filters.status.length > 0) {
-        query = query.in('status', filters.status);
-      }
+        // Apply status filter
+        if (filters?.status && filters.status.length > 0) {
+          query = query.in('status', filters.status);
+        }
 
-      // Apply product group filter
-      if (filters?.product_group && filters.product_group.length > 0) {
-        query = query.in('product_group', filters.product_group as any);
-      }
+        // Apply product group filter
+        if (filters?.product_group && filters.product_group.length > 0) {
+          query = query.in('product_group', filters.product_group as any);
+        }
 
-      // Apply lead temperature filter
-      if (filters?.lead_temperature && filters.lead_temperature.length > 0) {
-        query = query.in('lead_temperature', filters.lead_temperature);
-      }
+        // Apply lead temperature filter
+        if (filters?.lead_temperature && filters.lead_temperature.length > 0) {
+          query = query.in('lead_temperature', filters.lead_temperature);
+        }
 
-      // Apply date range filter
-      if (filters?.date_range) {
-        query = query.gte('created_at', filters.date_range.start.toISOString());
-        query = query.lte('created_at', filters.date_range.end.toISOString());
-      }
+        // Apply date range filter
+        if (filters?.date_range) {
+          query = query.gte('created_at', filters.date_range.start.toISOString());
+          query = query.lte('created_at', filters.date_range.end.toISOString());
+        }
 
-      const { data, error } = await query
-        .order('last_message_at', { ascending: false })
-        .limit(100);
+        const { data, error } = await query
+          .order('last_message_at', { ascending: false })
+          .limit(100);
 
-      if (error) {
-        await logSystem('error', 'useConversations', 'Failed to fetch conversations', error);
+        if (error) {
+          // Se é erro RLS, retornar array vazio ao invés de falhar
+          if (error.code === 'PGRST116' || error.message?.includes('row-level security')) {
+            await logSystem('warning', 'useConversations', 'RLS policy blocked access - returning empty results', error);
+            return [];
+          }
+          
+          await logSystem('error', 'useConversations', 'Failed to fetch conversations', error);
+          throw error;
+        }
+
+        return (data || []).map((conv: any) => ({
+          ...conv,
+          // Use whatsapp_name as fallback for customer_name
+          customer_name: conv.customer_name || conv.whatsapp_name || 'Usuário',
+          lastMessage: undefined,
+          unreadCount: 0,
+          isDistributed: conv.lead_distributions && conv.lead_distributions.length > 0,
+          distributedTo: conv.lead_distributions?.[0]?.vendors?.name || null,
+          distributedAt: conv.lead_distributions?.[0]?.sent_at || null,
+          created_at: new Date(conv.created_at || ''),
+          updated_at: new Date(conv.updated_at || ''),
+          first_message_at: new Date(conv.first_message_at || ''),
+          last_message_at: new Date(conv.last_message_at || ''),
+          metadata: (conv.metadata as Record<string, any>) || {},
+        }));
+      } catch (error) {
+        await logSystem('error', 'useConversations', 'Unexpected error in useConversations', error);
         throw error;
       }
-
-      return (data || []).map((conv: any) => ({
-        ...conv,
-        // Use whatsapp_name as fallback for customer_name
-        customer_name: conv.customer_name || conv.whatsapp_name || 'Usuário',
-        lastMessage: undefined,
-        unreadCount: 0,
-        isDistributed: conv.lead_distributions && conv.lead_distributions.length > 0,
-        distributedTo: conv.lead_distributions?.[0]?.vendors?.name || null,
-        distributedAt: conv.lead_distributions?.[0]?.sent_at || null,
-        created_at: new Date(conv.created_at || ''),
-        updated_at: new Date(conv.updated_at || ''),
-        first_message_at: new Date(conv.first_message_at || ''),
-        last_message_at: new Date(conv.last_message_at || ''),
-        metadata: (conv.metadata as Record<string, any>) || {},
-      }));
     },
     staleTime: 30 * 1000,
+    retry: (failureCount, error: any) => {
+      // Não tentar novamente para erros de RLS
+      if (error?.code === 'PGRST116' || error?.message?.includes('row-level security')) {
+        return false;
+      }
+      return failureCount < 3;
+    }
   });
 }
 
