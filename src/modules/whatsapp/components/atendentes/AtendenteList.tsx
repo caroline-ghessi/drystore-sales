@@ -7,7 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useAtendentes, type Atendente } from '@/hooks/useAtendentes';
-import { User, MessageCircle, Clock, Star, Shield, Users, UserCheck } from 'lucide-react';
+import { useInviteManagement } from '@/hooks/useInviteManagement';
+import { User, MessageCircle, Clock, Star, Shield, Users, UserCheck, Mail, RotateCcw } from 'lucide-react';
 
 interface AtendenteListProps {
   onSelectAtendente: (atendente: Atendente) => void;
@@ -16,6 +17,7 @@ interface AtendenteListProps {
 
 export function AtendenteList({ onSelectAtendente, selectedAtendente }: AtendenteListProps) {
   const { atendentes, isLoading, updateAtendente, updateRole, isUpdating } = useAtendentes();
+  const { resendInvite, isResending } = useInviteManagement();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const handleStatusChange = async (atendente: Atendente, isActive: boolean) => {
@@ -36,6 +38,20 @@ export function AtendenteList({ onSelectAtendente, selectedAtendente }: Atendent
       await updateRole({
         userId: atendente.user_id,
         role
+      });
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleResendInvite = async (atendente: Atendente) => {
+    setUpdatingId(atendente.id);
+    try {
+      await resendInvite({
+        email: atendente.email,
+        displayName: atendente.display_name,
+        department: atendente.department,
+        role: atendente.role || 'atendente'
       });
     } finally {
       setUpdatingId(null);
@@ -65,6 +81,17 @@ export function AtendenteList({ onSelectAtendente, selectedAtendente }: Atendent
         return 'secondary' as const;
       default:
         return 'outline' as const;
+    }
+  };
+
+  const getInviteStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'confirmed':
+        return <Badge variant="default" className="gap-1"><UserCheck className="h-3 w-3" />Confirmado</Badge>;
+      case 'pending':
+        return <Badge variant="secondary" className="gap-1"><Mail className="h-3 w-3" />Pendente</Badge>;
+      default:
+        return <Badge variant="outline" className="gap-1"><User className="h-3 w-3" />Ativo</Badge>;
     }
   };
 
@@ -141,9 +168,7 @@ export function AtendenteList({ onSelectAtendente, selectedAtendente }: Atendent
                   {getRoleIcon(atendente.role)}
                   {atendente.role?.charAt(0).toUpperCase() + atendente.role?.slice(1)}
                 </Badge>
-                <Badge variant={atendente.is_active ? 'default' : 'secondary'}>
-                  {atendente.is_active ? 'Ativo' : 'Inativo'}
-                </Badge>
+                {getInviteStatusBadge(atendente.invite_status)}
               </div>
             </div>
           </CardHeader>
@@ -186,6 +211,21 @@ export function AtendenteList({ onSelectAtendente, selectedAtendente }: Atendent
               </div>
 
               <div className="flex items-center space-x-2">
+                {atendente.invite_status === 'pending' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleResendInvite(atendente);
+                    }}
+                    disabled={updatingId === atendente.id || isResending}
+                    className="gap-1"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Reenviar
+                  </Button>
+                )}
                 <Select
                   value={atendente.role}
                   onValueChange={(role: 'admin' | 'supervisor' | 'atendente') => 

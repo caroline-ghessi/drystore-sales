@@ -134,10 +134,16 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const emailResult = await resend.emails.send({
-      from: 'DryStore AI <no-reply@resend.dev>',
+      from: 'DryStore AI <sistema@drystore.com.br>',
       to: [email],
       subject: `Convite para DryStore AI - ${role}`,
       html: emailHtml,
+    });
+
+    console.log('✅ Email enviado via Resend:', {
+      emailId: emailResult.data?.id,
+      to: email,
+      from: 'sistema@drystore.com.br'
     });
 
     console.log('Email enviado com sucesso:', emailResult);

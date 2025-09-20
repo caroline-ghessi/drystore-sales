@@ -14,6 +14,7 @@ export interface Atendente {
   role?: 'admin' | 'supervisor' | 'atendente';
   created_at: string;
   updated_at: string;
+  invite_status?: 'confirmed' | 'pending' | 'not_sent';
   stats?: {
     total_conversations: number;
     avg_response_time: number;
@@ -62,9 +63,26 @@ export function useAtendentes() {
             quality_score: 0
           };
 
+          // Verificar status do convite no Supabase Auth
+          let invite_status: 'confirmed' | 'pending' | 'not_sent' = 'confirmed';
+          
+          try {
+            const { data: statusData } = await supabase.functions.invoke('check-invite-status', {
+              body: { email: profile.email }
+            });
+            
+            if (statusData?.status) {
+              invite_status = statusData.status;
+            }
+          } catch (error) {
+            console.warn('⚠️ Erro ao verificar status do convite:', error);
+            // Manter status padrão 'confirmed' em caso de erro
+          }
+
           return {
             ...profile,
             role: (profile.user_roles?.[0]?.role || 'atendente') as 'admin' | 'supervisor' | 'atendente',
+            invite_status,
             stats
           };
         })
