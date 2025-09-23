@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,9 +6,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 import { useAtendentes, type Atendente } from '@/hooks/useAtendentes';
-import { useInviteManagement } from '@/hooks/useInviteManagement';
-import { User, MessageCircle, Clock, Star, Shield, Users, UserCheck, Mail, RotateCcw } from 'lucide-react';
+import { UserActionsDropdown } from './UserActionsDropdown';
+import { User, MessageCircle, Clock, Star, Shield, Users, UserCheck, Mail, Search, UserX, CheckCircle } from 'lucide-react';
 
 interface AtendenteListProps {
   onSelectAtendente: (atendente: Atendente) => void;
@@ -17,8 +19,9 @@ interface AtendenteListProps {
 
 export function AtendenteList({ onSelectAtendente, selectedAtendente }: AtendenteListProps) {
   const { atendentes, isLoading, updateAtendente, updateRole, isUpdating } = useAtendentes();
-  const { resendInvite, isResending } = useInviteManagement();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
 
   const handleStatusChange = async (atendente: Atendente, isActive: boolean) => {
     setUpdatingId(atendente.id);
@@ -44,19 +47,46 @@ export function AtendenteList({ onSelectAtendente, selectedAtendente }: Atendent
     }
   };
 
-  const handleResendInvite = async (atendente: Atendente) => {
-    setUpdatingId(atendente.id);
-    try {
-      await resendInvite({
-        email: atendente.email,
-        displayName: atendente.display_name,
-        department: atendente.department,
-        role: atendente.role || 'atendente'
-      });
-    } finally {
-      setUpdatingId(null);
+  // Filtrar e organizar atendentes
+  const filteredAtendentes = useMemo(() => {
+    let filtered = atendentes;
+
+    // Filtrar por termo de busca
+    if (searchTerm) {
+      filtered = filtered.filter(atendente =>
+        atendente.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        atendente.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        atendente.department?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
-  };
+
+    // Filtrar por status
+    switch (activeTab) {
+      case 'confirmed':
+        filtered = filtered.filter(a => a.invite_status === 'confirmed');
+        break;
+      case 'pending':
+        filtered = filtered.filter(a => a.invite_status === 'pending');
+        break;
+      case 'inactive':
+        filtered = filtered.filter(a => !a.is_active);
+        break;
+      default:
+        break;
+    }
+
+    return filtered;
+  }, [atendentes, searchTerm, activeTab]);
+
+  // Contar por status
+  const statusCounts = useMemo(() => {
+    return {
+      all: atendentes.length,
+      confirmed: atendentes.filter(a => a.invite_status === 'confirmed').length,
+      pending: atendentes.filter(a => a.invite_status === 'pending').length,
+      inactive: atendentes.filter(a => !a.is_active).length,
+    };
+  }, [atendentes]);
 
   const getRoleIcon = (role?: string) => {
     switch (role) {
@@ -137,8 +167,43 @@ export function AtendenteList({ onSelectAtendente, selectedAtendente }: Atendent
   }
 
   return (
-    <div className="space-y-4">
-      {atendentes.map((atendente) => (
+    <div className="space-y-6">
+      {/* Search and Filters */}
+      <div className="space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Buscar por nome, email ou departamento..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="all" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Todos ({statusCounts.all})
+            </TabsTrigger>
+            <TabsTrigger value="confirmed" className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Confirmados ({statusCounts.confirmed})
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Pendentes ({statusCounts.pending})
+            </TabsTrigger>
+            <TabsTrigger value="inactive" className="flex items-center gap-2">
+              <UserX className="h-4 w-4" />
+              Inativos ({statusCounts.inactive})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      <div className="space-y-4">
+        {filteredAtendentes.map((atendente) => (
         <Card 
           key={atendente.id}
           className={`cursor-pointer transition-all hover:shadow-md ${
@@ -169,6 +234,11 @@ export function AtendenteList({ onSelectAtendente, selectedAtendente }: Atendent
                   {atendente.role?.charAt(0).toUpperCase() + atendente.role?.slice(1)}
                 </Badge>
                 {getInviteStatusBadge(atendente.invite_status)}
+                <UserActionsDropdown 
+                  atendente={atendente}
+                  isLoading={updatingId === atendente.id}
+                  onAction={() => setUpdatingId(null)}
+                />
               </div>
             </div>
           </CardHeader>
@@ -211,21 +281,6 @@ export function AtendenteList({ onSelectAtendente, selectedAtendente }: Atendent
               </div>
 
               <div className="flex items-center space-x-2">
-                {atendente.invite_status === 'pending' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleResendInvite(atendente);
-                    }}
-                    disabled={updatingId === atendente.id || isResending}
-                    className="gap-1"
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                    Reenviar
-                  </Button>
-                )}
                 <Select
                   value={atendente.role}
                   onValueChange={(role: 'admin' | 'supervisor' | 'atendente') => 
@@ -246,7 +301,28 @@ export function AtendenteList({ onSelectAtendente, selectedAtendente }: Atendent
             </div>
           </CardContent>
         </Card>
-      ))}
+        ))}
+      </div>
+      
+      {filteredAtendentes.length === 0 && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-8">
+            <User className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">
+              {searchTerm || activeTab !== 'all' 
+                ? 'Nenhum resultado encontrado' 
+                : 'Nenhum atendente encontrado'
+              }
+            </h3>
+            <p className="text-sm text-muted-foreground text-center">
+              {searchTerm || activeTab !== 'all'
+                ? 'Tente ajustar os filtros ou termo de busca.'
+                : 'Adicione novos atendentes para começar a gerenciar sua equipe.'
+              }
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
