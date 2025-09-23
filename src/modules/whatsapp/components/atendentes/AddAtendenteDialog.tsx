@@ -60,10 +60,18 @@ export function AddAtendenteDialog({
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
+    
+    console.log('🚀 Iniciando envio de convite para novo atendente:', {
+      email: data.email,
+      displayName: data.displayName,
+      role: data.role,
+      department: data.department || 'N/A'
+    });
+    
     try {
-      console.log('🔄 Enviando convite real para atendente:', data);
-
       // Chamar a edge function para enviar o convite real
+      console.log('📡 Invocando edge function send-invite-email...');
+      
       const { data: result, error } = await supabase.functions.invoke('send-invite-email', {
         body: {
           email: data.email,
@@ -73,18 +81,54 @@ export function AddAtendenteDialog({
         }
       });
 
+      console.log('📥 Resposta da edge function recebida:', {
+        success: result?.success,
+        error: error?.message,
+        requestId: result?.requestId
+      });
+
       if (error) {
-        console.error('Erro ao enviar convite:', error);
-        throw new Error(error.message || 'Erro ao enviar convite');
+        console.error('❌ Erro retornado pela edge function:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        
+        // Melhorar mensagem de erro baseada no tipo
+        let userMessage = error.message || 'Erro ao enviar convite';
+        
+        if (error.message?.includes('535') || error.message?.includes('API key')) {
+          userMessage = 'Erro de configuração do sistema de email. Entre em contato com o suporte técnico.';
+        } else if (error.message?.includes('SMTP')) {
+          userMessage = 'Problema no envio do email. Tente novamente em alguns minutos.';
+        } else if (error.message?.includes('already exists') || error.message?.includes('já existe')) {
+          userMessage = 'Este email já possui um convite pendente ou está cadastrado no sistema.';
+        }
+        
+        throw new Error(userMessage);
       }
 
       if (result?.error) {
+        console.error('❌ Erro retornado no resultado:', result.error);
         throw new Error(result.error);
       }
+
+      if (!result?.success) {
+        console.error('❌ Edge function não retornou sucesso:', result);
+        throw new Error('Falha no processamento do convite');
+      }
+      
+      console.log('✅ Convite enviado com sucesso!', {
+        email: data.email,
+        inviteId: result.inviteId,
+        requestId: result.requestId,
+        attempts: result.attempts
+      });
       
       toast({
-        title: "Convite enviado!",
-        description: `Convite enviado para ${data.email}. O usuário receberá instruções por email para configurar sua conta.`,
+        title: "Convite Enviado com Sucesso! ✅",
+        description: `Convite enviado para ${data.email}. O usuário receberá instruções por email para configurar sua conta.${result?.attempts > 1 ? ` (Enviado após ${result.attempts} tentativas)` : ''}`,
       });
       
       // Reset form and close dialog
@@ -93,13 +137,19 @@ export function AddAtendenteDialog({
       onSuccess?.();
 
     } catch (error: any) {
-      console.error('❌ Erro ao enviar convite:', error);
+      console.error('❌ Erro final no envio do convite:', {
+        email: data.email,
+        error: error.message,
+        stack: error.stack
+      });
+      
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao enviar convite. Tente novamente.",
+        title: "Erro ao Enviar Convite ❌",
+        description: error.message || "Erro inesperado ao enviar convite. Verifique os dados e tente novamente.",
         variant: "destructive",
       });
     } finally {
+      console.log('🏁 Finalizando processo de convite');
       setIsLoading(false);
     }
   };

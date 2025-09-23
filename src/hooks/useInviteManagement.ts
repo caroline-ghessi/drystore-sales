@@ -24,31 +24,77 @@ export function useInviteManagement() {
 
   const resendInviteMutation = useMutation({
     mutationFn: async (inviteData: ResendInviteRequest) => {
-      console.log('🔄 Reenviando convite para:', inviteData.email);
+      console.log('🔄 Iniciando reenvio de convite para:', inviteData.email);
+      console.log('📊 Dados do convite:', {
+        email: inviteData.email,
+        displayName: inviteData.displayName,
+        role: inviteData.role,
+        department: inviteData.department
+      });
       
       const { data, error } = await supabase.functions.invoke('send-invite-email', {
         body: inviteData
       });
 
       if (error) {
-        console.error('❌ Erro ao reenviar convite:', error);
-        throw error;
+        console.error('❌ Erro na chamada da edge function:', error);
+        console.error('📝 Detalhes do erro:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        
+        // Melhorar mensagem de erro baseada no tipo
+        let userFriendlyMessage = error.message || 'Erro desconhecido ao enviar convite';
+        
+        if (error.message?.includes('535') || error.message?.includes('API key')) {
+          userFriendlyMessage = 'Erro de configuração SMTP. Verifique as configurações de email no sistema.';
+        } else if (error.message?.includes('SMTP')) {
+          userFriendlyMessage = 'Erro no envio do email. Verifique as configurações de SMTP.';
+        } else if (error.message?.includes('JSON')) {
+          userFriendlyMessage = 'Erro nos dados enviados. Tente novamente.';
+        }
+        
+        const enhancedError = new Error(userFriendlyMessage);
+        (enhancedError as any).originalError = error;
+        throw enhancedError;
+      }
+
+      console.log('✅ Resposta da edge function:', data);
+      
+      // Verificar se o response indica sucesso
+      if (!data?.success) {
+        console.error('❌ Edge function retornou erro:', data);
+        const errorMessage = data?.error || 'Falha no envio do convite';
+        throw new Error(errorMessage);
       }
 
       return data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
+      console.log('🎉 Convite reenviado com sucesso!', {
+        email: variables.email,
+        requestId: data?.requestId,
+        attempts: data?.attempts
+      });
+      
       toast({
-        title: "Convite Reenviado",
-        description: `Convite reenviado para ${variables.email} com sucesso`,
+        title: "Convite Enviado ✅",
+        description: `Convite enviado para ${variables.email} com sucesso${data?.attempts > 1 ? ` (${data.attempts} tentativas)` : ''}`,
       });
       queryClient.invalidateQueries({ queryKey: ['atendentes'] });
     },
-    onError: (error: any) => {
-      console.error('❌ Error resending invite:', error);
+    onError: (error: any, variables) => {
+      console.error('❌ Falha final no reenvio do convite:', {
+        email: variables.email,
+        error: error.message,
+        originalError: error.originalError
+      });
+      
       toast({
-        title: "Erro ao Reenviar",
-        description: error.message || "Erro ao reenviar convite",
+        title: "Erro ao Enviar Convite ❌",
+        description: error.message || "Erro ao reenviar convite. Tente novamente.",
         variant: "destructive",
       });
     },
