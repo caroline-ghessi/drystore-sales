@@ -36,13 +36,10 @@ export function useAtendentes() {
     queryFn: async (): Promise<Atendente[]> => {
       console.log('🔍 Fetching atendentes...');
 
-      // Buscar perfis com suas roles
+      // Buscar perfis ativos
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          user_roles!inner(role)
-        `)
+        .select('*')
         .eq('is_active', true)
         .order('display_name');
 
@@ -52,6 +49,15 @@ export function useAtendentes() {
       }
 
       console.log('📊 Found profiles:', profiles.length);
+
+      // Buscar roles de todos os usuários
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      if (rolesError) {
+        console.warn('⚠️ Error fetching user roles:', rolesError);
+      }
 
       // Processar dados e buscar estatísticas
       const atendentesWithStats = await Promise.all(
@@ -63,15 +69,21 @@ export function useAtendentes() {
             quality_score: 0
           };
 
+          // Encontrar role do usuário
+          const userRole = userRoles?.find(role => role.user_id === profile.user_id);
+          const role = (userRole?.role || 'atendente') as 'admin' | 'supervisor' | 'atendente';
+
           // Verificar status do convite no Supabase Auth
           let invite_status: 'confirmed' | 'pending' | 'not_sent' = 'confirmed';
           
           try {
-            const { data: statusData } = await supabase.functions.invoke('check-invite-status', {
+            const { data: statusData, error: statusError } = await supabase.functions.invoke('check-invite-status', {
               body: { email: profile.email }
             });
             
-            if (statusData?.status) {
+            if (statusError) {
+              console.warn('⚠️ Erro ao verificar status do convite:', statusError);
+            } else if (statusData?.status) {
               invite_status = statusData.status;
             }
           } catch (error) {
@@ -81,13 +93,14 @@ export function useAtendentes() {
 
           return {
             ...profile,
-            role: (profile.user_roles?.[0]?.role || 'atendente') as 'admin' | 'supervisor' | 'atendente',
+            role,
             invite_status,
             stats
           };
         })
       );
 
+      console.log('✅ Processed atendentes:', atendentesWithStats.length);
       return atendentesWithStats;
     },
     staleTime: 1000 * 60 * 5, // 5 minutos
