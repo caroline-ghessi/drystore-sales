@@ -27,7 +27,7 @@ export default function AtendentesPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-8 bg-background">
+    <div className="container mx-auto p-6 space-y-8 bg-background pb-16">
       {/* Header */}
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div className="flex items-center gap-4">

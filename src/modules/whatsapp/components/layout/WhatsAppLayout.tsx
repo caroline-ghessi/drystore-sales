@@ -19,7 +19,7 @@ export default function WhatsAppLayout() {
         <WhatsAppSidebar />
         <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <WhatsAppHeader />
-          <main className="flex-1 overflow-hidden min-h-0">
+          <main className="flex-1 overflow-y-auto min-h-0">
             <Routes>
               <Route index element={<WhatsAppDashboard />} />
               <Route path="conversations" element={<ConversationsPage />} />
