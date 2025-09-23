@@ -1,147 +1,151 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { Resend } from 'npm:resend@4.0.0';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
+import { Resend } from "npm:resend@4.0.0";
 
+// Interfaces
+interface InviteRequest {
+  email: string;
+  displayName: string;
+  role: 'admin' | 'supervisor' | 'atendente' | 'vendedor';
+  department?: string;
+  customUserId?: string;
+}
+
+// CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface InviteRequest {
-  email: string;
-  displayName: string;
-  department?: string;
-  role: 'admin' | 'supervisor' | 'atendente' | 'vendedor';
-  customUserId?: string; // Para sincronizar com vendor ID
-}
-
-// Helper para logs estruturados com timestamp
-function logWithTimestamp(level: 'INFO' | 'ERROR' | 'DEBUG', message: string, data?: any) {
+// Sistema de Logging Robusto
+function logWithTimestamp(level: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL', requestId: string, message: string, data?: any) {
   const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] [${level}] ${message}`, data ? JSON.stringify(data, null, 2) : '');
-}
-
-// Validar configurações essenciais
-function validateEnvironment() {
-  const requiredVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
-  const missing = requiredVars.filter(varName => !Deno.env.get(varName));
+  const logEntry = `[${timestamp}] [${level}] [${requestId}] ${message}`;
   
-  if (missing.length > 0) {
-    throw new Error(`Variáveis de ambiente obrigatórias não encontradas: ${missing.join(', ')}`);
+  if (data) {
+    console.log(logEntry, data);
+  } else {
+    console.log(logEntry);
   }
-  
-  logWithTimestamp('DEBUG', 'Validação de ambiente concluída', {
-    supabase_url: Deno.env.get('SUPABASE_URL'),
-    has_service_key: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-    has_resend_key: !!Deno.env.get('RESEND_API_KEY')
-  });
 }
 
-// Função para envio direto via Resend API como fallback
-async function sendDirectInviteEmail(email: string, displayName: string, role: string, requestId: string) {
-  const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+// Validação robusta do ambiente
+function validateEnvironment(): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
   
-  const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovableproject.com') || 'http://localhost:3000';
-  const inviteUrl = `${baseUrl}/set-password`;
-  
-  const { data, error } = await resend.emails.send({
-    from: 'Sistema DryStore <onboarding@resend.dev>',
-    to: [email],
-    subject: 'Convite para acessar o Sistema DryStore',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Você foi convidado para o Sistema DryStore</h2>
-        <p>Olá <strong>${displayName}</strong>,</p>
-        <p>Você foi convidado para acessar o Sistema DryStore como <strong>${role}</strong>.</p>
-        <p>Para ativar sua conta, clique no botão abaixo:</p>
-        <div style="margin: 20px 0; text-align: center;">
-          <a href="${inviteUrl}" 
-             style="background-color: #007bff; color: white; padding: 12px 24px; 
-                    text-decoration: none; border-radius: 5px; display: inline-block;">
-            Ativar Conta
-          </a>
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const resendApiKey = Deno.env.get('RESEND_API_KEY');
+
+  if (!supabaseUrl) errors.push('SUPABASE_URL não configurada');
+  if (!supabaseServiceKey) errors.push('SUPABASE_SERVICE_ROLE_KEY não configurada');
+  if (!resendApiKey) errors.push('RESEND_API_KEY não configurada');
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+// Função de envio via Resend API (Fallback)
+async function sendDirectInviteEmail(email: string, displayName: string, role: string, requestId: string): Promise<{ success: boolean; error?: string; emailId?: string }> {
+  try {
+    logWithTimestamp('DEBUG', requestId, '🔧 Iniciando envio via Resend API diretamente');
+    
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    if (!resendApiKey) {
+      throw new Error('RESEND_API_KEY não encontrada');
+    }
+
+    const resend = new Resend(resendApiKey);
+
+    const emailResult = await resend.emails.send({
+      from: 'DryStore <noreply@drystore.com.br>',
+      to: [email],
+      subject: `Convite para ${role} - DryStore`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563eb;">Bem-vindo à DryStore!</h1>
+          <p>Olá <strong>${displayName}</strong>,</p>
+          <p>Você foi convidado para participar da plataforma DryStore como <strong>${role}</strong>.</p>
+          <p>Para ativar sua conta, acesse o link enviado por email pelo Supabase.</p>
+          <p>Obrigado!</p>
+          <p><strong>Equipe DryStore</strong></p>
         </div>
-        <p>Ou copie e cole este link no seu navegador:</p>
-        <p style="word-break: break-all; color: #666;">${inviteUrl}</p>
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-        <p style="color: #666; font-size: 12px;">
-          Se você não solicitou este convite, pode ignorar este email.
-        </p>
-      </div>
-    `,
-  });
+      `
+    });
 
-  if (error) {
-    throw new Error(`Erro no Resend: ${error.message}`);
+    if (emailResult.data) {
+      logWithTimestamp('INFO', requestId, '✅ Email enviado com sucesso via Resend', { 
+        emailId: emailResult.data.id 
+      });
+      return { success: true, emailId: emailResult.data.id };
+    } else {
+      logWithTimestamp('ERROR', requestId, '❌ Falha no envio via Resend', emailResult.error);
+      return { success: false, error: emailResult.error?.message || 'Erro desconhecido no Resend' };
+    }
+  } catch (error) {
+    logWithTimestamp('ERROR', requestId, '💥 Erro crítico no Resend', { error: error.message });
+    return { success: false, error: `Erro no Resend: ${error.message}` };
   }
-
-  logWithTimestamp('INFO', `[${requestId}] Email enviado via Resend API diretamente`, {
-    emailId: data?.id,
-    to: email
-  });
-
-  return data;
 }
 
+// Handler principal com sistema híbrido otimizado
 const handler = async (req: Request): Promise<Response> => {
-  const requestId = crypto.randomUUID();
-  
-  logWithTimestamp('INFO', `[${requestId}] 🚀 Sistema Híbrido - Nova requisição de convite recebida`, {
+  const requestId = crypto.randomUUID().substring(0, 8);
+
+  logWithTimestamp('INFO', requestId, '🚀 SISTEMA HÍBRIDO ROBUSTO - Nova requisição recebida', {
     method: req.method,
     url: req.url,
     timestamp: new Date().toISOString()
   });
 
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    logWithTimestamp('DEBUG', `[${requestId}] Requisição OPTIONS - retornando CORS headers`);
+    logWithTimestamp('DEBUG', requestId, 'Requisição OPTIONS - retornando CORS headers');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Validar ambiente antes de processar
-    validateEnvironment();
+    // FASE 1: Validação do ambiente
+    logWithTimestamp('DEBUG', requestId, '🔍 Validando configurações do ambiente...');
     
-    logWithTimestamp('INFO', `[${requestId}] ✅ Ambiente validado - iniciando processamento`);
-    
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const envValidation = validateEnvironment();
+    if (!envValidation.isValid) {
+      logWithTimestamp('CRITICAL', requestId, '💥 CONFIGURAÇÃO INVÁLIDA', { errors: envValidation.errors });
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Configuração inválida', 
+          details: envValidation.errors 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
+    logWithTimestamp('INFO', requestId, '✅ Ambiente validado - todas as configurações presentes');
+
+    // FASE 2: Parse e validação da requisição
+    const body = await req.json();
+    logWithTimestamp('DEBUG', requestId, '📨 Body da requisição parseado', {
+      email: body.email,
+      displayName: body.displayName,
+      role: body.role,
+      hasCustomUserId: !!body.customUserId
     });
-    
-    // Parse e validação do body da requisição
-    let requestBody: InviteRequest;
-    try {
-      requestBody = await req.json();
-      logWithTimestamp('INFO', `[${requestId}] 📨 Body da requisição parseado`, {
-        email: requestBody.email,
-        displayName: requestBody.displayName,
-        role: requestBody.role,
-        hasCustomUserId: !!requestBody.customUserId
-      });
-    } catch (parseError) {
-      logWithTimestamp('ERROR', `[${requestId}] ❌ Erro ao fazer parse do JSON da requisição`, { parseError });
-      throw new Error('JSON inválido na requisição');
-    }
-    
-    const { email, displayName, department, role, customUserId } = requestBody;
 
-    // Validações de entrada
-    if (!email || !email.includes('@')) {
-      throw new Error('Email é obrigatório e deve ser válido');
-    }
-    if (!displayName || displayName.trim().length === 0) {
-      throw new Error('Nome de exibição é obrigatório');
-    }
-    if (!['admin', 'supervisor', 'atendente', 'vendedor'].includes(role)) {
-      throw new Error('Role deve ser: admin, supervisor, atendente ou vendedor');
+    const { email, displayName, role, department, customUserId }: InviteRequest = body;
+
+    // Validação dos dados de entrada
+    if (!email || !displayName || !role) {
+      logWithTimestamp('WARNING', requestId, '❌ Dados de entrada inválidos', { email, displayName, role });
+      return new Response(
+        JSON.stringify({ success: false, error: 'Dados obrigatórios ausentes' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    logWithTimestamp('INFO', `[${requestId}] 👤 Processando convite para usuário`, {
+    logWithTimestamp('INFO', requestId, '👤 Processando convite para usuário', {
       email,
       displayName,
       role,
@@ -149,199 +153,150 @@ const handler = async (req: Request): Promise<Response> => {
       customUserId: customUserId || 'N/A'
     });
 
-    // FASE 1: TENTAR SMTP NATIVO DO SUPABASE
-    logWithTimestamp('INFO', `[${requestId}] 🔄 FASE 1: Tentando SMTP nativo do Supabase`);
-    
-    const baseUrl = supabaseUrl.replace('.supabase.co', '.lovableproject.com');
-    const redirectUrl = `${baseUrl}/set-password`;
+    // FASE 3: Inicialização do Supabase Admin
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
 
-    const inviteOptions: any = {
-      data: {
-        display_name: displayName,
-        department: department || '',
-        invited_role: role,
-        request_id: requestId
-      },
-      redirectTo: redirectUrl
-    };
+    // FASE 4: SISTEMA HÍBRIDO COM TIMEOUT OTIMIZADO
+    logWithTimestamp('INFO', requestId, '🔄 FASE 1: Tentando SMTP nativo do Supabase (timeout 10s)');
 
-    if (customUserId) {
-      inviteOptions.data.custom_user_id = customUserId;
-    }
-    
-    let inviteSuccess = false;
-    let smtpResult = null;
-    let smtpError = null;
+    let smtpSuccess = false;
+    let smtpError = '';
 
     try {
-      // Tentar SMTP nativo com retry limitado
-      let attempts = 0;
-      const maxAttempts = 2; // Reduzir tentativas para falhar mais rápido
-
-      while (attempts < maxAttempts && !inviteSuccess) {
-        attempts++;
-        
-        logWithTimestamp('DEBUG', `[${requestId}] 🔄 Tentativa ${attempts}/${maxAttempts} via SMTP nativo`);
-        
-        const result = await supabaseAdmin.auth.admin.inviteUserByEmail(email, inviteOptions);
-        
-        if (!result.error) {
-          smtpResult = result.data;
-          inviteSuccess = true;
-          logWithTimestamp('INFO', `[${requestId}] ✅ SUCESSO - SMTP nativo funcionou na tentativa ${attempts}`, {
-            userId: result.data.user?.id,
-            method: 'smtp_native'
-          });
-          break;
+      // Timeout de 10 segundos para SMTP nativo
+      const smtpPromise = supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        data: {
+          display_name: displayName,
+          invited_role: role,
+          department: department || ''
         }
-        
-        smtpError = result.error;
-        logWithTimestamp('ERROR', `[${requestId}] ❌ Tentativa ${attempts} falhou via SMTP`, {
-          error: result.error.message,
-          code: result.error.code
-        });
-        
-        // Se é erro de configuração SMTP, sair do loop rapidamente
-        if (result.error.message?.includes('535') || 
-            result.error.message?.includes('API key') ||
-            result.error.message?.includes('SMTP')) {
-          logWithTimestamp('WARNING', `[${requestId}] ⚠️ Erro SMTP detectado - pulando para fallback`, {
-            errorType: 'smtp_config_error'
-          });
-          break;
-        }
-        
-        // Aguardar apenas se não for o último attempt
-        if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
-    } catch (error: any) {
-      logWithTimestamp('ERROR', `[${requestId}] ❌ Erro crítico no SMTP nativo`, {
-        error: error.message
       });
-      smtpError = error;
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout SMTP - 10s excedido')), 10000)
+      );
+
+      const smtpResult = await Promise.race([smtpPromise, timeoutPromise]);
+
+      if (smtpResult.data?.user) {
+        logWithTimestamp('INFO', requestId, '🎉 SUCESSO - Email enviado via SMTP nativo', {
+          userId: smtpResult.data.user.id,
+          method: 'supabase_smtp'
+        });
+        smtpSuccess = true;
+      } else if (smtpResult.error) {
+        throw new Error(smtpResult.error.message);
+      }
+    } catch (error) {
+      smtpError = error.message;
+      logWithTimestamp('WARNING', requestId, '❌ SMTP nativo falhou', { error: smtpError });
     }
 
-    // FASE 2: FALLBACK PARA RESEND DIRETO
-    if (!inviteSuccess) {
-      logWithTimestamp('INFO', `[${requestId}] 🔄 FASE 2: SMTP falhou - tentando Resend API diretamente`);
-      
-      try {
-        // Verificar se temos a API key do Resend
-        if (!Deno.env.get('RESEND_API_KEY')) {
-          throw new Error('RESEND_API_KEY não configurada para fallback');
-        }
+    // FASE 5: FALLBACK AUTOMÁTICO PARA RESEND
+    if (!smtpSuccess) {
+      logWithTimestamp('INFO', requestId, '🔄 FASE 2: SMTP falhou - ativando fallback Resend imediato');
 
-        // Primeiro, criar o usuário no Supabase sem enviar email
-        const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
-          email: email,
-          email_confirm: false, // Não confirmar automaticamente
+      // Primeiro criar o usuário no Supabase
+      try {
+        const userResult = await supabaseAdmin.auth.admin.createUser({
+          email,
+          email_confirm: false,
           user_metadata: {
             display_name: displayName,
-            department: department || '',
             invited_role: role,
-            request_id: requestId,
-            created_via: 'fallback_resend'
+            department: department || ''
           }
         });
 
-        if (userError) {
-          // Se usuário já existe, tentar buscar
-          if (userError.message?.includes('already exists') || userError.message?.includes('already registered')) {
-            logWithTimestamp('INFO', `[${requestId}] 👤 Usuário já existe - prosseguindo com envio de email`, {
-              email: email
-            });
+        if (userResult.error) {
+          if (userResult.error.message?.includes('already been registered')) {
+            logWithTimestamp('INFO', requestId, '👤 Usuário já existe - tentando reenvio', { email });
           } else {
-            logWithTimestamp('ERROR', `[${requestId}] ❌ Erro ao criar usuário`, { userError });
-            throw new Error(`Erro ao criar usuário: ${userError.message}`);
+            throw new Error(`Erro ao criar usuário: ${userResult.error.message}`);
           }
+        } else {
+          logWithTimestamp('INFO', requestId, '✅ Usuário criado com sucesso', { userId: userResult.data.user?.id });
         }
 
-        // Enviar email via Resend API
+        // Enviar email via Resend
         const resendResult = await sendDirectInviteEmail(email, displayName, role, requestId);
-        
-        logWithTimestamp('INFO', `[${requestId}] ✅ SUCESSO - Fallback Resend funcionou!`, {
-          emailId: resendResult?.id,
-          userId: userData?.user?.id,
-          method: 'resend_fallback'
+
+        if (resendResult.success) {
+          logWithTimestamp('INFO', requestId, '🎉 SISTEMA HÍBRIDO SUCESSO - Fallback Resend funcionou', {
+            method: 'resend_fallback',
+            emailId: resendResult.emailId
+          });
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: 'Convite enviado com sucesso via fallback',
+              method: 'resend_fallback',
+              diagnostics: {
+                smtp_attempted: true,
+                smtp_error: smtpError,
+                fallback_used: true,
+                fallback_success: true
+              }
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else {
+          throw new Error(`Fallback Resend falhou: ${resendResult.error}`);
+        }
+      } catch (fallbackError) {
+        logWithTimestamp('CRITICAL', requestId, '💥 FALLBACK CRÍTICO - Resend também falhou', {
+          fallback_error: fallbackError.message
         });
 
         return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: 'Convite enviado com sucesso via Resend (fallback)',
-            method: 'resend_fallback',
-            inviteId: userData?.user?.id,
-            emailId: resendResult?.id,
-            requestId: requestId,
+          JSON.stringify({
+            success: false,
+            error: 'Sistema híbrido falhou completamente',
             diagnostics: {
-              smtp_error: smtpError?.message,
-              fallback_used: true
+              smtp_error: smtpError,
+              fallback_error: fallbackError.message,
+              timestamp: new Date().toISOString()
             }
           }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
-
-      } catch (fallbackError: any) {
-        logWithTimestamp('ERROR', `[${requestId}] ❌ FALHA CRÍTICA - Ambos os métodos falharam`, {
-          smtp_error: smtpError?.message,
-          fallback_error: fallbackError.message
-        });
-        
-        throw new Error(`Sistema híbrido falhou - SMTP: ${smtpError?.message || 'erro desconhecido'}, Resend: ${fallbackError.message}`);  
       }
     }
 
-    // SUCESSO VIA SMTP NATIVO
-    logWithTimestamp('INFO', `[${requestId}] 🎉 CONVITE ENVIADO COM SUCESSO VIA SMTP NATIVO`, {
-      userId: smtpResult?.user?.id,
-      email: email,
-      role: role,
-      method: 'smtp_native'
-    });
-
+    // Retorno para sucesso do SMTP nativo
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Convite enviado com sucesso via SMTP nativo do Supabase',
-        method: 'smtp_native',
-        inviteId: smtpResult?.user?.id,
-        requestId: requestId,
+      JSON.stringify({
+        success: true,
+        message: 'Convite enviado com sucesso via SMTP nativo',
+        method: 'supabase_smtp',
         diagnostics: {
-          smtp_working: true,
-          fallback_used: false
+          smtp_success: true,
+          fallback_needed: false
         }
       }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error: any) {
-    logWithTimestamp('ERROR', `[${requestId}] 💥 ERRO CRÍTICO GERAL`, {
+  } catch (error) {
+    logWithTimestamp('CRITICAL', requestId, '💥 ERRO CRÍTICO GERAL', {
       error: error.message,
       stack: error.stack,
       errorType: error.constructor.name
     });
-    
+
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: false,
-        error: error.message || 'Erro interno do servidor',
-        details: error.toString(),
-        requestId: requestId,
+        error: error.message,
         timestamp: new Date().toISOString(),
-        system: 'hybrid_email_system'
+        requestId
       }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 };

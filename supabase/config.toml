@@ -1,5 +1,8 @@
 project_id = "groqsnnytvjabgeaekkw"
 
+[functions.send-invite-email]
+verify_jwt = false
+
 [functions.whatsapp-webhook]
 verify_jwt = false
 
