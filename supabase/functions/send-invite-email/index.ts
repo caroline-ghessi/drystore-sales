@@ -48,7 +48,7 @@ function validateEnvironment(): { isValid: boolean; errors: string[] } {
 }
 
 // Função de envio via Resend API (Fallback)
-async function sendDirectInviteEmail(email: string, displayName: string, role: string, requestId: string): Promise<{ success: boolean; error?: string; emailId?: string }> {
+async function sendDirectInviteEmail(email: string, displayName: string, role: string, requestId: string, confirmationLink?: string): Promise<{ success: boolean; error?: string; emailId?: string }> {
   try {
     logWithTimestamp('DEBUG', requestId, '🔧 Iniciando envio via Resend API diretamente');
     
@@ -59,20 +59,37 @@ async function sendDirectInviteEmail(email: string, displayName: string, role: s
 
     const resend = new Resend(resendApiKey);
 
+    // HTML do email com ou sem link de confirmação
+    const emailHtml = confirmationLink ? `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #2563eb;">Bem-vindo à DryStore!</h1>
+        <p>Olá <strong>${displayName}</strong>,</p>
+        <p>Você foi convidado para participar da plataforma DryStore como <strong>${role}</strong>.</p>
+        <p>Para ativar sua conta, clique no botão abaixo:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${confirmationLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">Ativar Conta</a>
+        </div>
+        <p style="color: #666; font-size: 14px;">Ou copie e cole este link no seu navegador:</p>
+        <p style="word-break: break-all; color: #2563eb; font-size: 12px;">${confirmationLink}</p>
+        <p>Obrigado!</p>
+        <p><strong>Equipe DryStore</strong></p>
+      </div>
+    ` : `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #2563eb;">Bem-vindo à DryStore!</h1>
+        <p>Olá <strong>${displayName}</strong>,</p>
+        <p>Você foi convidado para participar da plataforma DryStore como <strong>${role}</strong>.</p>
+        <p>Para ativar sua conta, acesse o link enviado por email pelo Supabase.</p>
+        <p>Obrigado!</p>
+        <p><strong>Equipe DryStore</strong></p>
+      </div>
+    `;
+
     const emailResult = await resend.emails.send({
       from: 'DryStore <noreply@comercial.drystore.com.br>',
       to: [email],
       subject: `Convite para ${role} - DryStore`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563eb;">Bem-vindo à DryStore!</h1>
-          <p>Olá <strong>${displayName}</strong>,</p>
-          <p>Você foi convidado para participar da plataforma DryStore como <strong>${role}</strong>.</p>
-          <p>Para ativar sua conta, acesse o link enviado por email pelo Supabase.</p>
-          <p>Obrigado!</p>
-          <p><strong>Equipe DryStore</strong></p>
-        </div>
-      `
+      html: emailHtml
     });
 
     if (emailResult.data) {
@@ -212,18 +229,41 @@ const handler = async (req: Request): Promise<Response> => {
           }
         });
 
+        let userId = null;
         if (userResult.error) {
           if (userResult.error.message?.includes('already been registered')) {
-            logWithTimestamp('INFO', requestId, '👤 Usuário já existe - tentando reenvio', { email });
+            logWithTimestamp('INFO', requestId, '👤 Usuário já existe - buscando ID', { email });
+            // Buscar o usuário existente para obter o ID
+            const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+            const existingUser = existingUsers.users.find(u => u.email === email);
+            userId = existingUser?.id;
           } else {
             throw new Error(`Erro ao criar usuário: ${userResult.error.message}`);
           }
         } else {
           logWithTimestamp('INFO', requestId, '✅ Usuário criado com sucesso', { userId: userResult.data.user?.id });
+          userId = userResult.data.user?.id;
         }
 
-        // Enviar email via Resend
-        const resendResult = await sendDirectInviteEmail(email, displayName, role, requestId);
+        // Gerar link de confirmação para o usuário
+        let confirmationLink = null;
+        if (userId) {
+          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'signup',
+            email: email,
+            options: {
+              redirectTo: `${Deno.env.get('SUPABASE_URL')?.replace('/supabase', '')}/`
+            }
+          });
+
+          if (!linkError && linkData.properties?.action_link) {
+            confirmationLink = linkData.properties.action_link;
+            logWithTimestamp('INFO', requestId, '✅ Link de confirmação gerado', { hasLink: !!confirmationLink });
+          }
+        }
+
+        // Enviar email via Resend com link de confirmação
+        const resendResult = await sendDirectInviteEmail(email, displayName, role, requestId, confirmationLink);
 
         if (resendResult.success) {
           logWithTimestamp('INFO', requestId, '🎉 SISTEMA HÍBRIDO SUCESSO - Fallback Resend funcionou', {
