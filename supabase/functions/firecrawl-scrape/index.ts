@@ -10,6 +10,10 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
 
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error('Missing required Supabase environment variables');
+}
+
 console.log('🔧 Environment variables check:', {
   hasSupabaseUrl: !!supabaseUrl,
   hasSupabaseKey: !!supabaseServiceKey,
@@ -82,12 +86,12 @@ Deno.serve(async (req) => {
       firecrawlPayload = {
         url,
         limit: options.maxDepth ? Math.min(options.maxDepth * 5, 100) : 10
-      };
+      } as any;
       
       // Para crawl, usar includeUrls/excludeUrls ao invés de includePaths/excludePaths
       if (options.includePatterns?.length) {
         // Converter patterns para URLs válidas
-        firecrawlPayload.includeUrls = options.includePatterns.map(pattern => {
+        (firecrawlPayload as any).includeUrls = options.includePatterns.map((pattern: string) => {
           // Se é um pattern relativo, criar URL completa
           if (pattern.startsWith('/')) {
             const baseUrl = new URL(url);
@@ -98,7 +102,7 @@ Deno.serve(async (req) => {
       }
       
       if (options.excludePatterns?.length) {
-        firecrawlPayload.excludeUrls = options.excludePatterns.map(pattern => {
+        (firecrawlPayload as any).excludeUrls = options.excludePatterns.map((pattern: string) => {
           if (pattern.startsWith('/')) {
             const baseUrl = new URL(url);
             return `${baseUrl.origin}${pattern}`;
@@ -160,20 +164,20 @@ Deno.serve(async (req) => {
       } else {
         throw new Error('No markdown content found in scrape response');
       }
-    } else {
-      // Para crawl, data é um array de objetos
-      if (Array.isArray(firecrawlData.data)) {
-        results = firecrawlData.data.map(item => {
-          // Garantir que o markdown está no local correto
-          if (item.formats?.markdown && !item.markdown) {
-            return { ...item, markdown: item.formats.markdown };
-          }
-          return item;
-        });
       } else {
-        results = [firecrawlData.data];
+        // Para crawl, data é um array de objetos
+        if (Array.isArray(firecrawlData.data)) {
+          results = firecrawlData.data.map((item: any) => {
+            // Garantir que o markdown está no local correto
+            if (item.formats?.markdown && !item.markdown) {
+              return { ...item, markdown: item.formats.markdown };
+            }
+            return item;
+          });
+        } else {
+          results = [firecrawlData.data];
+        }
       }
-    }
 
     console.log(`📊 Processing ${results.length} items`);
 
@@ -294,9 +298,11 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Firecrawl processing error:', error);
-    console.error('❌ Error name:', error.name);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error stack:', error.stack);
+    
+    const errorInstance = error instanceof Error ? error : new Error(String(error));
+    console.error('❌ Error name:', errorInstance.name);
+    console.error('❌ Error message:', errorInstance.message);
+    console.error('❌ Error stack:', errorInstance.stack);
     
     // Log adicional para debug
     console.error('❌ Request URL:', req.url);

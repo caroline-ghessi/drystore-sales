@@ -118,7 +118,7 @@ serve(async (req) => {
     // 8. Gerar resumo usando LLM
     const promptWithData = summarizerAgent.system_prompt.replace(
       /\{(\w+)\}/g,
-      (match, key) => contextData[key as keyof typeof contextData]?.toString() || match
+      (match: string, key: string) => contextData[key as keyof typeof contextData]?.toString() || match
     );
 
     // Preparar dados contextuais adicionais
@@ -145,7 +145,7 @@ serve(async (req) => {
     let llmResponse;
     let llmData;
     let summary = 'Erro ao gerar resumo';
-    let attemptedApis = [];
+    let attemptedApis: string[] = [];
     
     // Função para tentar Claude API
     const tryClaudeApi = async () => {
@@ -293,14 +293,16 @@ serve(async (req) => {
         try {
           summary = await tryClaudeApi();
         } catch (error) {
-          console.warn('⚠️ Claude falhou, tentando OpenAI:', error.message);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.warn('⚠️ Claude falhou, tentando OpenAI:', errorMessage);
           summary = await tryOpenAiApi();
         }
       } else if (modelName.startsWith('grok')) {
         try {
           summary = await tryXaiApi();
         } catch (error) {
-          console.warn('⚠️ xAI falhou, tentando OpenAI:', error.message);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.warn('⚠️ xAI falhou, tentando OpenAI:', errorMessage);
           summary = await tryOpenAiApi();
         }
       } else {
@@ -308,7 +310,8 @@ serve(async (req) => {
         try {
           summary = await tryOpenAiApi();
         } catch (error) {
-          console.warn('⚠️ OpenAI falhou, tentando Claude:', error.message);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.warn('⚠️ OpenAI falhou, tentando Claude:', errorMessage);
           summary = await tryClaudeApi();
         }
       }
@@ -406,10 +409,13 @@ Erro: ${error.message}`;
     );
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : 'No stack trace';
+    
     console.error('💥 ERRO CRÍTICO NA GERAÇÃO DE RESUMO:', {
       conversationId: conversationId || 'não fornecido',
-      error: error.message,
-      stack: error.stack,
+      error: errorMessage,
+      stack: errorStack,
       timestamp: new Date().toISOString()
     });
 
@@ -419,14 +425,14 @@ Erro: ${error.message}`;
       message: 'Erro crítico na geração de resumo',
       data: { 
         conversation_id: conversationId || null,
-        error: error.message,
-        stack: error.stack
+        error: errorMessage,
+        stack: errorStack
       }
     });
 
     return new Response(
       JSON.stringify({ 
-        error: `Falha na geração do resumo: ${error.message}`,
+        error: `Falha na geração do resumo: ${errorMessage}`,
         success: false 
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

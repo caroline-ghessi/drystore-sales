@@ -11,6 +11,11 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error('Missing required Supabase environment variables');
+}
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(async (req) => {
@@ -80,7 +85,7 @@ serve(async (req) => {
     // Get file details (buscar novamente se necessário para garantir dados atuais)
     const { data: fileData, error: fileError } = await supabase
       .from('agent_knowledge_files')
-      .select('agent_category, file_name, processing_status')
+      .select('agent_category, file_name, processing_status, metadata')
       .eq('id', fileId)
       .single();
 
@@ -186,7 +191,8 @@ serve(async (req) => {
           }
           
         } catch (error) {
-          console.error(`❌ Failed to process chunk ${i + 1}:`, error.message);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error(`❌ Failed to process chunk ${i + 1}:`, errorMessage);
           failedChunks++;
           continue;
         }
@@ -251,13 +257,14 @@ serve(async (req) => {
 
     } catch (processingError) {
       // ✅ Em caso de erro, marcar arquivo como falhou
+      const errorMessage = processingError instanceof Error ? processingError.message : String(processingError);
       await supabase
         .from('agent_knowledge_files')
         .update({ 
           processing_status: 'failed',
           metadata: {
             ...fileData.metadata || {},
-            last_error: processingError.message,
+            last_error: errorMessage,
             failed_at: new Date().toISOString()
           }
         })
@@ -268,9 +275,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Error generating embeddings:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message,
+      error: errorMessage,
       timestamp: new Date().toISOString()
     }), {
       status: 500,
@@ -283,7 +291,7 @@ serve(async (req) => {
 });
 
 // ✅ Função melhorada com rate limiting
-async function generateEmbedding(text) {
+async function generateEmbedding(text: string): Promise<number[]> {
   // Validação do input
   if (!text || text.trim().length === 0) {
     throw new Error('Text cannot be empty');
@@ -327,8 +335,8 @@ async function generateEmbedding(text) {
 }
 
 // ✅ Função melhorada com backoff exponencial
-async function generateEmbeddingWithRetry(text, maxRetries = 3) {
-  let lastError;
+async function generateEmbeddingWithRetry(text: string, maxRetries = 3): Promise<number[]> {
+  let lastError: Error | unknown;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -343,10 +351,11 @@ async function generateEmbeddingWithRetry(text, maxRetries = 3) {
       
     } catch (error) {
       lastError = error;
-      console.warn(`⚠️ Embedding attempt ${attempt}/${maxRetries} failed:`, error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.warn(`⚠️ Embedding attempt ${attempt}/${maxRetries} failed:`, errorMessage);
       
       // ✅ Não retry em erros de autenticação ou request inválido
-      if (error.message.includes('Invalid API key') || error.message.includes('Invalid request')) {
+      if (error instanceof Error && (error.message.includes('Invalid API key') || error.message.includes('Invalid request'))) {
         throw error;
       }
       
@@ -356,11 +365,12 @@ async function generateEmbeddingWithRetry(text, maxRetries = 3) {
     }
   }
   
-  throw new Error(`Failed after ${maxRetries} attempts: ${lastError.message}`);
+  const lastErrorMessage = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`Failed after ${maxRetries} attempts: ${lastErrorMessage}`);
 }
 
 // ✅ Função melhorada de chunking com overlap
-function createChunks(content, maxChunkSize = 6000, overlap = 200) {
+function createChunks(content: string, maxChunkSize = 6000, overlap = 200): string[] {
   if (!content || content.trim().length === 0) {
     return [];
   }
@@ -440,7 +450,7 @@ function createChunks(content, maxChunkSize = 6000, overlap = 200) {
 }
 
 // ✅ Função melhorada de estimativa de tokens
-function estimateTokens(text) {
+function estimateTokens(text: string): number {
   if (!text) return 0;
   
   // Estimativa mais precisa baseada em:
