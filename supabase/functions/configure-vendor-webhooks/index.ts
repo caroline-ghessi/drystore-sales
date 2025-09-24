@@ -195,16 +195,18 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
     await supabase.from('system_logs').insert({
       level: 'error',
       source: 'configure-vendor-webhooks',
       message: 'Configuration failed',
-      data: { error: error.message }
+      data: { error: errorMessage }
     });
 
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message 
+      error: errorMessage 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

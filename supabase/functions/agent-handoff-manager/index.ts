@@ -120,15 +120,17 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error managing agent handoff:', error);
     
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
     await supabase.from('system_logs').insert({
       level: 'error',
       source: 'agent-handoff-manager',
       message: 'Agent handoff failed',
-      data: { error: error.message }
+      data: { error: errorMessage }
     });
 
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: errorMessage,
       handoffPerformed: false
     }), {
       status: 500,

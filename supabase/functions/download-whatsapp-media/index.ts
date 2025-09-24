@@ -98,10 +98,11 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Error downloading media:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: errorMessage
       }),
       {
         status: 500,

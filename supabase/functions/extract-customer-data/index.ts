@@ -71,13 +71,13 @@ ${conversationHistory}
     const llmModel = extractorAgent.llm_model || 'claude-3-5-sonnet-20241022';
     
     if (llmModel.startsWith('claude')) {
-      apiKey = Deno.env.get('ANTHROPIC_API_KEY');
-      if (!apiKey) throw new Error('Anthropic API key not configured');
+      const claudeApiKey = Deno.env.get('ANTHROPIC_API_KEY');
+      if (!claudeApiKey) throw new Error('Anthropic API key not configured');
       
       apiUrl = 'https://api.anthropic.com/v1/messages';
       headers = {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
+        'x-api-key': claudeApiKey,
         'anthropic-version': '2023-06-01'
       };
       requestBody = {
@@ -86,13 +86,13 @@ ${conversationHistory}
         messages: [{ role: 'user', content: fullPrompt }]
       };
     } else if (llmModel.startsWith('gpt')) {
-      apiKey = Deno.env.get('OPENAI_API_KEY');
-      if (!apiKey) throw new Error('OpenAI API key not configured');
+      const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+      if (!openaiApiKey) throw new Error('OpenAI API key not configured');
       
       apiUrl = 'https://api.openai.com/v1/chat/completions';
       headers = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${openaiApiKey}`
       };
       requestBody = {
         model: llmModel,
@@ -100,13 +100,13 @@ ${conversationHistory}
         max_tokens: 2000
       };
     } else if (llmModel.startsWith('grok')) {
-      apiKey = Deno.env.get('XAI_API_KEY');
-      if (!apiKey) throw new Error('xAI API key not configured');
+      const xaiApiKey = Deno.env.get('XAI_API_KEY');
+      if (!xaiApiKey) throw new Error('xAI API key not configured');
       
       apiUrl = 'https://api.x.ai/v1/chat/completions';
       headers = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${xaiApiKey}`
       };
       requestBody = {
         model: llmModel,
@@ -159,13 +159,13 @@ ${conversationHistory}
     // Update project context and conversation data
     const contextData = {
       conversation_id: conversationId,
-      whatsapp_confirmed: extractedData.whatsapp || extractedData.telefone || null,
-      energy_consumption: extractedData['Consumo de energia'] || extractedData.energy_consumption || null,
-      roof_status: extractedData['Estado do telhado'] || extractedData.roof_status || null,
-      project_status: extractedData['Projeto arquitetônico'] || extractedData.project_status || null,
-      floor_rooms: extractedData['Quantidade de piso'] || extractedData.floor_rooms || null,
-      materials_list: extractedData['Lista de materiais'] ? [extractedData['Lista de materiais']] : null,
-      desired_product: extractedData['Produto desejado'] || extractedData.desired_product || null,
+      whatsapp_confirmed: (extractedData as any).whatsapp || (extractedData as any).telefone || null,
+      energy_consumption: (extractedData as any)['Consumo de energia'] || (extractedData as any).energy_consumption || null,
+      roof_status: (extractedData as any)['Estado do telhado'] || (extractedData as any).roof_status || null,
+      project_status: (extractedData as any)['Projeto arquitetônico'] || (extractedData as any).project_status || null,
+      floor_rooms: (extractedData as any)['Quantidade de piso'] || (extractedData as any).floor_rooms || null,
+      materials_list: (extractedData as any)['Lista de materiais'] ? [(extractedData as any)['Lista de materiais']] : null,
+      desired_product: (extractedData as any)['Produto desejado'] || (extractedData as any).desired_product || null,
       notes: `Dados extraídos: ${JSON.stringify(extractedData)}`,
       updated_at: new Date().toISOString()
     };
@@ -179,17 +179,17 @@ ${conversationHistory}
 
     // Update conversation data if available
     const conversationUpdates: any = {};
-    if (extractedData.nome || extractedData.name) {
-      conversationUpdates.customer_name = extractedData.nome || extractedData.name;
+    if ((extractedData as any).nome || (extractedData as any).name) {
+      conversationUpdates.customer_name = (extractedData as any).nome || (extractedData as any).name;
     }
-    if (extractedData.email) {
-      conversationUpdates.customer_email = extractedData.email;
+    if ((extractedData as any).email) {
+      conversationUpdates.customer_email = (extractedData as any).email;
     }
-    if (extractedData.cidade || extractedData.city) {
-      conversationUpdates.customer_city = extractedData.cidade || extractedData.city;
+    if ((extractedData as any).cidade || (extractedData as any).city) {
+      conversationUpdates.customer_city = (extractedData as any).cidade || (extractedData as any).city;
     }
-    if (extractedData.estado || extractedData.state) {
-      conversationUpdates.customer_state = extractedData.estado || extractedData.state;
+    if ((extractedData as any).estado || (extractedData as any).state) {
+      conversationUpdates.customer_state = (extractedData as any).estado || (extractedData as any).state;
     }
 
     if (Object.keys(conversationUpdates).length > 0) {
@@ -210,6 +210,8 @@ ${conversationHistory}
   } catch (error) {
     console.error('Error extracting customer data:', error);
     
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -219,13 +221,13 @@ ${conversationHistory}
       level: 'error',
       source: 'extract-customer-data',
       message: 'Failed to extract customer data',
-      data: { error: error.message }
+      data: { error: errorMessage }
     });
 
     return new Response(JSON.stringify({
       customerData: {},
       contextUpdated: false,
-      error: error.message
+      error: errorMessage
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
