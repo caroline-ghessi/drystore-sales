@@ -60,7 +60,6 @@ serve(async (req) => {
         .from('message_buffers')
         .update({
           messages: updatedMessages,
-          last_message_at: now.toISOString(),
           should_process_at: shouldProcessAt.toISOString() // Resetar timer
         })
         .eq('id', existingBuffer.id);
@@ -77,8 +76,7 @@ serve(async (req) => {
             timestamp: now.toISOString(),
             sender_type: 'customer'
           }],
-          created_at: now.toISOString(),
-          last_message_at: now.toISOString(),
+          buffer_started_at: now.toISOString(),
           should_process_at: shouldProcessAt.toISOString(),
           processed: false
         })
