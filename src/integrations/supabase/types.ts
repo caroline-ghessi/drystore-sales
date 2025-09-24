@@ -1967,6 +1967,42 @@ export type Database = {
           },
         ]
       }
+      proposal_pdfs: {
+        Row: {
+          created_at: string
+          generated_at: string
+          id: string
+          job_id: string | null
+          pdf_url: string | null
+          proposal_id: string
+          status: string
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          generated_at?: string
+          id?: string
+          job_id?: string | null
+          pdf_url?: string | null
+          proposal_id: string
+          status?: string
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          generated_at?: string
+          id?: string
+          job_id?: string | null
+          pdf_url?: string | null
+          proposal_id?: string
+          status?: string
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       proposal_template_assets: {
         Row: {
           asset_type: string

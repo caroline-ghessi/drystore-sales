@@ -60,6 +60,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [generatedProposalId, setGeneratedProposalId] = useState<string | null>(null);
+  const [generatedProposalData, setGeneratedProposalData] = useState<any>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -82,6 +83,31 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
     const proposal = await generateFromContext(projectContextId);
     if (proposal && onProposalGenerated) {
       onProposalGenerated(proposal);
+    }
+  };
+
+  const fetchGeneratedProposal = async (proposalId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('proposals')
+        .select(`
+          *,
+          crm_customers!conversation_id (
+            name,
+            email,
+            phone,
+            city,
+            state
+          )
+        `)
+        .eq('id', proposalId)
+        .single();
+
+      if (error) throw error;
+      
+      setGeneratedProposalData(data);
+    } catch (error) {
+      console.error('Erro ao buscar dados da proposta:', error);
     }
   };
 
@@ -180,6 +206,8 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
 
       if (data && data.success) {
         setGeneratedProposalId(data.proposalId);
+        // Buscar dados completos da proposta
+        await fetchGeneratedProposal(data.proposalId);
         toast({
           title: "Proposta Gerada",
           description: "Proposta salva como rascunho. Clique em 'Enviar para Cliente' para finalizar o envio."
@@ -1143,38 +1171,39 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
                   </CardContent>
                 </Card>
               ) : (
-                /* Envio da Proposta */
-                <Card>
-                  <CardHeader>
-                    <CardTitle>✅ Proposta Gerada com Sucesso!</CardTitle>
-                    <CardDescription>
-                      A proposta foi salva como rascunho. Agora você pode enviar para o cliente.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                      <h4 className="font-semibold text-green-800 mb-2">Proposta Criada:</h4>
-                      <div className="text-sm space-y-1">
-                        <p>• Cliente: {clientData.name}</p>
-                        <p>• Desconto: {discountPercent}%</p>
-                        <p>• Valor Final: R$ {((calculator.calculationResult?.totalCost || 0) - ((calculator.calculationResult?.totalCost || 0) * discountPercent / 100)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                /* Resultado da Proposta com ProposalResult */
+                generatedProposalData ? (
+                  <ProposalResult
+                    proposal={{
+                      id: generatedProposalId,
+                      number: generatedProposalData.proposal_number || `PROP-${Date.now()}`,
+                      title: generatedProposalData.title || `Proposta ${productType} - ${clientData.name}`,
+                      total: generatedProposalData.final_value || ((calculator.calculationResult?.totalCost || 0) - ((calculator.calculationResult?.totalCost || 0) * discountPercent / 100)),
+                      validUntil: generatedProposalData.valid_until || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                      status: generatedProposalData.status || 'draft' as const,
+                      acceptanceLink: generatedProposalData.acceptance_link || `${window.location.origin}/proposta/aceitar/${generatedProposalId}`,
+                      uniqueId: generatedProposalId
+                    }}
+                    generatedContent={{
+                      executiveSummary: generatedProposalData.description || `Proposta para ${clientData.name} referente à instalação de ${productType}.`,
+                      benefitsHighlights: [
+                        `Desconto aplicado: ${generatedProposalData.discount_percentage || discountPercent}%`,
+                        `Valor total: R$ ${(generatedProposalData.total_value || calculator.calculationResult?.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                        `Valor final: R$ ${(generatedProposalData.final_value || ((calculator.calculationResult?.totalCost || 0) - ((calculator.calculationResult?.totalCost || 0) * discountPercent / 100))).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                      ]
+                    }}
+                  />
+                ) : (
+                  /* Loading state while fetching proposal data */
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="text-center">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                        <p>Carregando dados da proposta...</p>
                       </div>
-                    </div>
-                    
-                    <div className="flex space-x-3">
-                      <Button variant="outline" onClick={() => navigate('/propostas/lista')}>
-                        Ver Lista de Propostas
-                      </Button>
-                      <Button 
-                        onClick={() => setShowSendModal(true)}
-                        className="flex-1"
-                      >
-                        <Send className="mr-2 h-4 w-4" />
-                        Enviar para Cliente
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )
               )}
             </div>
           )}

@@ -64,18 +64,31 @@ serve(async (req) => {
         .from('proposals')
         .select(`
           *,
-          proposal_items (*)
+          proposal_items (*),
+          crm_customers!conversation_id (
+            name,
+            email,
+            phone,
+            city,
+            state
+          )
         `)
         .eq('id', proposalId)
         .single();
 
       if (error) {
-        throw new Error(`Failed to fetch proposal: ${error.message}`);
+        throw new Error(`Proposta não encontrada: ${error.message}`);
       }
 
       // Transform database data to PDF template format
       dataToSend = {
-        client: proposal.client_data,
+        client: proposal.client_data || {
+          name: proposal.crm_customers?.name || 'Cliente',
+          email: proposal.crm_customers?.email || '',
+          phone: proposal.crm_customers?.phone || '',
+          city: proposal.crm_customers?.city || '',
+          state: proposal.crm_customers?.state || ''
+        },
         items: proposal.proposal_items || [],
         calculations: proposal.calculations_data || {},
         pricing: {
