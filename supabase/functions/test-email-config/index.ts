@@ -138,18 +138,6 @@ const handler = async (req: Request): Promise<Response> => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
-    console.log(`[${requestId}] 💥 ERRO CRÍTICO NO TESTE:`, error.message);
-    
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: 'Erro crítico no teste de configuração',
-        details: error.message,
-        requestId
-      }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
 };
 
 serve(handler);

@@ -240,7 +240,7 @@ serve(async (req) => {
       level: 'error',
       source: 'vendor-whatsapp-webhook',
       message: 'Webhook processing failed',
-      data: { error: error.message }
+      data: { error: error instanceof Error ? error.message : String(error) }
     });
 
     return new Response(JSON.stringify({ error: 'Processing failed' }), {
@@ -457,7 +457,7 @@ async function updateConversationStats(supabase: any, conversationId: number, fr
         level: 'error',
         source: 'vendor-whatsapp-webhook',
         message: 'Failed to update conversation stats (both RPC and fallback)',
-        data: { conversation_id: conversationId, from_me: fromMe, error: fallbackError.message }
+        data: { conversation_id: conversationId, from_me: fromMe, error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError) }
       });
     }
   }

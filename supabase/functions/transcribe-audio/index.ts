@@ -161,7 +161,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         success: false 
       }),
       { 
@@ -299,12 +299,12 @@ async function processTranscribedMessage(conversationId: string, transcriptionTe
 
 // Função para enviar resposta via WhatsApp (duplicata necessária)
 async function sendWhatsAppResponseFromTranscription(conversationId: string, response: string) {
+  // Initialize Supabase client outside try-catch so it's accessible in both blocks
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  
   try {
-    // Initialize Supabase client for this function
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     // Buscar dados da conversa
     const { data: conversation } = await supabase
       .from('conversations')
@@ -331,13 +331,14 @@ async function sendWhatsAppResponseFromTranscription(conversationId: string, res
     }
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Error sending WhatsApp response from transcription:', error);
     
     await supabase.from('system_logs').insert({
       level: 'error',
       source: 'transcribe-audio-send-response',
       message: 'Failed to send WhatsApp response from transcription',
-      data: { error: error.message, conversationId, response: response.substring(0, 100) }
+      data: { error: errorMessage, conversationId, response: response.substring(0, 100) }
     });
   }
 }

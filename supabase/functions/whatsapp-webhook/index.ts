@@ -97,7 +97,7 @@ serve(async (req) => {
       level: 'error',
       source: 'whatsapp-webhook',
       message: 'Webhook processing failed',
-      data: { error: error.message }
+      data: { error: error instanceof Error ? error.message : String(error) }
     });
 
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
@@ -339,7 +339,7 @@ async function handleIncomingMessage(message: any, contact: any) {
       source: 'whatsapp-webhook',
       message: 'Failed to handle incoming message',
       data: { 
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         whatsappMessageId,
         from
       }
@@ -379,7 +379,7 @@ async function processMessageWithAI(conversationId: string, messageContent: stri
           const SPECIFIC_CATEGORIES = ['ferramentas', 'telha_shingle', 'energia_solar', 'steel_frame', 'drywall_divisorias', 'pisos', 'acabamentos', 'forros'];
           
           // Se categoria atual é específica, não permitir mudança
-          if (currentConversation.product_group && SPECIFIC_CATEGORIES.includes(currentConversation.product_group)) {
+          if (currentConversation && currentConversation.product_group && SPECIFIC_CATEGORIES.includes(currentConversation.product_group)) {
             console.log(`🔒 Category update blocked: ${currentConversation.product_group} is locked and cannot be changed to ${classificationResult.productGroup}`);
             
             // Log da tentativa bloqueada
@@ -389,7 +389,7 @@ async function processMessageWithAI(conversationId: string, messageContent: stri
               message: 'Category change blocked by lock system',
               data: { 
                 conversationId,
-                currentCategory: currentConversation.product_group,
+                currentCategory: currentConversation?.product_group || 'unknown',
                 attemptedCategory: classificationResult.productGroup,
                 message: messageContent,
                 classificationResult
@@ -492,7 +492,7 @@ async function processMessageWithAI(conversationId: string, messageContent: stri
       level: 'error',
       source: 'whatsapp-webhook-ai-processing',
       message: 'Failed to process message with AI',
-      data: { error: error.message, conversationId }
+      data: { error: error instanceof Error ? error.message : String(error), conversationId }
     });
 
     // Como último recurso, enviar mensagem de fallback usando agente geral
@@ -549,7 +549,7 @@ async function sendWhatsAppResponse(conversationId: string, response: string) {
       level: 'error',
       source: 'whatsapp-webhook-send-response',
       message: 'Failed to send WhatsApp response',
-      data: { error: error.message, conversationId, response: response.substring(0, 100) }
+      data: { error: error instanceof Error ? error.message : String(error), conversationId, response: response.substring(0, 100) }
     });
   }
 }
@@ -598,7 +598,7 @@ async function handleStatusUpdate(status: any) {
       source: 'whatsapp-webhook',
       message: 'Failed to handle status update',
       data: { 
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         messageId: id,
         status: messageStatus
       }
@@ -668,7 +668,7 @@ async function performAgentHandoff(conversationId: string, newCategory: string, 
       source: 'whatsapp-webhook-handoff',
       message: 'Agent handoff failed',
       data: { 
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         conversation_id: conversationId,
         category: newCategory
       }

@@ -130,11 +130,11 @@ serve(async (req) => {
       level: 'error',
       source: 'validate-agent-assignment',
       message: 'Validation failed',
-      data: { error: error.message }
+      data: { error: error instanceof Error ? error.message : String(error) }
     });
 
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       isValid: false
     }), {
       status: 500,

@@ -343,22 +343,6 @@ const handler = async (req: Request): Promise<Response> => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
-    logWithTimestamp('CRITICAL', requestId, '💥 ERRO CRÍTICO GERAL', {
-      error: error.message,
-      stack: error.stack,
-      errorType: error.constructor.name
-    });
-
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-        timestamp: new Date().toISOString(),
-        requestId
-      }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
 };
 
 serve(handler);
