@@ -25,6 +25,7 @@ interface ProposalResultProps {
 export function ProposalResult({ proposal, generatedContent }: ProposalResultProps) {
   const [linkCopied, setLinkCopied] = useState(false);
   const { toast } = useToast();
+  const { isGenerating, downloadPDF, previewPDF, getTemplateIdForProduct } = usePDFGeneration();
 
   const handleCopyLink = async () => {
     if (!proposal.acceptanceLink) {
@@ -87,6 +88,30 @@ Qualquer dúvida, estou à disposição! 😊`;
     if (proposal.acceptanceLink) {
       window.open(proposal.acceptanceLink, '_blank');
     }
+  };
+
+  const handleDownloadPDF = async () => {
+    const templateId = getTemplateIdForProduct('shingle'); // TODO: Get from proposal data
+    
+    await downloadPDF({
+      proposalId: proposal.id,
+      templateId,
+      options: {
+        name: `Proposta_${proposal.proposalNumber}`
+      }
+    });
+  };
+
+  const handlePreviewPDF = async () => {
+    const templateId = getTemplateIdForProduct('shingle'); // TODO: Get from proposal data
+    
+    await previewPDF({
+      proposalId: proposal.id,
+      templateId,
+      options: {
+        name: `Preview_${proposal.proposalNumber}`
+      }
+    });
   };
 
   return (
