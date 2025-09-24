@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Copy, MessageCircle, ExternalLink, Share } from 'lucide-react';
+import { CheckCircle, Copy, MessageCircle, ExternalLink, Share, Eye, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { usePDFGeneration } from '../../hooks/usePDFGeneration';
 
 interface ProposalResultProps {
   proposal: {
@@ -97,7 +98,7 @@ Qualquer dúvida, estou à disposição! 😊`;
       proposalId: proposal.id,
       templateId,
       options: {
-        name: `Proposta_${proposal.proposalNumber}`
+        name: `Proposta_${proposal.number}`
       }
     });
   };
@@ -109,7 +110,7 @@ Qualquer dúvida, estou à disposição! 😊`;
       proposalId: proposal.id,
       templateId,
       options: {
-        name: `Preview_${proposal.proposalNumber}`
+        name: `Preview_${proposal.number}`
       }
     });
   };
@@ -183,7 +184,7 @@ Qualquer dúvida, estou à disposição! 😊`;
           </div>
 
           {/* Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
             <Button onClick={handleViewProposal} variant="outline">
               <ExternalLink className="h-4 w-4 mr-2" />
               Visualizar Proposta
@@ -192,6 +193,16 @@ Qualquer dúvida, estou à disposição! 😊`;
             <Button onClick={handleCopyLink} variant="outline">
               <Share className="h-4 w-4 mr-2" />
               Copiar Link
+            </Button>
+            
+            <Button onClick={handlePreviewPDF} variant="outline" disabled={isGenerating}>
+              <Eye className="h-4 w-4 mr-2" />
+              {isGenerating ? 'Gerando...' : 'Preview PDF'}
+            </Button>
+            
+            <Button onClick={handleDownloadPDF} variant="outline" disabled={isGenerating}>
+              <Download className="h-4 w-4 mr-2" />
+              {isGenerating ? 'Gerando...' : 'Download PDF'}
             </Button>
             
             <Button onClick={handleSendWhatsApp} className="bg-green-600 hover:bg-green-700">

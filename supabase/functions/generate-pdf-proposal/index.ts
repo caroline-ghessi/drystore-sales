@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,6 +13,7 @@ interface PDFGenerationRequest {
     items: any[];
     calculations: any;
     pricing: any;
+    proposal?: any;
   };
   templateId: string;
   options?: {
@@ -76,6 +77,7 @@ serve(async (req) => {
       dataToSend = {
         client: proposal.client_data,
         items: proposal.proposal_items || [],
+        calculations: proposal.calculations_data || {},
         pricing: {
           subtotal: proposal.total_value,
           discount: proposal.discount_value,
