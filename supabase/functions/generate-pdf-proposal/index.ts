@@ -71,6 +71,9 @@ serve(async (req) => {
             phone,
             city,
             state
+          ),
+          profiles!created_by (
+            display_name
           )
         `)
         .eq('id', proposalId)
@@ -80,29 +83,8 @@ serve(async (req) => {
         throw new Error(`Proposta não encontrada: ${error.message}`);
       }
 
-      // Transform database data to PDF template format
-      dataToSend = {
-        client: proposal.client_data || {
-          name: proposal.crm_customers?.name || 'Cliente',
-          email: proposal.crm_customers?.email || '',
-          phone: proposal.crm_customers?.phone || '',
-          city: proposal.crm_customers?.city || '',
-          state: proposal.crm_customers?.state || ''
-        },
-        items: proposal.proposal_items || [],
-        calculations: proposal.calculations_data || {},
-        pricing: {
-          subtotal: proposal.total_value,
-          discount: proposal.discount_value,
-          discountPercent: proposal.discount_percentage,
-          total: proposal.final_value
-        },
-        proposal: {
-          number: proposal.proposal_number,
-          validUntil: proposal.valid_until,
-          createdAt: proposal.created_at
-        }
-      };
+      // Pass the full proposal data for template mapping
+      dataToSend = proposal;
     }
 
     if (!dataToSend) {
@@ -185,50 +167,29 @@ serve(async (req) => {
 });
 
 function mapDataToPDFTemplate(data: any, templateId: string): Record<string, any> {
-  // Base mapping for all templates
-  const baseMapping = {
-    // Client information
-    clientName: data.client?.name || 'Cliente',
-    clientPhone: data.client?.phone || '',
-    clientEmail: data.client?.email || '',
-    clientAddress: formatAddress(data.client?.address),
-    
-    // Proposal information
-    proposalNumber: data.proposal?.number || generateProposalNumber(),
-    proposalDate: formatDate(data.proposal?.createdAt || new Date()),
-    validUntil: formatDate(data.proposal?.validUntil),
-    
-    // Pricing
-    subtotal: formatCurrency(data.pricing?.subtotal || 0),
-    discount: formatCurrency(data.pricing?.discount || 0),
-    discountPercent: data.pricing?.discountPercent || 0,
-    total: formatCurrency(data.pricing?.total || 0),
-    
-    // Items
-    items: formatItems(data.items || []),
-    
-    // Company information
-    companyName: 'Drystore',
-    companyPhone: '(11) 9999-9999',
-    companyEmail: 'contato@drystore.com.br',
-    companyWebsite: 'www.drystore.com.br'
-  };
-
   // Template-specific mappings
   switch (templateId) {
-    case '14564': // Shingle template
+    case '14564': // Shingle template - exact variables mapping
       return {
-        ...baseMapping,
-        // Shingle-specific variables
-        roofArea: data.calculations?.totalRealArea || 0,
-        shingleType: data.calculations?.shingleType || 'Oakridge',
-        shingleBundles: data.calculations?.shingleBundles || 0,
-        warrantyYears: 15,
-        installationTime: '7-10 dias úteis'
+        nome_do_cliente: getClientName(data),
+        data_proposta: formatDate(data.created_at),
+        necessidades_do_projeto: data.description || 'Projeto de cobertura com telhas shingle de alta qualidade',
+        modelagem_telhado: inferModelingFromItems(data.proposal_items || []),
+        linha_shingle: inferShingleLineFromItems(data.proposal_items || []),
+        listagem_dos_produtos: formatItemsToHTML(data.proposal_items || []),
+        valor_total: formatCurrency(data.final_value || data.total_value || 0),
+        nome_vendedor: data.profiles?.display_name || 'Equipe Drystore'
       };
       
     default:
-      return baseMapping;
+      // Generic template mapping (fallback)
+      return {
+        clientName: getClientName(data),
+        proposalDate: formatDate(data.created_at),
+        proposalNumber: data.proposal_number || generateProposalNumber(),
+        total: formatCurrency(data.final_value || data.total_value || 0),
+        items: formatItems(data.proposal_items || [])
+      };
   }
 }
 
@@ -259,11 +220,67 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+function getClientName(data: any): string {
+  // Try different sources for client name
+  return data.client_data?.name || 
+         data.crm_customers?.name || 
+         data.title?.split(' - ')[1] || 
+         'Cliente';
+}
+
+function inferModelingFromItems(items: any[]): string {
+  if (!items.length) return 'Área: A definir | Inclinação: Padrão | Estrutura: Conforme projeto';
+  
+  // Try to extract area information from items
+  const totalArea = items.reduce((sum, item) => {
+    if (item.unit === 'm²' || item.unit === 'm2') {
+      return sum + (item.quantity || 0);
+    }
+    return sum;
+  }, 0);
+  
+  return `Área total: ${totalArea}m² | Inclinação: Conforme projeto | Estrutura: Madeira/metálica`;
+}
+
+function inferShingleLineFromItems(items: any[]): string {
+  // Look for shingle products in items to determine line
+  const shingleItem = items.find(item => 
+    item.name?.toLowerCase().includes('shingle') ||
+    item.name?.toLowerCase().includes('telha')
+  );
+  
+  if (shingleItem?.name) {
+    if (shingleItem.name.toLowerCase().includes('supreme')) return 'Linha Supreme';
+    if (shingleItem.name.toLowerCase().includes('premium')) return 'Linha Premium';
+    if (shingleItem.name.toLowerCase().includes('classic')) return 'Linha Classic';
+  }
+  
+  return 'Linha Premium';
+}
+
+function formatItemsToHTML(items: any[]): string {
+  if (!items.length) {
+    return '<div style="padding: 15px; background: white;"><div style="text-align: center; color: #666;">Nenhum item adicionado</div></div>';
+  }
+  
+  const itemsHTML = items.map(item => {
+    const itemName = `${item.name} - ${item.quantity} ${item.unit || 'un'}`;
+    const itemPrice = formatCurrency(item.total_price || item.price || 0);
+    
+    return `<div style='display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd;'>
+      <span>${itemName}</span>
+      <span style='font-weight: bold;'>${itemPrice}</span>
+    </div>`;
+  }).join('');
+  
+  return `<div style='padding: 15px; background: white;'>${itemsHTML}</div>`;
+}
+
 function formatItems(items: any[]): string {
   if (!items.length) return '';
   
   return items.map(item => {
-    return `${item.name} - Qtd: ${item.quantity} ${item.unit} - ${formatCurrency(item.totalPrice)}`;
+    return `${item.name} - Qtd: ${item.quantity} ${item.unit} - ${formatCurrency(item.total_price || item.price || 0)}`;
   }).join('\n');
 }
 
