@@ -60,7 +60,7 @@ async function sendDirectInviteEmail(email: string, displayName: string, role: s
     const resend = new Resend(resendApiKey);
 
     const emailResult = await resend.emails.send({
-      from: 'DryStore <noreply@drystore.com.br>',
+      from: 'DryStore <noreply@comercial.drystore.com.br>',
       to: [email],
       subject: `Convite para ${role} - DryStore`,
       html: `
