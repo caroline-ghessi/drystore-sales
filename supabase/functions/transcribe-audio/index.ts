@@ -118,7 +118,7 @@ serve(async (req) => {
           source: 'transcribe-audio-ai-processing',
           message: 'Failed to process transcribed message with AI',
           data: { 
-            error: aiError.message, 
+            error: aiError instanceof Error ? aiError.message : String(aiError), 
             message_id,
             transcription: transcriptionText 
           }

@@ -187,13 +187,14 @@ RESPOSTA: Responda de forma natural e personalizada, considerando todo o context
     });
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Error generating intelligent response:', error);
     
     await supabase.from('system_logs').insert({
       level: 'error',
       source: 'intelligent-agent-response',
       message: 'Failed to generate response',
-      data: { error: error.message, conversationId, message: message.substring(0, 100) }
+      data: { error: errorMessage, conversationId, message: message.substring(0, 100) }
     });
 
     // Se todos os provedores falharam, usar resposta de emergência
@@ -201,7 +202,7 @@ RESPOSTA: Responda de forma natural e personalizada, considerando todo o context
       response: 'Desculpe, estamos enfrentando dificuldades técnicas momentâneas. Um de nossos atendentes entrará em contato em breve.',
       agentName: 'Sistema de Emergência',
       agentType: 'emergency',
-      error: error.message
+      error: errorMessage
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

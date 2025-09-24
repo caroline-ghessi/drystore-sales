@@ -328,8 +328,9 @@ serve(async (req) => {
       });
       
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('💥 FALHA TOTAL EM TODAS AS APIs:', {
-        error: error.message,
+        error: errorMessage,
         attemptedApis,
         conversationId
       });
@@ -351,7 +352,7 @@ Este resumo foi gerado automaticamente devido a falha na IA.
 Revise a conversa completa antes de enviar ao vendedor.
 
 APIs testadas: ${attemptedApis.join(', ')}
-Erro: ${error.message}`;
+Erro: ${errorMessage}`;
       
       // Log detalhado do erro
       await supabase.from('system_logs').insert({
@@ -361,7 +362,7 @@ Erro: ${error.message}`;
         data: {
           conversationId,
           attemptedApis,
-          error: error.message,
+          error: errorMessage,
           modelName,
           promptLength: llmPrompt.length
         }
@@ -411,9 +412,17 @@ Erro: ${error.message}`;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : 'No stack trace';
+    let requestConversationId: string | undefined;
+    
+    try {
+      const { conversationId } = await req.json();
+      requestConversationId = conversationId;
+    } catch {
+      requestConversationId = undefined;
+    }
     
     console.error('💥 ERRO CRÍTICO NA GERAÇÃO DE RESUMO:', {
-      conversationId: conversationId || 'não fornecido',
+      conversationId: requestConversationId || 'não fornecido',
       error: errorMessage,
       stack: errorStack,
       timestamp: new Date().toISOString()
@@ -424,7 +433,7 @@ Erro: ${error.message}`;
       source: 'generate-lead-summary',
       message: 'Erro crítico na geração de resumo',
       data: { 
-        conversation_id: conversationId || null,
+        conversation_id: requestConversationId || null,
         error: errorMessage,
         stack: errorStack
       }

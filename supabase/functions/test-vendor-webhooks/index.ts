@@ -60,7 +60,8 @@ serve(async (req) => {
             webhookStatus = `api_error_${whapiResponse.status}`;
           }
         } catch (error) {
-          webhookStatus = `api_failed: ${error.message}`;
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          webhookStatus = `api_failed: ${errorMessage}`;
         }
       }
 
@@ -139,12 +140,12 @@ serve(async (req) => {
       level: 'error',
       source: 'test-vendor-webhooks',
       message: 'Test failed',
-      data: { error: error.message }
+      data: { error: error instanceof Error ? error.message : String(error) }
     });
 
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message 
+      error: error instanceof Error ? error.message : String(error) 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

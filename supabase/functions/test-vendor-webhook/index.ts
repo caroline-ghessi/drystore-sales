@@ -142,7 +142,7 @@ serve(async (req) => {
         webhook_test: {
           url: webhookUrl,
           success: false,
-          error: webhookError.message
+          error: webhookError instanceof Error ? webhookError.message : String(webhookError)
         }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -154,7 +154,7 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({ 
       error: 'Test failed',
-      details: error.message 
+      details: error instanceof Error ? error.message : String(error) 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -101,11 +101,12 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('❌ Error processing file:', error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: errorMessage 
       }),
       { 
         status: 500,
@@ -262,8 +263,9 @@ async function extractPDFTextEnhanced(buffer: ArrayBuffer): Promise<string> {
     console.log(`✅ Enhanced extraction yielded ${extractedText.length} characters`);
     return extractedText;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Enhanced PDF extraction failed:', error);
-    throw new Error(`Enhanced PDF extraction failed: ${error.message}`);
+    throw new Error(`Enhanced PDF extraction failed: ${errorMessage}`);
   }
 }
 
@@ -295,8 +297,9 @@ async function extractPDFTextFallback(buffer: ArrayBuffer): Promise<string> {
     console.log(`✅ Basic fallback extraction yielded ${extractedText.length} characters`);
     return extractedText;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Fallback PDF extraction failed:', error);
-    throw new Error(`Fallback PDF extraction failed: ${error.message}`);
+    throw new Error(`Fallback PDF extraction failed: ${errorMessage}`);
   }
 }
 
@@ -329,7 +332,8 @@ async function extractPDFText(buffer: ArrayBuffer): Promise<string> {
         console.log(`First 200 chars: ${extractedText.substring(0, 200)}`);
       }
     } catch (error) {
-      console.warn(`⚠️ ${strategy.name} extraction failed:`, error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.warn(`⚠️ ${strategy.name} extraction failed:`, errorMessage);
     }
   }
   
@@ -371,8 +375,9 @@ async function processPDF(buffer: ArrayBuffer, fileName: string, agentCategory?:
     
     return cleanedText;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('PDF processing failed:', error);
-    throw new Error(`Failed to process PDF: ${error.message}`);
+    throw new Error(`Failed to process PDF: ${errorMessage}`);
   }
 }
 
@@ -391,10 +396,11 @@ async function processExcel(buffer: ArrayBuffer, fileName: string, agentCategory
     };
     return { content: cleanedContent, metadata };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Error processing Excel:', error);
     return { 
       content: 'Excel file could not be processed', 
-      metadata: { error: error.message } 
+      metadata: { error: errorMessage } 
     };
   }
 }

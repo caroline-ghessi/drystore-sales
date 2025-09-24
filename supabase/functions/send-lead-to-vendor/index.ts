@@ -130,17 +130,18 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Erro ao enviar lead:', error);
-
+    
     await supabase.from('system_logs').insert({
       level: 'error',
       source: 'send-lead-to-vendor',
       message: 'Erro ao enviar lead',
-      data: { error: error.message }
+      data: { error: errorMessage }
     });
 
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

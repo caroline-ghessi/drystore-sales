@@ -131,6 +131,7 @@ serve(async (req) => {
           console.log(`Buffer processed successfully for conversation ${conversationId}:`, result.data);
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         console.error('Error in scheduled buffer processing:', error);
         await supabase.from('system_logs').insert({
           level: 'error',
@@ -138,7 +139,7 @@ serve(async (req) => {
           message: 'Exception in scheduled buffer processing',
           data: { 
             conversationId, 
-            error: error.message,
+            error: errorMessage,
             scheduled_at: shouldProcessAt.toISOString()
           }
         });
@@ -146,14 +147,9 @@ serve(async (req) => {
     };
 
     // Executar o agendamento em background
-    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
-      EdgeRuntime.waitUntil(processBufferTask());
-    } else {
-      // Fallback para ambiente de desenvolvimento
-      processBufferTask().catch(error => 
-        console.error('Error in background buffer processing:', error)
-     );
-    }
+    processBufferTask().catch(error => 
+      console.error('Error in background buffer processing:', error)
+    );
 
     console.log(`Message buffered for conversation ${conversationId}, will process at ${shouldProcessAt.toISOString()}`);
 
@@ -166,13 +162,14 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Error processing WhatsApp message:', error);
     
     await supabase.from('system_logs').insert({
       level: 'error',
       source: 'process-whatsapp-message',
       message: 'Failed to process message',
-      data: { error: error.message }
+      data: { error: errorMessage }
     });
 
     return new Response(

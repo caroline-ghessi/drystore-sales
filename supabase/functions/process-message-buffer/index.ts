@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
 
     // Agrupar todas as mensagens do buffer
     const messages = lockedBuffer.messages || [];
-    const combinedMessage = messages.map(msg => msg.content).join(' ');
+    const combinedMessage = messages.map((msg: any) => msg.content).join(' ');
 
     console.log(`Processing combined message for buffer ${lockedBuffer.id}: ${combinedMessage}`);
 
@@ -284,16 +284,17 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Error processing message buffer:', error);
     
     await supabase.from('system_logs').insert({
       level: 'error',
       source: 'process-message-buffer',
       message: 'Failed to process message buffer',
-      data: { error: error.message }
+      data: { error: errorMessage }
     });
 
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

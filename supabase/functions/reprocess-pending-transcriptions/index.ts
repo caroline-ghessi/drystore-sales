@@ -86,11 +86,12 @@ serve(async (req) => {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`Error processing message ${message.id}:`, error);
         results.push({
           messageId: message.id,
           status: 'error',
-          error: error.message
+          error: errorMessage
         });
       }
     }
@@ -116,11 +117,12 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Reprocessing error:', error);
 
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: errorMessage,
         success: false 
       }),
       { 

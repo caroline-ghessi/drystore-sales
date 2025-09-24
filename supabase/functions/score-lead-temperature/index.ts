@@ -58,7 +58,48 @@ serve(async (req) => {
 
     if (!leadScorerAgent) {
       console.log('⚠️ Nenhum agente lead_scorer encontrado, usando análise padrão');
-      return await performBasicScoring(conversation, messages);
+      const analysisResult = await performBasicScoring(conversation, messages);
+      
+      // Atualizar conversa
+      const { error: updateError } = await supabase
+        .from('conversations')
+        .update({
+          lead_score: analysisResult.score,
+          lead_temperature: analysisResult.temperature,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', conversationId);
+
+      if (updateError) {
+        throw new Error('Erro ao atualizar score da conversa');
+      }
+
+      // Log da análise
+      await supabase.from('system_logs').insert({
+        level: 'info',
+        source: 'score-lead-temperature',
+        message: `Lead analisado: ${analysisResult.temperature} (${analysisResult.score})`,
+        data: {
+          conversationId,
+          oldScore: conversation.lead_score,
+          newScore: analysisResult.score,
+          oldTemperature: conversation.lead_temperature,
+          newTemperature: analysisResult.temperature,
+          reasoning: analysisResult.reasoning
+        }
+      });
+
+      console.log(`✅ Lead atualizado: ${analysisResult.temperature} (${analysisResult.score}/100)`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        conversationId,
+        score: analysisResult.score,
+        temperature: analysisResult.temperature,
+        reasoning: analysisResult.reasoning
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // 3. Analisar com IA
@@ -106,17 +147,18 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('❌ Erro no scoring de leads:', error);
     
     await supabase.from('system_logs').insert({
       level: 'error',
       source: 'score-lead-temperature',
       message: 'Erro no scoring de leads',
-      data: { error: error.message }
+      data: { error: errorMessage }
     });
 
     return new Response(JSON.stringify({ 
-      error: error.message 
+      error: errorMessage 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -97,8 +97,9 @@ async function sendDirectInviteEmail(email: string, displayName: string, role: s
       return { success: false, error: emailResult.error?.message || 'Erro desconhecido no Resend' };
     }
   } catch (error) {
-    logWithTimestamp('ERROR', requestId, '💥 Erro crítico no Resend', { error: error.message });
-    return { success: false, error: `Erro no Resend: ${error.message}` };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logWithTimestamp('ERROR', requestId, '💥 Erro crítico no Resend', { error: errorMessage });
+    return { success: false, error: `Erro no Resend: ${errorMessage}` };
   }
 }
 
@@ -192,7 +193,7 @@ const handler = async (req: Request): Promise<Response> => {
         setTimeout(() => reject(new Error('Timeout SMTP - 10s excedido')), 10000)
       );
 
-      const smtpResult = await Promise.race([smtpPromise, timeoutPromise]);
+      const smtpResult = await Promise.race([smtpPromise, timeoutPromise]) as any;
 
       if (smtpResult.data?.user) {
         logWithTimestamp('INFO', requestId, '🎉 SUCESSO - Email enviado via SMTP nativo', {
@@ -204,7 +205,8 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error(smtpResult.error.message);
       }
     } catch (error) {
-      smtpError = error.message;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      smtpError = errorMessage;
       logWithTimestamp('WARNING', requestId, '❌ SMTP nativo falhou', { error: smtpError });
     }
 
@@ -261,7 +263,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         // Enviar email via Resend com link de confirmação
-        const resendResult = await sendDirectInviteEmail(email, displayName, role, requestId, confirmationLink);
+        const resendResult = await sendDirectInviteEmail(email, displayName, role, requestId, confirmationLink || undefined);
 
         if (resendResult.success) {
           logWithTimestamp('INFO', requestId, '🎉 SISTEMA HÍBRIDO SUCESSO - Fallback Resend funcionou', {
@@ -287,8 +289,9 @@ const handler = async (req: Request): Promise<Response> => {
           throw new Error(`Fallback Resend falhou: ${resendResult.error}`);
         }
       } catch (fallbackError) {
+        const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
         logWithTimestamp('CRITICAL', requestId, '💥 FALLBACK CRÍTICO - Resend também falhou', {
-          fallback_error: fallbackError.message
+          fallback_error: fallbackErrorMessage
         });
 
         return new Response(
@@ -297,7 +300,7 @@ const handler = async (req: Request): Promise<Response> => {
             error: 'Sistema híbrido falhou completamente',
             diagnostics: {
               smtp_error: smtpError,
-              fallback_error: fallbackError.message,
+              fallback_error: fallbackErrorMessage,
               timestamp: new Date().toISOString()
             }
           }),
@@ -321,6 +324,25 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : 'No stack trace';
+    const errorConstructor = error instanceof Error ? error.constructor.name : 'Unknown';
+    
+    logWithTimestamp('ERROR', requestId, '💥 ERRO CRÍTICO NA FUNÇÃO PRINCIPAL', { 
+      error: errorMessage,
+      stack: errorStack,
+      errorType: errorConstructor
+    });
+    
+    return new Response(JSON.stringify({
+      success: false,
+      error: errorMessage,
+      requestId
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
     logWithTimestamp('CRITICAL', requestId, '💥 ERRO CRÍTICO GERAL', {
       error: error.message,
       stack: error.stack,

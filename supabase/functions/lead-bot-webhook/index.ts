@@ -47,13 +47,14 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Erro no webhook do Lead Bot:', error);
 
     await supabase.from('system_logs').insert({
       level: 'error',
       source: 'lead-bot-webhook',
       message: 'Erro ao processar webhook',
-      data: { error: error.message }
+      data: { error: errorMessage }
     });
 
     return new Response(

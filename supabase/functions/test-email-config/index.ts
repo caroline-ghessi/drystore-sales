@@ -65,11 +65,12 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log(`[${requestId}] ✅ Supabase conectado com sucesso`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       diagnostics.supabase_check = {
         connection: 'FALHA',
-        error: error.message
+        error: errorMessage
       };
-      console.log(`[${requestId}] ❌ Falha na conexão Supabase:`, error.message);
+      console.log(`[${requestId}] ❌ Falha na conexão Supabase:`, errorMessage);
     }
 
     // 3. Testar conexão Resend
@@ -89,12 +90,13 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log(`[${requestId}] ✅ Resend conectado com sucesso`);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       diagnostics.resend_check = {
         connection: 'FALHA',
         api_key_valid: false,
-        error: error.message
+        error: errorMessage
       };
-      console.log(`[${requestId}] ❌ Falha na conexão Resend:`, error.message);
+      console.log(`[${requestId}] ❌ Falha na conexão Resend:`, errorMessage);
     }
 
     // 4. Determinar status geral
@@ -121,6 +123,21 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.log(`[${requestId}] 💥 ERRO CRÍTICO NO TESTE:`, errorMessage);
+    
+    return new Response(JSON.stringify({
+      success: false,
+      status: 'ERRO_CRÍTICO',
+      message: 'Falha na execução dos testes',
+      details: errorMessage,
+      request_id: requestId,
+      timestamp: new Date().toISOString()
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
     console.log(`[${requestId}] 💥 ERRO CRÍTICO NO TESTE:`, error.message);
     
     return new Response(
