@@ -59,27 +59,22 @@ async function sendDirectInviteEmail(email: string, displayName: string, role: s
 
     const resend = new Resend(resendApiKey);
 
-    // HTML do email com ou sem link de confirmação
-    const emailHtml = confirmationLink ? `
+    // HTML do email sempre com link de ativação
+    const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h1 style="color: #2563eb;">Bem-vindo à DryStore!</h1>
         <p>Olá <strong>${displayName}</strong>,</p>
         <p>Você foi convidado para participar da plataforma DryStore como <strong>${role}</strong>.</p>
+        ${confirmationLink ? `
         <p>Para ativar sua conta, clique no botão abaixo:</p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${confirmationLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">Ativar Conta</a>
         </div>
         <p style="color: #666; font-size: 14px;">Ou copie e cole este link no seu navegador:</p>
         <p style="word-break: break-all; color: #2563eb; font-size: 12px;">${confirmationLink}</p>
-        <p>Obrigado!</p>
-        <p><strong>Equipe DryStore</strong></p>
-      </div>
-    ` : `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #2563eb;">Bem-vindo à DryStore!</h1>
-        <p>Olá <strong>${displayName}</strong>,</p>
-        <p>Você foi convidado para participar da plataforma DryStore como <strong>${role}</strong>.</p>
-        <p>Para ativar sua conta, acesse o link enviado por email pelo Supabase.</p>
+        ` : `
+        <p><strong>Importante:</strong> Você receberá um email adicional com o link de ativação da conta.</p>
+        `}
         <p>Obrigado!</p>
         <p><strong>Equipe DryStore</strong></p>
       </div>
@@ -245,21 +240,24 @@ const handler = async (req: Request): Promise<Response> => {
           userId = userResult.data.user?.id;
         }
 
-        // Gerar link de confirmação para o usuário
+        // Gerar link de confirmação usando generateLink
         let confirmationLink = null;
-        if (userId) {
-          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-            type: 'signup',
-            email: email,
-            options: {
-              redirectTo: `${Deno.env.get('SUPABASE_URL')?.replace('/supabase', '')}/`
-            }
-          });
-
-          if (!linkError && linkData.properties?.action_link) {
-            confirmationLink = linkData.properties.action_link;
-            logWithTimestamp('INFO', requestId, '✅ Link de confirmação gerado', { hasLink: !!confirmationLink });
+        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'invite',
+          email: email,
+          options: {
+            redirectTo: 'https://a8d68d6e-4efd-4093-966f-bddf0a89dc45.lovableproject.com/'
           }
+        });
+
+        if (!linkError && linkData.properties?.action_link) {
+          confirmationLink = linkData.properties.action_link;
+          logWithTimestamp('INFO', requestId, '✅ Link de confirmação gerado', { 
+            hasLink: !!confirmationLink,
+            linkPreview: confirmationLink?.substring(0, 100) + '...'
+          });
+        } else {
+          logWithTimestamp('WARNING', requestId, '⚠️ Falha ao gerar link de confirmação', { error: linkError });
         }
 
         // Enviar email via Resend com link de confirmação
