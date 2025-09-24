@@ -5,6 +5,7 @@ import { VendorList } from '@/modules/whatsapp/components/vendor/VendorList';
 import { VendorConversations } from '@/modules/whatsapp/components/vendor/VendorConversations';
 import { VendorQuality } from '@/modules/whatsapp/components/vendor/VendorQuality';
 import { AddVendorDialog } from '@/modules/whatsapp/components/vendor/AddVendorDialog';
+import { VendorWebhookManager } from '@/components/vendor-monitoring/VendorWebhookManager';
 import { RouteGuard } from '@/components/auth/RouteGuard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -45,6 +46,11 @@ export function VendedoresPage() {
               Vendedores
             </TabsTrigger>
             
+            <TabsTrigger value="monitoramento" className="flex items-center gap-2 font-medium">
+              <AlertCircle className="h-4 w-4" />
+              Monitoramento
+            </TabsTrigger>
+            
             {selectedVendor && (
               <>
                 <TabsTrigger value="conversas" className="flex items-center gap-2 font-medium">
@@ -68,6 +74,10 @@ export function VendedoresPage() {
                 }}
                 selectedVendor={selectedVendor}
               />
+            </TabsContent>
+
+            <TabsContent value="monitoramento" className="h-full m-0 p-6 overflow-y-auto">
+              <VendorWebhookManager />
             </TabsContent>
 
             {selectedVendor && (
