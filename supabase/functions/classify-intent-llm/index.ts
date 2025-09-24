@@ -270,15 +270,21 @@ Categoria atual: ${currentProductGroup || 'indefinido'}`;
       level: 'error',
       source: 'classify-intent-llm',
       message: 'Failed to classify intent',
-      data: { error: error.message }
+      data: { error: error.message, message: message?.substring(0, 100) || 'undefined' }
     });
 
+    // FALLBACK: manter categoria atual se possível, senão usar indefinido
+    const fallbackCategory = currentProductGroup || 'indefinido';
+    
+    console.log(`Using fallback classification: ${fallbackCategory} due to error: ${error.message}`);
+
     return new Response(JSON.stringify({
-      productGroup: 'indefinido',
-      confidence: 0.0,
-      error: error.message
+      productGroup: fallbackCategory,
+      confidence: 0.1, // Baixa confiança por ser fallback
+      error: error.message,
+      fallback: true
     }), {
-      status: 500,
+      status: 200, // Não retornar 500 para manter o fluxo funcionando
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }

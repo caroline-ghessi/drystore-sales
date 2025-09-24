@@ -15,8 +15,15 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let message = '';
+  let conversationId = '';
+  let productCategory = '';
+
   try {
-    const { message, conversationId, productCategory } = await req.json();
+    const requestData = await req.json();
+    message = requestData.message || '';
+    conversationId = requestData.conversationId || '';
+    productCategory = requestData.productCategory || 'indefinido';
     
     console.log(`🤖 Generating intelligent response for category: ${productCategory}`);
 
@@ -45,37 +52,6 @@ Deno.serve(async (req) => {
       agentType = 'specialist';
       agentCategory = conversationCategory;
       console.log(`🎯 Using specialist agent for category: ${conversationCategory}`);
-      
-      // Verificar se agente atual é o correto
-      if (conversation.current_agent_id) {
-        const { data: currentAgent } = await supabase
-          .from('agent_configs')
-          .select('agent_type, product_category, agent_name')
-          .eq('id', conversation.current_agent_id)
-          .single();
-        
-        if (currentAgent) {
-          const isCorrectAgent = currentAgent.agent_type === 'specialist' && currentAgent.product_category === conversationCategory;
-          if (!isCorrectAgent) {
-            console.log(`⚠️ Agent mismatch detected! Current: ${currentAgent.agent_name} (${currentAgent.agent_type}/${currentAgent.product_category}) | Expected: specialist/${conversationCategory}`);
-            
-            // Log de alerta para agente incorreto
-            await supabase.from('system_logs').insert({
-              level: 'warning',
-              source: 'intelligent-agent-response',
-              message: 'Agent mismatch detected - wrong agent responding',
-              data: {
-                conversation_id: conversationId,
-                expected_category: conversationCategory,
-                current_agent_id: conversation.current_agent_id,
-                current_agent_type: currentAgent.agent_type,
-                current_agent_category: currentAgent.product_category,
-                message_preview: message.substring(0, 100)
-              }
-            });
-          }
-        }
-      }
     } else {
       console.log(`📞 Using general agent for category: ${conversationCategory}`);
     }
@@ -142,30 +118,6 @@ Deno.serve(async (req) => {
       `${ctx.context_type}: ${JSON.stringify(ctx.context_data)}`
     ).join('\n') || '';
 
-    // Buscar conhecimento relevante se for agente especializado
-    let relevantKnowledge = '';
-    if (finalAgent.agent_type === 'specialist' && finalAgent.product_category) {
-      try {
-        const embedding = await generateEmbedding(message);
-        if (embedding && embedding.length > 0) {
-          const { data: knowledgeChunks } = await supabase.rpc('search_knowledge_chunks', {
-            query_embedding: embedding,
-            target_agent_category: finalAgent.product_category,
-            similarity_threshold: 0.7,
-            max_results: 5
-          });
-
-          if (knowledgeChunks && knowledgeChunks.length > 0) {
-            relevantKnowledge = knowledgeChunks
-              .map(chunk => `**Conhecimento relevante:**\n${chunk.content}\n---`)
-              .join('\n\n');
-          }
-        }
-      } catch (error) {
-        console.log('Knowledge search failed, continuing without knowledge:', error);
-      }
-    }
-
     // Construir prompt final estruturado
     let finalPrompt = `Você é um assistente especializado da Drystore. ${finalAgent.system_prompt}
 
@@ -183,10 +135,6 @@ INFORMAÇÕES DA EMPRESA:
 
     if (contextInfo) {
       finalPrompt += `\n\nINFORMAÇÕES DO CLIENTE:\n${contextInfo}`;
-    }
-    
-    if (relevantKnowledge) {
-      finalPrompt += `\n\nBASE DE CONHECIMENTO:\n${relevantKnowledge}`;
     }
     
     if (conversationHistory) {
@@ -219,9 +167,7 @@ RESPOSTA: Responda de forma natural e personalizada, considerando todo o context
       .select()
       .single();
 
-    // Atualizar conversa e verificar se houve mudança de agente
-    const agentChanged = conversation.current_agent_id !== finalAgent.id;
-    
+    // Atualizar conversa
     await supabase
       .from('conversations')
       .update({
@@ -229,48 +175,6 @@ RESPOSTA: Responda de forma natural e personalizada, considerando todo o context
         last_message_at: new Date().toISOString()
       })
       .eq('id', conversationId);
-      
-    // Log da transição de agente se houve mudança
-    if (agentChanged) {
-      console.log(`🔄 Agent transition: ${conversation.current_agent_id || 'none'} → ${finalAgent.id}`);
-      
-      await supabase.from('system_logs').insert({
-        level: 'info',
-        source: 'intelligent-agent-response',
-        message: 'Agent transition occurred',
-        data: {
-          conversation_id: conversationId,
-          old_agent_id: conversation.current_agent_id,
-          new_agent_id: finalAgent.id,
-          new_agent_name: finalAgent.agent_name,
-          new_agent_type: finalAgent.agent_type,
-          category: conversationCategory
-        }
-      });
-    }
-    
-    // Validação final: verificar se agente usado é apropriado para categoria
-    const isCorrectAgentType = (
-      (finalAgent.agent_type === 'specialist' && finalAgent.product_category === conversationCategory) ||
-      (finalAgent.agent_type === 'general' && ['indefinido', 'saudacao', 'institucional'].includes(conversationCategory))
-    );
-    
-    if (!isCorrectAgentType) {
-      await supabase.from('system_logs').insert({
-        level: 'warning',
-        source: 'intelligent-agent-response',
-        message: 'Incorrect agent type used for response',
-        data: {
-          conversation_id: conversationId,
-          agent_id: finalAgent.id,
-          agent_name: finalAgent.agent_name,
-          agent_type: finalAgent.agent_type,
-          agent_category: finalAgent.product_category,
-          conversation_category: conversationCategory,
-          response_preview: response.substring(0, 100)
-        }
-      });
-    }
 
     console.log(`✅ Response generated by ${finalAgent.agent_name}: "${response.substring(0, 100)}..."`);
 
@@ -290,78 +194,34 @@ RESPOSTA: Responda de forma natural e personalizada, considerando todo o context
       level: 'error',
       source: 'intelligent-agent-response',
       message: 'Failed to generate response',
-      data: { error: error.message }
+      data: { error: error.message, conversationId, message: message.substring(0, 100) }
     });
 
-    // Generate fallback response using general agent even in error cases
+    // Generate fallback response
     try {
-      // Try to get general agent for fallback
-      const { data: generalAgent } = await supabase
-        .from('agent_configs')
-        .select('*')
-        .eq('agent_type', 'general')
-        .eq('is_active', true)
-        .single();
-
-      const fallbackModel = generalAgent?.llm_model || 'claude-3-5-sonnet-20241022';
-      const fallbackPrompt = generalAgent?.system_prompt || `Você é um assistente da Drystore. Houve um erro técnico, mas mantenha o atendimento profissional.`;
-      
-      const fallbackResponse = await callLLMAPI(
-        fallbackModel,
-        `${fallbackPrompt}
-        
-        SITUAÇÃO: Houve um erro técnico no sistema, mas você deve manter o atendimento.
-        Mensagem do cliente: "${message || 'mensagem não disponível'}"
-        
-        Responda de forma natural e profissional, explicando que houve um problema técnico temporário e que iremos resolver a solicitação.`,
-        0.7,
-        300
-      );
+      const fallbackResponse = await generateFallbackResponse(message || 'mensagem não disponível');
       
       return new Response(JSON.stringify({ 
-        error: error.message,
         response: fallbackResponse,
-        agentName: 'Agente Geral (Fallback)',
-        agentType: 'general'
+        agentName: 'Agente de Emergência',
+        agentType: 'fallback',
+        error: error.message
       }), {
-        status: 500,
+        status: 200, // Não retornar 500 para manter o fluxo funcionando
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     } catch (fallbackError) {
       console.error('Even fallback failed:', fallbackError);
       
-      // ÚLTIMO RECURSO: usar agente geral com prompt básico
-      try {
-        const lastResortResponse = await callLLMAPI(
-          'claude-3-5-sonnet-20241022',
-          `Você é um assistente da Drystore. Houve um erro técnico. Seja breve e profissional.
-          Mensagem: "${message || 'erro'}"
-          
-          Responda educadamente que houve um problema e que resolveremos.`,
-          0.7,
-          200
-        );
-        
-        return new Response(JSON.stringify({ 
-          error: error.message,
-          response: lastResortResponse,
-          agentName: 'Sistema de Emergência',
-          agentType: 'emergency'
-        }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      } catch (finalError) {
-        console.error('All fallbacks failed:', finalError);
-        return new Response(JSON.stringify({ 
-          error: error.message,
-          response: null,
-          message: 'Sistema temporariamente indisponível'
-        }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
+      return new Response(JSON.stringify({ 
+        response: 'Desculpe, estamos enfrentando dificuldades técnicas. Um de nossos atendentes entrará em contato em breve.',
+        agentName: 'Sistema de Emergência',
+        agentType: 'emergency',
+        error: error.message
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
   }
 });
@@ -462,34 +322,16 @@ async function callLLMAPI(
   throw new Error('Unable to extract response from LLM');
 }
 
-// Função para gerar embedding (simplificada - usar OpenAI)
-async function generateEmbedding(text: string): Promise<number[]> {
-  const apiKey = Deno.env.get('OPENAI_API_KEY');
-  if (!apiKey) {
-    return []; // Retornar array vazio se não houver API key
-  }
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'text-embedding-ada-002',
-        input: text
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to generate embedding');
-    }
-
-    const data = await response.json();
-    return data.data[0].embedding;
-  } catch (error) {
-    console.error('Error generating embedding:', error);
-    return [];
-  }
+// Função de fallback simples para situações de emergência
+async function generateFallbackResponse(message: string): Promise<string> {
+  const fallbackResponses = [
+    'Obrigado pela sua mensagem! Estamos processando sua solicitação e retornaremos em breve.',
+    'Recebemos sua mensagem. Em breve um de nossos especialistas entrará em contato.',
+    'Agradecemos o contato! Estamos analisando sua solicitação.',
+    'Sua mensagem foi recebida. Nosso time técnico irá revisar e responder em breve.'
+  ];
+  
+  // Usar resposta baseada no comprimento da mensagem para variar
+  const index = message.length % fallbackResponses.length;
+  return fallbackResponses[index];
 }
