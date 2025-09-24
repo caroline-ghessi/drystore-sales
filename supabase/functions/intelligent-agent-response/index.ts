@@ -145,9 +145,8 @@ INFORMAÇÕES DA EMPRESA:
 
 RESPOSTA: Responda de forma natural e personalizada, considerando todo o contexto acima.`;
 
-    // Gerar resposta usando a API do LLM configurado
-    const response = await callLLMAPI(
-      finalAgent.llm_model || 'claude-3-5-sonnet-20241022',
+    // Gerar resposta usando rotação automática de provedores
+    const response = await generateResponseWithProviderRotation(
       finalPrompt,
       finalAgent.temperature || 0.7,
       finalAgent.max_tokens || 500
@@ -197,141 +196,112 @@ RESPOSTA: Responda de forma natural e personalizada, considerando todo o context
       data: { error: error.message, conversationId, message: message.substring(0, 100) }
     });
 
-    // Generate fallback response
-    try {
-      const fallbackResponse = await generateFallbackResponse(message || 'mensagem não disponível');
-      
-      return new Response(JSON.stringify({ 
-        response: fallbackResponse,
-        agentName: 'Agente de Emergência',
-        agentType: 'fallback',
-        error: error.message
-      }), {
-        status: 200, // Não retornar 500 para manter o fluxo funcionando
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    } catch (fallbackError) {
-      console.error('Even fallback failed:', fallbackError);
-      
-      return new Response(JSON.stringify({ 
-        response: 'Desculpe, estamos enfrentando dificuldades técnicas. Um de nossos atendentes entrará em contato em breve.',
-        agentName: 'Sistema de Emergência',
-        agentType: 'emergency',
-        error: error.message
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    // Se todos os provedores falharam, usar resposta de emergência
+    return new Response(JSON.stringify({ 
+      response: 'Desculpe, estamos enfrentando dificuldades técnicas momentâneas. Um de nossos atendentes entrará em contato em breve.',
+      agentName: 'Sistema de Emergência',
+      agentType: 'emergency',
+      error: error.message
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 });
 
-// Função para chamar APIs de LLM
-async function callLLMAPI(
-  model: string,
+// Função para gerar resposta com rotação automática de provedores
+async function generateResponseWithProviderRotation(
   prompt: string,
   temperature: number = 0.7,
   maxTokens: number = 500
 ): Promise<string> {
-  let apiKey = '';
-  let apiUrl = '';
-  let headers = {};
-  let requestBody = {};
-
-  if (model.startsWith('claude')) {
-    apiKey = Deno.env.get('ANTHROPIC_API_KEY');
-    if (!apiKey) throw new Error('Anthropic API key not configured');
-    
-    apiUrl = 'https://api.anthropic.com/v1/messages';
-    headers = {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01'
-    };
-    requestBody = {
-      model,
-      max_tokens: maxTokens,
-      temperature,
-      messages: [{ role: 'user', content: prompt }]
-    };
-  } else if (model.startsWith('gpt')) {
-    apiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!apiKey) throw new Error('OpenAI API key not configured');
-    
-    apiUrl = 'https://api.openai.com/v1/chat/completions';
-    headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    };
-
-    // Use max_completion_tokens for newer models
-    if (model.includes('gpt-5') || model.includes('gpt-4.1') || model.includes('o3') || model.includes('o4')) {
-      requestBody = {
+  const providers = [
+    {
+      name: 'Claude',
+      model: 'claude-3-5-sonnet-20241022',
+      apiKey: Deno.env.get('ANTHROPIC_API_KEY'),
+      url: 'https://api.anthropic.com/v1/messages',
+      headers: (key: string) => ({
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01'
+      }),
+      body: (model: string, prompt: string, temp: number, tokens: number) => ({
+        model,
+        max_tokens: tokens,
+        temperature: temp,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      extractResponse: (data: any) => data.content[0].text
+    },
+    {
+      name: 'OpenAI',
+      model: 'gpt-4o-mini',
+      apiKey: Deno.env.get('OPENAI_API_KEY'),
+      url: 'https://api.openai.com/v1/chat/completions',
+      headers: (key: string) => ({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      }),
+      body: (model: string, prompt: string, temp: number, tokens: number) => ({
         model,
         messages: [{ role: 'user', content: prompt }],
-        max_completion_tokens: maxTokens
-      };
-    } else {
-      requestBody = {
+        max_tokens: tokens,
+        temperature: temp
+      }),
+      extractResponse: (data: any) => data.choices[0].message.content
+    },
+    {
+      name: 'xAI',
+      model: 'grok-beta',
+      apiKey: Deno.env.get('XAI_API_KEY'),
+      url: 'https://api.x.ai/v1/chat/completions',
+      headers: (key: string) => ({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      }),
+      body: (model: string, prompt: string, temp: number, tokens: number) => ({
         model,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: maxTokens,
-        temperature
-      };
+        max_tokens: tokens,
+        temperature: temp
+      }),
+      extractResponse: (data: any) => data.choices[0].message.content
     }
-  } else if (model.startsWith('grok')) {
-    apiKey = Deno.env.get('XAI_API_KEY');
-    if (!apiKey) throw new Error('xAI API key not configured');
-    
-    apiUrl = 'https://api.x.ai/v1/chat/completions';
-    headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    };
-    requestBody = {
-      model,
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: maxTokens,
-      temperature
-    };
-  } else {
-    throw new Error(`Unsupported LLM model: ${model}`);
-  }
-
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(requestBody)
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('LLM API error:', errorText);
-    throw new Error(`LLM API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  
-  // Extract response based on LLM type
-  if (model.startsWith('claude')) {
-    return data.content[0].text;
-  } else if (model.startsWith('gpt') || model.startsWith('grok')) {
-    return data.choices[0].message.content;
-  }
-  
-  throw new Error('Unable to extract response from LLM');
-}
-
-// Função de fallback simples para situações de emergência
-async function generateFallbackResponse(message: string): Promise<string> {
-  const fallbackResponses = [
-    'Obrigado pela sua mensagem! Estamos processando sua solicitação e retornaremos em breve.',
-    'Recebemos sua mensagem. Em breve um de nossos especialistas entrará em contato.',
-    'Agradecemos o contato! Estamos analisando sua solicitação.',
-    'Sua mensagem foi recebida. Nosso time técnico irá revisar e responder em breve.'
   ];
-  
-  // Usar resposta baseada no comprimento da mensagem para variar
-  const index = message.length % fallbackResponses.length;
-  return fallbackResponses[index];
+
+  for (const provider of providers) {
+    if (!provider.apiKey) {
+      console.log(`⚠️ ${provider.name} API key not configured, skipping...`);
+      continue;
+    }
+
+    try {
+      console.log(`🔄 Trying ${provider.name} for response generation...`);
+      
+      const response = await fetch(provider.url, {
+        method: 'POST',
+        headers: provider.headers(provider.apiKey),
+        body: JSON.stringify(provider.body(provider.model, prompt, temperature, maxTokens))
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ ${provider.name} failed:`, response.status, errorText);
+        continue; // Try next provider
+      }
+
+      const data = await response.json();
+      const result = provider.extractResponse(data);
+      
+      console.log(`✅ ${provider.name} response generation successful`);
+      return result;
+      
+    } catch (error: any) {
+      console.error(`❌ ${provider.name} error:`, error.message);
+      continue; // Try next provider
+    }
+  }
+
+  throw new Error('All response generation providers failed');
 }

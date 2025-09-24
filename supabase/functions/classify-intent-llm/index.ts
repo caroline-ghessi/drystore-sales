@@ -62,83 +62,10 @@ serve(async (req) => {
 Mensagem do cliente: "${message}"
 Categoria atual: ${currentProductGroup || 'indefinido'}`;
 
-    // Get appropriate API key based on configured LLM
-    let apiKey = '';
-    let apiUrl = '';
-    let headers = {};
-    let requestBody = {};
+    // Try multiple providers with automatic rotation
+    const classification = await classifyWithProviderRotation(fullPrompt);
 
-    const llmModel = classifierAgent.llm_model || 'claude-3-5-sonnet-20241022';
-    
-    if (llmModel.startsWith('claude')) {
-      apiKey = Deno.env.get('ANTHROPIC_API_KEY');
-      if (!apiKey) throw new Error('Anthropic API key not configured');
-      
-      apiUrl = 'https://api.anthropic.com/v1/messages';
-      headers = {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      };
-      requestBody = {
-        model: llmModel,
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: fullPrompt }]
-      };
-    } else if (llmModel.startsWith('gpt')) {
-      apiKey = Deno.env.get('OPENAI_API_KEY');
-      if (!apiKey) throw new Error('OpenAI API key not configured');
-      
-      apiUrl = 'https://api.openai.com/v1/chat/completions';
-      headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      };
-      requestBody = {
-        model: llmModel,
-        messages: [{ role: 'user', content: fullPrompt }],
-        max_tokens: 1000
-      };
-    } else if (llmModel.startsWith('grok')) {
-      apiKey = Deno.env.get('XAI_API_KEY');
-      if (!apiKey) throw new Error('xAI API key not configured');
-      
-      apiUrl = 'https://api.x.ai/v1/chat/completions';
-      headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      };
-      requestBody = {
-        model: llmModel,
-        messages: [{ role: 'user', content: fullPrompt }],
-        max_tokens: 1000
-      };
-    } else {
-      throw new Error(`Unsupported LLM model: ${llmModel}`);
-    }
-
-    // Call the configured LLM API
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('LLM API error:', errorText);
-      throw new Error(`LLM API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // Extract classification based on LLM type
-    let classification = '';
-    if (llmModel.startsWith('claude')) {
-      classification = data.content[0].text.trim().toLowerCase();
-    } else if (llmModel.startsWith('gpt') || llmModel.startsWith('grok')) {
-      classification = data.choices[0].message.content.trim().toLowerCase();
-    }
+    console.log(`Classification result: ${classification}`);
 
     console.log(`Classification result: ${classification}`);
     console.log(`Current product group: ${currentProductGroup}`);
@@ -241,12 +168,12 @@ Categoria atual: ${currentProductGroup || 'indefinido'}`;
           classified_category: finalProductGroup,
           confidence_score: confidenceScore,
           status: 'success',
-          metadata: {
-            current_product_group: currentProductGroup,
-            llm_response: classification,
-            mapped_category: finalProductGroup,
-            llm_model: llmModel
-          }
+        metadata: {
+          current_product_group: currentProductGroup,
+          llm_response: classification,
+          mapped_category: finalProductGroup,
+          providers_attempted: 'multiple'
+        }
         });
     }
 
@@ -258,7 +185,7 @@ Categoria atual: ${currentProductGroup || 'indefinido'}`;
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error classifying intent:', error);
     
     const supabase = createClient(
@@ -266,26 +193,120 @@ Categoria atual: ${currentProductGroup || 'indefinido'}`;
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
     
+    const { message: messageFromRequest, currentProductGroup } = await req.json().catch(() => ({ message: '', currentProductGroup: 'indefinido' }));
+    
     await supabase.from('system_logs').insert({
       level: 'error',
       source: 'classify-intent-llm',
       message: 'Failed to classify intent',
-      data: { error: error.message, message: message?.substring(0, 100) || 'undefined' }
+      data: { error: error.message, message: messageFromRequest?.substring(0, 100) || 'undefined' }
     });
 
-    // FALLBACK: manter categoria atual se possível, senão usar indefinido
+    // Se todos os provedores falharam, usar fallback
     const fallbackCategory = currentProductGroup || 'indefinido';
     
     console.log(`Using fallback classification: ${fallbackCategory} due to error: ${error.message}`);
 
     return new Response(JSON.stringify({
       productGroup: fallbackCategory,
-      confidence: 0.1, // Baixa confiança por ser fallback
+      confidence: 0.1,
       error: error.message,
       fallback: true
     }), {
-      status: 200, // Não retornar 500 para manter o fluxo funcionando
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });
+
+// Função para classificação com rotação automática de provedores
+async function classifyWithProviderRotation(prompt: string): Promise<string> {
+  const providers = [
+    {
+      name: 'Claude',
+      model: 'claude-3-5-sonnet-20241022',
+      apiKey: Deno.env.get('ANTHROPIC_API_KEY'),
+      url: 'https://api.anthropic.com/v1/messages',
+      headers: (key: string) => ({
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01'
+      }),
+      body: (model: string, prompt: string) => ({
+        model,
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      extractResponse: (data: any) => data.content[0].text.trim().toLowerCase()
+    },
+    {
+      name: 'OpenAI',
+      model: 'gpt-4o-mini',
+      apiKey: Deno.env.get('OPENAI_API_KEY'),
+      url: 'https://api.openai.com/v1/chat/completions',
+      headers: (key: string) => ({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      }),
+      body: (model: string, prompt: string) => ({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1000,
+        temperature: 0.7
+      }),
+      extractResponse: (data: any) => data.choices[0].message.content.trim().toLowerCase()
+    },
+    {
+      name: 'xAI',
+      model: 'grok-beta',
+      apiKey: Deno.env.get('XAI_API_KEY'),
+      url: 'https://api.x.ai/v1/chat/completions',
+      headers: (key: string) => ({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      }),
+      body: (model: string, prompt: string) => ({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1000,
+        temperature: 0.7
+      }),
+      extractResponse: (data: any) => data.choices[0].message.content.trim().toLowerCase()
+    }
+  ];
+
+  for (const provider of providers) {
+    if (!provider.apiKey) {
+      console.log(`⚠️ ${provider.name} API key not configured, skipping...`);
+      continue;
+    }
+
+    try {
+      console.log(`🔄 Trying ${provider.name} for classification...`);
+      
+      const response = await fetch(provider.url, {
+        method: 'POST',
+        headers: provider.headers(provider.apiKey),
+        body: JSON.stringify(provider.body(provider.model, prompt))
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ ${provider.name} failed:`, response.status, errorText);
+        continue; // Try next provider
+      }
+
+      const data = await response.json();
+      const result = provider.extractResponse(data);
+      
+      console.log(`✅ ${provider.name} classification successful: ${result}`);
+      return result;
+      
+    } catch (error: any) {
+      console.error(`❌ ${provider.name} error:`, error.message);
+      continue; // Try next provider
+    }
+  }
+
+  throw new Error('All classification providers failed');
+}
