@@ -1972,6 +1972,7 @@ export type Database = {
           created_at: string
           generated_at: string
           id: string
+          is_compressed: boolean | null
           job_id: string | null
           pdf_url: string | null
           proposal_id: string
@@ -1983,6 +1984,7 @@ export type Database = {
           created_at?: string
           generated_at?: string
           id?: string
+          is_compressed?: boolean | null
           job_id?: string | null
           pdf_url?: string | null
           proposal_id: string
@@ -1994,6 +1996,7 @@ export type Database = {
           created_at?: string
           generated_at?: string
           id?: string
+          is_compressed?: boolean | null
           job_id?: string | null
           pdf_url?: string | null
           proposal_id?: string

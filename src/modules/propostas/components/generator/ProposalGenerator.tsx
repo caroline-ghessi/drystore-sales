@@ -33,6 +33,7 @@ import { useCreateVendorApproval } from '../../hooks/useVendorApprovals';
 import { DiscountApprovalModal } from '../modals/DiscountApprovalModal';
 import { ProposalSendModal } from '../modals/ProposalSendModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePDFGeneration } from '../../hooks/usePDFGeneration';
 
 interface ProposalGeneratorProps {
   projectContextId?: string;
@@ -70,6 +71,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
   const savedCalculations = useSavedCalculations();
   const permissions = useUserPermissions();
   const createApprovalRequest = useCreateVendorApproval();
+  const { generatePDFWithCompression, getTemplateIdForProduct } = usePDFGeneration();
 
   useEffect(() => {
     if (projectContextId) {
@@ -206,13 +208,29 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
 
       if (data && data.success) {
         setGeneratedProposalId(data.proposalId);
+        
+        // 🔄 Automatically generate PDF after proposal creation
+        try {
+          toast({
+            title: "Proposta Gerada",
+            description: "Gerando PDF profissional automaticamente..."
+          });
+          
+          const templateId = getTemplateIdForProduct(productType);
+          await generatePDFWithCompression({
+            proposalId: data.proposalId,
+            templateId,
+            options: {
+              name: `proposta-${data.proposalId}.pdf`
+            }
+          });
+        } catch (pdfError) {
+          console.warn('⚠️ PDF generation failed:', pdfError);
+        }
+        
         // Buscar dados completos da proposta
         await fetchGeneratedProposal(data.proposalId);
-        toast({
-          title: "Proposta Gerada",
-          description: "Proposta salva como rascunho. Clique em 'Enviar para Cliente' para finalizar o envio."
-        });
-        setStep(4); // Ir para o step de envio
+        setStep(4); // Ir para o step de resultado
       } else {
         throw new Error(data?.error || 'Falha na geração da proposta');
       }

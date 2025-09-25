@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Copy, MessageCircle, ExternalLink, Share, Eye, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { usePDFGeneration } from '../../hooks/usePDFGeneration';
+import { supabase } from '@/lib/supabase';
 
 interface ProposalResultProps {
   proposal: {
@@ -16,6 +17,7 @@ interface ProposalResultProps {
     status: string;
     acceptanceLink?: string;
     uniqueId?: string;
+    productType?: string;
   };
   generatedContent?: {
     executiveSummary: string;
@@ -25,8 +27,33 @@ interface ProposalResultProps {
 
 export function ProposalResult({ proposal, generatedContent }: ProposalResultProps) {
   const [linkCopied, setLinkCopied] = useState(false);
+  const [pdfReady, setPdfReady] = useState<string | null>(null);
   const { toast } = useToast();
-  const { isGenerating, downloadPDF, previewPDF, getTemplateIdForProduct } = usePDFGeneration();
+  const { isGenerating, generationStatus, downloadPDF, previewPDF, getTemplateIdForProduct } = usePDFGeneration();
+
+  // Check if PDF is already generated
+  useEffect(() => {
+    const checkPDFStatus = async () => {
+      try {
+        const { data } = await supabase
+          .from('proposal_pdfs')
+          .select('pdf_url')
+          .eq('proposal_id', proposal.id)
+          .eq('template_id', getTemplateIdForProduct(proposal.productType || 'shingle'))
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (data?.pdf_url) {
+          setPdfReady(data.pdf_url);
+        }
+      } catch (error) {
+        console.warn('Could not check PDF status:', error);
+      }
+    };
+
+    checkPDFStatus();
+  }, [proposal.id]);
 
   const handleCopyLink = async () => {
     if (!proposal.acceptanceLink) {
@@ -158,7 +185,44 @@ Qualquer dúvida, estou à disposição! 😊`;
           </div>
         </CardHeader>
         <CardContent>
-          {/* Link único */}
+          {/* Generation Status */}
+          {isGenerating && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+                <span className="text-sm text-blue-700 font-medium">{generationStatus}</span>
+              </div>
+            </div>
+          )}
+
+          {/* PDF Ready Section */}
+          {pdfReady && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h4 className="font-semibold mb-2 text-green-800">📄 PDF Profissional Pronto</h4>
+              <p className="text-sm text-green-700 mb-3">
+                Seu PDF foi gerado e otimizado automaticamente. Compartilhe diretamente com o cliente.
+              </p>
+              
+              <div className="flex items-center space-x-2">
+                <Button
+                  size="sm"
+                  onClick={() => window.open(pdfReady, '_blank')}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download PDF
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(pdfReady, '_blank')}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Visualizar
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="mb-6 p-4 bg-muted/50 rounded-lg">
             <h4 className="font-semibold mb-2">🔗 Link Único da Proposta</h4>
             <p className="text-sm text-muted-foreground mb-3">
@@ -184,7 +248,7 @@ Qualquer dúvida, estou à disposição! 😊`;
           </div>
 
           {/* Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <div className={`grid grid-cols-1 md:grid-cols-${pdfReady ? '4' : '5'} gap-3`}>
             <Button onClick={handleViewProposal} variant="outline">
               <ExternalLink className="h-4 w-4 mr-2" />
               Visualizar Proposta
@@ -195,15 +259,19 @@ Qualquer dúvida, estou à disposição! 😊`;
               Copiar Link
             </Button>
             
-            <Button onClick={handlePreviewPDF} variant="outline" disabled={isGenerating}>
-              <Eye className="h-4 w-4 mr-2" />
-              {isGenerating ? 'Gerando...' : 'Preview PDF'}
-            </Button>
-            
-            <Button onClick={handleDownloadPDF} variant="outline" disabled={isGenerating}>
-              <Download className="h-4 w-4 mr-2" />
-              {isGenerating ? 'Gerando...' : 'Download PDF'}
-            </Button>
+            {!pdfReady && (
+              <>
+                <Button onClick={handlePreviewPDF} variant="outline" disabled={isGenerating}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  {isGenerating ? 'Gerando...' : 'Preview PDF'}
+                </Button>
+                
+                <Button onClick={handleDownloadPDF} variant="outline" disabled={isGenerating}>
+                  <Download className="h-4 w-4 mr-2" />
+                  {isGenerating ? 'Gerando...' : 'Download PDF'}
+                </Button>
+              </>
+            )}
             
             <Button onClick={handleSendWhatsApp} className="bg-green-600 hover:bg-green-700">
               <MessageCircle className="h-4 w-4 mr-2" />
