@@ -14,7 +14,6 @@ import PublicProposal from "@/pages/PublicProposal";
 import ClientPortal from "@/pages/client/ClientPortal";
 const PremiumProposal = React.lazy(() => import("@/pages/PremiumProposal"));
 import { useStorageCleanup } from "@/hooks/useStorageCleanup";
-import { StorageDiagnostic } from "@/components/StorageDiagnostic";
 
 // Module Layouts
 import CRMLayout from "@/modules/crm/components/layout/CRMLayout";
@@ -58,9 +57,6 @@ function AppContent() {
   
   return (
     <div className="relative">
-      {/* Diagnóstico de Storage para Debug */}
-      <StorageDiagnostic />
-      
     <BrowserRouter>
       <Routes>
         {/* Public routes */}

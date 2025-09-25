@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { RouteGuard } from '@/components/auth/RouteGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -23,6 +24,7 @@ import ApprovacoesPage from './ApprovacoesPage';
 import ConfiguracoesPage from './ConfiguracoesPage';
 import ComissoesPage from './ComissoesPage';
 import VendedoresPage from './VendedoresPage';
+import DebugPage from './DebugPage';
 import { TemplateAssetsPage } from '../TemplateAssetsPage';
 import VendorMappingModal from '../../components/admin/VendorMappingModal';
 import { VendorEmailSetupModal } from '../../components/admin/VendorEmailSetupModal';
@@ -86,6 +88,11 @@ export default function AdminLayout() {
       title: 'Configurações',
       path: '/propostas/administracao/configuracoes',
       icon: Settings
+    },
+    {
+      title: 'Debug',
+      path: '/propostas/administracao/debug',
+      icon: AlertTriangle
     }
   ];
 
@@ -176,6 +183,11 @@ export default function AdminLayout() {
           <Route path="comissoes" element={<ComissoesPage />} />
           <Route path="templates" element={<TemplateAssetsPage />} />
           <Route path="configuracoes" element={<ConfiguracoesPage />} />
+          <Route path="debug" element={
+            <RouteGuard requireAdmin={true}>
+              <DebugPage />
+            </RouteGuard>
+          } />
         </Routes>
 
         <VendorMappingModal 
