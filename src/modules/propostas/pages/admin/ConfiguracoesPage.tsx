@@ -1,63 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, Shield, Info, CheckCircle, UserPlus, Mail } from 'lucide-react';
+import { AlertTriangle, Shield, Info, CheckCircle } from 'lucide-react';
 import { useCalculatorValidation } from '../../hooks/useCalculatorValidation';
 import { useUpdateSystemConfig } from '@/hooks/useSystemConfigs';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 export default function ConfiguracoesPage() {
   const { config, isLoading } = useCalculatorValidation();
   const updateConfig = useUpdateSystemConfig();
   const { isAdmin } = useUserPermissions();
-  const { toast } = useToast();
-  const [inviteLoading, setInviteLoading] = useState(false);
-
-  const handleInviteCaroline = async () => {
-    setInviteLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('send-invite-email', {
-        body: {
-          email: 'caroline@drystore.com.br',
-          displayName: 'Caroline',
-          department: 'Administração',
-          role: 'admin'
-        }
-      });
-
-      if (error) {
-        console.error('Erro ao enviar convite:', error);
-        toast({
-          title: "❌ Erro ao enviar convite",
-          description: "Falha ao enviar convite de admin para Caroline. Tente novamente.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      console.log('Convite enviado com sucesso:', data);
-      toast({
-        title: "✅ Convite enviado!",
-        description: "Caroline deve verificar o email e clicar no link de convite para ter acesso admin.",
-        variant: "default"
-      });
-    } catch (error) {
-      console.error('Erro na função de convite:', error);
-      toast({
-        title: "❌ Erro inesperado",
-        description: "Ocorreu um erro ao processar o convite. Tente novamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setInviteLoading(false);
-    }
-  };
 
   if (!isAdmin) {
     return (
@@ -78,7 +33,6 @@ export default function ConfiguracoesPage() {
       value: {
         ...config,
         strictValidation: enabled,
-        requirePrices: enabled, // Auto ativa outras validações em modo estrito
         requireSpecifications: enabled,
         blockZeroPrices: enabled
       }
@@ -177,22 +131,6 @@ export default function ConfiguracoesPage() {
 
           {/* Configurações Específicas */}
           <div className="space-y-4 pl-4 border-l-2 border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label htmlFor="require-prices" className="text-sm font-medium">
-                  Exigir Preços Válidos
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Bloquear produtos com preço R$ 0,00
-                </p>
-              </div>
-              <Switch
-                id="require-prices"
-                checked={config.requirePrices}
-                onCheckedChange={(value) => handleToggleSpecificValidation('requirePrices', value)}
-                disabled={updateConfig.isPending || config.strictValidation}
-              />
-            </div>
 
             <div className="flex items-center justify-between">
               <div className="space-y-1">
@@ -231,46 +169,6 @@ export default function ConfiguracoesPage() {
         </CardContent>
       </Card>
 
-      {/* Gerenciamento de Usuários */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserPlus className="h-4 w-4" />
-            Gerenciamento de Usuários Admin
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-blue-600" />
-                <span className="font-medium text-blue-900">caroline@drystore.com.br</span>
-                <Badge variant="outline" className="text-blue-700 border-blue-200">Pendente</Badge>
-              </div>
-              <p className="text-sm text-blue-700">
-                Usuário precisa ser convidado para ter acesso administrativo
-              </p>
-            </div>
-            <Button 
-              onClick={handleInviteCaroline}
-              disabled={inviteLoading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {inviteLoading ? "Enviando..." : "Enviar Convite Admin"}
-            </Button>
-          </div>
-          
-          <div className="text-xs text-muted-foreground bg-gray-50 p-3 rounded">
-            <strong>Como funciona:</strong>
-            <ol className="list-decimal list-inside mt-1 space-y-1">
-              <li>Clique em "Enviar Convite Admin" para enviar email de convite</li>
-              <li>Caroline receberá um email com link de convite (válido por 24h)</li>
-              <li>Após clicar no link, poderá definir senha e terá acesso completo</li>
-              <li>O usuário aparecerá na lista de atendentes com permissão "Administrador"</li>
-            </ol>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Informações */}
       <Card>

@@ -2,14 +2,12 @@ import { useSystemConfig } from '@/hooks/useSystemConfigs';
 
 export interface ValidationConfig {
   strictValidation: boolean;
-  requirePrices: boolean;
   requireSpecifications: boolean;
   blockZeroPrices: boolean;
 }
 
 const DEFAULT_VALIDATION_CONFIG: ValidationConfig = {
   strictValidation: false,
-  requirePrices: false,
   requireSpecifications: false,
   blockZeroPrices: false
 };
