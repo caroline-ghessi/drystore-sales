@@ -24,11 +24,13 @@ interface PDFGenerationResult {
 export function usePDFGeneration() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPdfs, setGeneratedPdfs] = useState<Record<string, string>>({});
+  const [generationStatus, setGenerationStatus] = useState<string>('');
   const { toast } = useToast();
 
-  const generatePDF = async (options: PDFGenerationOptions): Promise<string | null> => {
+  const generatePDFWithCompression = async (options: PDFGenerationOptions): Promise<{url: string, isCompressed: boolean} | null> => {
     try {
       setIsGenerating(true);
+      setGenerationStatus('🔄 Gerando PDF profissional...');
 
       console.log('🔄 Generating PDF with options:', options);
 
@@ -50,21 +52,62 @@ export function usePDFGeneration() {
         throw new Error('URL do PDF não foi retornada');
       }
 
-      // Store in local state for quick access
+      setGenerationStatus('📦 Otimizando arquivo...');
+
+      // Try to compress PDF
+      let finalUrl = result.pdfUrl;
+      let isCompressed = false;
+
+      try {
+        const compressResponse = await supabase.functions.invoke('compress-pdf', {
+          body: {
+            pdfUrl: result.pdfUrl,
+            compressionLevel: 'medium',
+            options: {
+              name: `proposal-${options.proposalId || 'temp'}-compressed.pdf`
+            }
+          }
+        });
+
+        if (compressResponse.data?.success && compressResponse.data.compressedUrl) {
+          finalUrl = compressResponse.data.compressedUrl;
+          isCompressed = true;
+          console.log('✅ PDF compressed successfully, saved:', compressResponse.data.compressionRatio + '% space');
+        }
+      } catch (compressionError) {
+        console.warn('⚠️ PDF compression failed, using original:', compressionError);
+      }
+
+      // Save PDF to database if proposalId exists
       if (options.proposalId) {
+        try {
+          const { error: saveError } = await supabase
+            .from('proposal_pdfs')
+            .insert({
+              proposal_id: options.proposalId,
+              pdf_url: finalUrl,
+              is_compressed: isCompressed,
+              template_id: options.templateId,
+              created_at: new Date().toISOString()
+            });
+
+          if (saveError) {
+            console.warn('⚠️ Could not save PDF to database:', saveError);
+          }
+        } catch (saveError) {
+          console.warn('⚠️ Database save failed:', saveError);
+        }
+
         setGeneratedPdfs(prev => ({
           ...prev,
-          [options.proposalId!]: result.pdfUrl!
+          [options.proposalId!]: finalUrl
         }));
       }
 
-      toast({
-        title: "PDF Gerado",
-        description: "O PDF da proposta foi gerado com sucesso!"
-      });
+      setGenerationStatus('✅ PDF pronto para download!');
 
-      console.log('✅ PDF generated successfully:', result.pdfUrl);
-      return result.pdfUrl;
+      console.log('✅ PDF generated successfully:', finalUrl);
+      return { url: finalUrl, isCompressed };
 
     } catch (error: any) {
       console.error('❌ PDF generation error:', error);
@@ -78,7 +121,13 @@ export function usePDFGeneration() {
       return null;
     } finally {
       setIsGenerating(false);
+      setGenerationStatus('');
     }
+  };
+
+  const generatePDF = async (options: PDFGenerationOptions): Promise<string | null> => {
+    const result = await generatePDFWithCompression(options);
+    return result?.url || null;
   };
 
   const downloadPDF = async (options: PDFGenerationOptions): Promise<void> => {
@@ -124,8 +173,10 @@ export function usePDFGeneration() {
     isGenerating,
     generatedPdfs,
     generatePDF,
+    generatePDFWithCompression,
     downloadPDF,
     previewPDF,
-    getTemplateIdForProduct
+    getTemplateIdForProduct,
+    generationStatus
   };
 }
