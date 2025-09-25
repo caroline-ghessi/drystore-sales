@@ -136,38 +136,40 @@ export default function AdminLayout() {
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="mb-6">
-          <div className="flex space-x-1 bg-white rounded-lg p-1 shadow-sm">
-            {adminMenuItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.path, item.exact);
-              
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  className={`
-                    flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors
-                    ${active 
-                      ? 'bg-drystore-orange text-white shadow-sm' 
-                      : 'text-drystore-medium-gray hover:text-drystore-orange hover:bg-drystore-light-orange/10'
-                    }
-                  `}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{item.title}</span>
-                  {item.badge && (
-                    <Badge 
-                      variant="secondary" 
-                      className={`text-xs ${active ? 'bg-white/20 text-white' : 'bg-drystore-light-orange/20 text-drystore-orange'}`}
-                    >
-                      {item.badge}
-                    </Badge>
-                  )}
-                </NavLink>
-              );
-            })}
+        {/* Navigation Tabs - Two Line Grid Layout */}
+        <div className="mb-8">
+          <div className="bg-white rounded-lg p-3 shadow-sm">
+            <div className="grid grid-cols-4 gap-3">
+              {adminMenuItems.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.path, item.exact);
+                
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    className={`
+                      flex items-center justify-center space-x-2 px-6 py-3 rounded-md text-base font-medium transition-all duration-200
+                      ${active 
+                        ? 'bg-drystore-orange text-white shadow-md transform scale-[1.02]' 
+                        : 'text-drystore-medium-gray hover:text-drystore-orange hover:bg-drystore-light-orange/10 hover:scale-[1.01]'
+                      }
+                    `}
+                  >
+                    <Icon className="h-5 w-5 flex-shrink-0" />
+                    <span className="truncate">{item.title}</span>
+                    {item.badge && (
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-xs ml-1 ${active ? 'bg-white/20 text-white' : 'bg-drystore-light-orange/20 text-drystore-orange'}`}
+                      >
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </div>
           </div>
         </div>
 
