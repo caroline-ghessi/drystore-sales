@@ -143,13 +143,15 @@ export function usePDFGeneration() {
     return result?.url || null;
   };
 
-  const downloadPDF = async (options: PDFGenerationOptions): Promise<void> => {
+  const downloadPDF = async (options: PDFGenerationOptions): Promise<string | null> => {
     const pdfUrl = await generatePDF(options);
     
     if (pdfUrl) {
       // Open PDF in new tab for download
       window.open(pdfUrl, '_blank');
+      return pdfUrl;
     }
+    return null;
   };
 
   const previewPDF = async (options: PDFGenerationOptions): Promise<void> => {

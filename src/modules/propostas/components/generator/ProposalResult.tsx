@@ -119,27 +119,49 @@ Qualquer dúvida, estou à disposição! 😊`;
   };
 
   const handleDownloadPDF = async () => {
-    const templateId = getTemplateIdForProduct('shingle'); // TODO: Get from proposal data
+    const templateId = getTemplateIdForProduct(proposal.productType || 'shingle');
     
-    await downloadPDF({
-      proposalId: proposal.id,
-      templateId,
-      options: {
-        name: `Proposta_${proposal.number}`
+    try {
+      const result = await downloadPDF({
+        proposalId: proposal.id,
+        templateId,
+        options: {
+          name: `Proposta_${proposal.number}`
+        }
+      });
+
+      if (result) {
+        setPdfReady(result);
       }
-    });
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro na geração do PDF",
+        description: "Tente novamente em alguns instantes"
+      });
+    }
   };
 
   const handlePreviewPDF = async () => {
-    const templateId = getTemplateIdForProduct('shingle'); // TODO: Get from proposal data
+    const templateId = getTemplateIdForProduct(proposal.productType || 'shingle');
     
-    await previewPDF({
-      proposalId: proposal.id,
-      templateId,
-      options: {
-        name: `Preview_${proposal.number}`
-      }
-    });
+    try {
+      await previewPDF({
+        proposalId: proposal.id,
+        templateId,
+        options: {
+          name: `Preview_${proposal.number}`
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao visualizar PDF:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro na geração do PDF",
+        description: "Tente novamente em alguns instantes"
+      });
+    }
   };
 
   return (

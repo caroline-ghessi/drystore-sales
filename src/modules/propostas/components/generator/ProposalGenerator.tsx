@@ -209,24 +209,10 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
       if (data && data.success) {
         setGeneratedProposalId(data.proposalId);
         
-        // 🔄 Automatically generate PDF after proposal creation
-        try {
-          toast({
-            title: "Proposta Gerada",
-            description: "Gerando PDF profissional automaticamente..."
-          });
-          
-          const templateId = getTemplateIdForProduct(productType);
-          await generatePDFWithCompression({
-            proposalId: data.proposalId,
-            templateId,
-            options: {
-              name: `proposta-${data.proposalId}.pdf`
-            }
-          });
-        } catch (pdfError) {
-          console.warn('⚠️ PDF generation failed:', pdfError);
-        }
+        toast({
+          title: "Proposta Gerada com Sucesso!",
+          description: "Proposta criada e pronta para visualização."
+        });
         
         // Buscar dados completos da proposta
         await fetchGeneratedProposal(data.proposalId);
