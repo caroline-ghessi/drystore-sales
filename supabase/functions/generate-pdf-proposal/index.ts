@@ -120,6 +120,15 @@ serve(async (req) => {
 
     console.log('✅ PDF.co response received:', pdfcoResult);
 
+    // Verify PDF availability with retry logic
+    try {
+      await waitForPDFReadiness(pdfcoResult.url);
+      console.log('✅ PDF verified as accessible');
+    } catch (verifyError) {
+      console.warn('⚠️ PDF verification failed:', verifyError);
+      // Continue anyway, as the PDF might still be processable
+    }
+
     // Store PDF generation record in database
     if (proposalId) {
       const { error: logError } = await supabase
@@ -295,4 +304,32 @@ function generateProposalNumber(): string {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
   return `PROP-${year}${month}-${random}`;
+}
+
+// Helper function to verify PDF readiness
+async function waitForPDFReadiness(pdfUrl: string, maxRetries: number = 3): Promise<void> {
+  console.log(`🔍 Verifying PDF readiness: ${pdfUrl}`);
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(pdfUrl, { method: 'HEAD' });
+      
+      if (response.ok) {
+        console.log(`✅ PDF is ready after ${attempt} attempt(s)`);
+        return;
+      }
+      
+      console.log(`❌ Attempt ${attempt}/${maxRetries}: PDF not ready (status: ${response.status})`);
+    } catch (error) {
+      console.log(`❌ Attempt ${attempt}/${maxRetries}: Network error -`, (error as Error).message || error);
+    }
+    
+    if (attempt < maxRetries) {
+      const delay = 1000 * attempt; // Linear backoff: 1s, 2s, 3s
+      console.log(`⏳ Waiting ${delay}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  console.warn(`⚠️ PDF readiness check failed after ${maxRetries} attempts, proceeding anyway`);
 }

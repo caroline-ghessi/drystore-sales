@@ -54,11 +54,16 @@ export function usePDFGeneration() {
 
       setGenerationStatus('📦 Otimizando arquivo...');
 
-      // Try to compress PDF
+      // Try to compress PDF with retry logic
       let finalUrl = result.pdfUrl;
       let isCompressed = false;
 
       try {
+        setGenerationStatus('📦 Aguardando processamento...');
+        
+        // Wait a bit for PDF to be fully available
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
         const compressResponse = await supabase.functions.invoke('compress-pdf', {
           body: {
             pdfUrl: result.pdfUrl,
@@ -69,13 +74,21 @@ export function usePDFGeneration() {
           }
         });
 
+        if (compressResponse.error) {
+          console.warn('⚠️ Compression service error:', compressResponse.error);
+          throw new Error(compressResponse.error.message || 'Compression failed');
+        }
+
         if (compressResponse.data?.success && compressResponse.data.compressedUrl) {
           finalUrl = compressResponse.data.compressedUrl;
           isCompressed = true;
           console.log('✅ PDF compressed successfully, saved:', compressResponse.data.compressionRatio + '% space');
+        } else {
+          console.warn('⚠️ Compression returned no compressed URL');
         }
-      } catch (compressionError) {
-        console.warn('⚠️ PDF compression failed, using original:', compressionError);
+      } catch (compressionError: any) {
+        console.warn('⚠️ PDF compression failed, using original:', compressionError.message || compressionError);
+        // Continue with original PDF if compression fails
       }
 
       // Save PDF to database if proposalId exists
