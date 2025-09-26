@@ -13,16 +13,88 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { useProposals, useProposalStats } from '../hooks/useProposals';
+import { usePDFGeneration } from '../hooks/usePDFGeneration';
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const ProposalsListPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [loadingPdfId, setLoadingPdfId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   // Buscar dados reais das propostas
   const { data: proposalsData = [], isLoading, error } = useProposals();
   const stats = useProposalStats();
+  const { previewPDF, downloadPDF, isGenerating } = usePDFGeneration();
+
+  // Função para mapear project_type para template ID
+  const getTemplateId = (projectType: string) => {
+    const templateMap = {
+      'telha_shingle': '14564',
+      'energia_solar': '14564', // Temporariamente usando mesmo template
+      'drywall': '14564',
+      'forro_drywall': '14564',
+      'impermeabilizacao_mapei': '14564',
+      'preparacao_piso_mapei': '14564',
+      'forro_mineral_acustico': '14564'
+    };
+    return templateMap[projectType as keyof typeof templateMap] || '14564';
+  };
+
+  // Função para visualizar proposta via PDF.co
+  const handlePreviewPDF = async (proposal: any) => {
+    try {
+      setLoadingPdfId(proposal.id);
+      const templateId = getTemplateId(proposal.project_type);
+      
+      await previewPDF({
+        proposalId: proposal.id,
+        templateId: templateId,
+        options: {}
+      });
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        title: "Erro ao gerar PDF",
+        description: "Tentativa com formato anterior...",
+        variant: "destructive",
+      });
+      // Fallback para o link antigo
+      window.open(proposal.acceptance_link, '_blank');
+    } finally {
+      setLoadingPdfId(null);
+    }
+  };
+
+  // Função para download da proposta via PDF.co
+  const handleDownloadPDF = async (proposal: any) => {
+    try {
+      setLoadingPdfId(proposal.id);
+      const templateId = getTemplateId(proposal.project_type);
+      
+      await downloadPDF({
+        proposalId: proposal.id,
+        templateId: templateId,
+        options: {}
+      });
+      
+      toast({
+        title: "PDF gerado com sucesso",
+        description: "O download iniciará em breve.",
+      });
+    } catch (error) {
+      console.error('Erro ao baixar PDF:', error);  
+      toast({
+        title: "Erro ao gerar PDF",
+        description: "Tente novamente ou entre em contato com o suporte.",  
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPdfId(null);
+    }
+  };
 
   // Função para extrair dados do cliente do JSON
   const getClientData = (clientData: any) => {
@@ -263,12 +335,28 @@ const ProposalsListPage = () => {
                         size="sm" 
                         className="text-drystore-medium-gray hover:text-drystore-orange" 
                         title="Visualizar"
-                        onClick={() => window.open(proposal.acceptance_link, '_blank')}
+                        onClick={() => handlePreviewPDF(proposal)}
+                        disabled={loadingPdfId === proposal.id}
                       >
-                        <Eye className="h-4 w-4" />
+                        {loadingPdfId === proposal.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </Button>
-                      <Button variant="ghost" size="sm" className="text-drystore-medium-gray hover:text-drystore-orange" title="Download">
-                        <Download className="h-4 w-4" />
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-drystore-medium-gray hover:text-drystore-orange" 
+                        title="Download"
+                        onClick={() => handleDownloadPDF(proposal)}
+                        disabled={loadingPdfId === proposal.id}
+                      >
+                        {loadingPdfId === proposal.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
                       </Button>
                       <Button variant="ghost" size="sm" className="text-drystore-medium-gray hover:text-drystore-orange" title="Follow-up">
                         <MessageCircle className="h-4 w-4" />
