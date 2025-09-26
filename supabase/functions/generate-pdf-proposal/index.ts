@@ -65,13 +65,6 @@ serve(async (req) => {
         .select(`
           *,
           proposal_items (*),
-          crm_customers!conversation_id (
-            name,
-            email,
-            phone,
-            city,
-            state
-          ),
           profiles!created_by (
             display_name
           )
@@ -221,9 +214,16 @@ function formatCurrency(value: number): string {
 }
 
 function getClientName(data: any): string {
-  // Try different sources for client name
-  return data.client_data?.name || 
-         data.crm_customers?.name || 
+  // Use client_data from proposal, which contains customer information
+  if (data.client_data) {
+    return data.client_data.name || 
+           data.client_data.customerName || 
+           data.client_data.clientName || 
+           'Cliente';
+  }
+  
+  // Fallback to other sources
+  return data.customer_name || 
          data.title?.split(' - ')[1] || 
          'Cliente';
 }
