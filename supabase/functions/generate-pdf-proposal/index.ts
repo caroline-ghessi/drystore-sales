@@ -90,7 +90,7 @@ serve(async (req) => {
     console.log('📋 Template data prepared:', Object.keys(templateData));
 
     // Call PDF.co API
-    const pdfcoResponse = await fetch('https://api.pdf.co/v1/pdf/convert/from/html-template', {
+    const pdfcoResponse = await fetch('https://api.pdf.co/v1/pdf/convert/from/html', {
       method: 'POST',
       headers: {
         'x-api-key': pdfcoApiKey,   
@@ -98,11 +98,16 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         templateId: parseInt(templateId),
-        templateData: templateData,
-        name: options.name || `Proposta_${proposalId || Date.now()}`,
-        async: options.async !== false,
+        templateData: JSON.stringify(templateData),
+        name: options.name || `Proposta_${proposalId || Date.now()}.pdf`,
+        mediaType: 'print',
+        paperSize: 'Letter',
         orientation: options.orientation || 'Portrait',
-        margins: options.margins || '10px'
+        printBackground: true,
+        header: '',
+        footer: '',
+        margins: options.margins || '40px 20px 20px 20px',
+        async: options.async !== false
       })
     });
 
