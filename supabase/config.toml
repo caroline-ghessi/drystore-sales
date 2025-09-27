@@ -17,3 +17,12 @@ verify_jwt = false
 
 [functions.cancel-invite]
 verify_jwt = false
+
+[functions.generate-pdf-proposal-async]
+verify_jwt = false
+
+[functions.save-proposal-pdf]
+verify_jwt = false
+
+[functions.generate-proposal]
+verify_jwt = false

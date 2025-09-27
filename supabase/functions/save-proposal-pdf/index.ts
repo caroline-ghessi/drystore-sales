@@ -1,226 +1,177 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
 
 interface SavePDFRequest {
   pdfUrl: string;
   proposalId: string;
-  proposalNumber?: string;
   shouldCompress?: boolean;
-  compressionLevel?: 'low' | 'medium' | 'high';
 }
 
 interface SavePDFResult {
   success: boolean;
-  finalUrl?: string;
-  isCompressed?: boolean;
-  originalSize?: number;
-  finalSize?: number;
-  compressionRatio?: number;
+  finalPdfUrl?: string;
   error?: string;
+  isCompressed?: boolean;
 }
 
 serve(async (req) => {
-  console.log('=== SAVE PROPOSAL PDF FUNCTION STARTED ===');
-
+  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { pdfUrl, proposalId, proposalNumber, shouldCompress = true, compressionLevel = 'medium' }: SavePDFRequest = await req.json();
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    console.log('Save PDF request:', { pdfUrl, proposalId, proposalNumber, shouldCompress });
-
-    if (!pdfUrl || !proposalId) {
-      throw new Error('PDF URL and Proposal ID are required');
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration not found');
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { pdfUrl, proposalId, shouldCompress = true } = await req.json() as SavePDFRequest;
 
-    // Download the PDF with retry logic
-    console.log('📥 Downloading PDF from temporary URL with retry logic...');
-    let pdfBuffer: ArrayBuffer | null = null;
-    let downloadAttempts = 0;
-    const maxDownloadAttempts = 3;
+    console.log('📥 Starting PDF save process for proposal:', proposalId);
+
+    // Download the PDF from the provided URL
+    const pdfResponse = await fetch(pdfUrl);
+    if (!pdfResponse.ok) {
+      throw new Error(`Failed to download PDF: ${pdfResponse.statusText}`);
+    }
+
+    const pdfBuffer = await pdfResponse.arrayBuffer();
+    const pdfSize = pdfBuffer.byteLength;
     
-    while (downloadAttempts < maxDownloadAttempts && !pdfBuffer) {
-      try {
-        downloadAttempts++;
-        console.log(`📥 Download attempt ${downloadAttempts}/${maxDownloadAttempts}...`);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-        
-        const downloadResponse = await fetch(pdfUrl, {
-          signal: controller.signal,
-          headers: {
-            'User-Agent': 'Supabase-Edge-Function'
-          }
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!downloadResponse.ok) {
-          throw new Error(`HTTP ${downloadResponse.status}: ${downloadResponse.statusText}`);
-        }
-        
-        pdfBuffer = await downloadResponse.arrayBuffer();
-        console.log(`✅ PDF downloaded successfully on attempt ${downloadAttempts}`);
-        
-      } catch (error: any) {
-        console.error(`❌ Download attempt ${downloadAttempts} failed:`, error.message);
-        
-        if (downloadAttempts >= maxDownloadAttempts) {
-          throw new Error(`Failed to download PDF after ${maxDownloadAttempts} attempts: ${error.message}`);
-        }
-        
-        // Wait before retry (exponential backoff)
-        const waitTime = Math.pow(2, downloadAttempts) * 1000;
-        console.log(`⏳ Waiting ${waitTime}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-      }
-    }
+    console.log(`📄 Downloaded PDF: ${pdfSize} bytes`);
 
-    if (!pdfBuffer) {
-      throw new Error('Failed to download PDF - buffer is null');
-    }
-
-    let originalSize = pdfBuffer.byteLength;
+    let finalPdfBuffer = pdfBuffer;
     let isCompressed = false;
-    let compressionRatio = 0;
 
-    console.log(`📊 Original PDF size: ${(originalSize / 1024 / 1024).toFixed(2)} MB`);
-
-    // Compress if needed and size is large
-    if (shouldCompress && originalSize > 5 * 1024 * 1024) { // Only compress if > 5MB
+    // Compress PDF if it's larger than 5MB and compression is requested
+    if (shouldCompress && pdfSize > 5 * 1024 * 1024) {
       try {
-        console.log('🗜️ Starting PDF compression...');
-        
-        const pdfCoApiKey = Deno.env.get('PDFCO_API_KEY');
-        if (!pdfCoApiKey) {
-          throw new Error('PDFCO_API_KEY not configured');
+        const compressedBuffer = await compressPDF(pdfBuffer);
+        if (compressedBuffer && compressedBuffer.byteLength < pdfSize) {
+          finalPdfBuffer = compressedBuffer;
+          isCompressed = true;
+          console.log(`🗜️ PDF compressed: ${compressedBuffer.byteLength} bytes (${Math.round((1 - compressedBuffer.byteLength / pdfSize) * 100)}% reduction)`);
         }
-
-        // Convert buffer to blob for compression
-        const formData = new FormData();
-        formData.append('file', new Blob([pdfBuffer], { type: 'application/pdf' }));
-        formData.append('async', 'false');
-        
-        // Set compression level based on file size
-        const compressionConfig = {
-          low: { quality: 80 },
-          medium: { quality: 60 },
-          high: { quality: 40 }
-        };
-
-        const config = {
-          images: {
-            color: {
-              compression: {
-                compression_format: 'jpeg',
-                compression_params: compressionConfig[compressionLevel]
-              }
-            },
-            grayscale: {
-              compression: {
-                compression_format: 'jpeg', 
-                compression_params: compressionConfig[compressionLevel]
-              }
-            }
-          }
-        };
-
-        formData.append('config', JSON.stringify(config));
-
-        const compressResponse = await fetch('https://api.pdf.co/v1/pdf/compress', {
-          method: 'POST',
-          headers: {
-            'x-api-key': pdfCoApiKey,
-          },
-          body: formData,
-        });
-
-        const compressResult = await compressResponse.json();
-        
-        if (compressResponse.ok && compressResult.url) {
-          // Download compressed PDF
-          const compressedResponse = await fetch(compressResult.url);
-          if (compressedResponse.ok) {
-            pdfBuffer = await compressedResponse.arrayBuffer();
-            isCompressed = true;
-            compressionRatio = Math.round(((originalSize - pdfBuffer.byteLength) / originalSize) * 100);
-            console.log(`✅ PDF compressed successfully! Saved ${compressionRatio}% space`);
-            console.log(`📊 Compressed size: ${(pdfBuffer.byteLength / 1024 / 1024).toFixed(2)} MB`);
-          }
-        }
-      } catch (compressionError) {
-        console.warn('⚠️ PDF compression failed, using original:', compressionError);
-        // Continue with original PDF
+      } catch (compressError) {
+        console.warn('⚠️ PDF compression failed, using original:', compressError);
       }
     }
 
-    // Generate file path
-    const now = new Date();
-    const year = now.getFullYear();
-    const fileName = proposalNumber ? 
-      `${proposalNumber}.pdf` : 
-      `PROP-${proposalId.slice(-8)}.pdf`;
-    const filePath = `propostas/${year}/${fileName}`;
+    // Get proposal details for file naming
+    const { data: proposal } = await supabase
+      .from('proposals')
+      .select('proposal_number')
+      .eq('id', proposalId)
+      .single();
 
-    console.log(`💾 Uploading PDF to: ${filePath}`);
+    const fileName = `${proposal?.proposal_number || proposalId}.pdf`;
+    const filePath = `proposals/${new Date().getFullYear()}/${fileName}`;
 
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('proposal-assets')
-      .upload(filePath, pdfBuffer, {
+      .upload(filePath, finalPdfBuffer, {
         contentType: 'application/pdf',
         upsert: true
       });
 
     if (uploadError) {
-      throw new Error(`Failed to upload PDF: ${uploadError.message}`);
+      throw new Error(`Storage upload failed: ${uploadError.message}`);
     }
 
     // Get public URL
-    const { data: urlData } = supabase.storage
+    const { data: publicUrlData } = supabase.storage
       .from('proposal-assets')
       .getPublicUrl(filePath);
 
-    const finalUrl = urlData.publicUrl;
-    console.log(`✅ PDF saved successfully: ${finalUrl}`);
+    console.log('✅ PDF saved to storage:', publicUrlData.publicUrl);
 
-    const result: SavePDFResult = {
-      success: true,
-      finalUrl,
-      isCompressed,
-      originalSize,
-      finalSize: pdfBuffer.byteLength,
-      compressionRatio: compressionRatio || 0
-    };
-
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        finalPdfUrl: publicUrlData.publicUrl,
+        isCompressed,
+        filePath
+      } as SavePDFResult),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    );
 
   } catch (error: any) {
-    console.error('❌ Save PDF error:', error);
+    console.error('❌ PDF save failed:', error);
     
-    const result: SavePDFResult = {
-      success: false,
-      error: error.message || 'Unknown error during PDF save'
-    };
-
-    return new Response(JSON.stringify(result), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message || 'Unknown error occurred'
+      } as SavePDFResult),
+      { 
+        status: 500,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    );
   }
 });
+
+async function compressPDF(pdfBuffer: ArrayBuffer): Promise<ArrayBuffer | null> {
+  const pdfCoApiKey = Deno.env.get('PDFCO_API_KEY');
+  if (!pdfCoApiKey) {
+    console.warn('PDF.co API key not found, skipping compression');
+    return null;
+  }
+
+  try {
+    // Convert ArrayBuffer to base64
+    const base64Pdf = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
+
+    // Call PDF.co compression API
+    const response = await fetch('https://api.pdf.co/v1/pdf/optimize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': pdfCoApiKey,
+      },
+      body: JSON.stringify({
+        file: `data:application/pdf;base64,${base64Pdf}`,
+        profiles: 'balanced' // Options: max, balanced, fast
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`PDF.co compression failed: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    if (!result.url) {
+      throw new Error('PDF compression failed: no URL returned');
+    }
+
+    // Download compressed PDF
+    const compressedResponse = await fetch(result.url);
+    if (!compressedResponse.ok) {
+      throw new Error('Failed to download compressed PDF');
+    }
+
+    return await compressedResponse.arrayBuffer();
+
+  } catch (error) {
+    console.error('PDF compression error:', error);
+    return null;
+  }
+}

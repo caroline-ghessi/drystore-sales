@@ -1,302 +1,291 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
+
+interface PDFGenerationRequest {
+  proposalData: any;
+  templateId: string;
+  shouldSaveToPermanentStorage?: boolean;
+  templatePreferences?: {
+    tone: string;
+    includeWarranty: boolean;
+    includeTechnicalSpecs: boolean;
+  };
+}
 
 interface PDFGenerationResult {
   success: boolean;
   pdfUrl?: string;
-  proposalId?: string;
-  templateId?: string;
-  generatedAt?: string;
   error?: string;
-  metadata?: any;
+  proposalId?: string;
 }
 
 serve(async (req) => {
-  console.log('=== ASYNC PDF GENERATION FUNCTION STARTED ===');
-
+  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { proposalData, templateId = 'default', shouldSaveToPermanentStorage = true } = await req.json();
-    
-    if (!proposalData) {
-      throw new Error('No proposal data provided');
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const { proposalData, templateId, shouldSaveToPermanentStorage = true, templatePreferences } = await req.json() as PDFGenerationRequest;
+
+    console.log('🚀 Starting async PDF generation for proposal:', proposalData?.id);
+
+    // Generate PDF using PDF.co API
+    const pdfCoApiKey = Deno.env.get('PDFCO_API_KEY');
+    if (!pdfCoApiKey) {
+      throw new Error('PDF.co API key not configured');
     }
 
-    console.log('📄 Starting async PDF generation for template', templateId);
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Verificar se existe API key do PDF.co
-    const pdfcoApiKey = Deno.env.get('PDFCO_API_KEY');
-    if (!pdfcoApiKey) {
-      throw new Error('PDFCO_API_KEY not configured');
-    }
-
-    // Mapear dados para template
+    // Map data to PDF template format
     const templateData = mapDataToPDFTemplate(proposalData, templateId);
-    const proposalNumber = generateProposalNumber();
 
-    console.log('📋 Template data prepared:', Object.keys(templateData));
-
-    // Chamar API do PDF.co para gerar PDF
-    const pdfcoResponse = await fetch('https://api.pdf.co/v1/pdf/convert/from/html', {
+    // Call PDF.co API
+    const pdfResponse = await fetch('https://api.pdf.co/v1/pdf/convert/from/html', {
       method: 'POST',
       headers: {
-        'x-api-key': pdfcoApiKey,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-api-key': pdfCoApiKey,
       },
       body: JSON.stringify({
-        templateId: parseInt(templateId),
-        templateData: JSON.stringify(templateData),
-        name: `Proposta_${proposalNumber}.pdf`,
-        mediaType: 'print',
-        paperSize: 'Letter',
-        orientation: 'Portrait',
-        printBackground: true,
-        header: '',
-        footer: '',
-        margins: '40px 20px 20px 20px',
-        async: true
-      })
+        html: generateHTMLContent(templateData),
+        name: `proposta-${proposalData.proposal_number || 'temp'}.pdf`,
+        async: false,
+        margins: "10mm",
+        orientation: "Portrait"
+      }),
     });
 
-    const pdfcoResult = await pdfcoResponse.json();
-
-    if (!pdfcoResponse.ok) {
-      console.error('❌ PDF.co API error:', pdfcoResult);
-      throw new Error(`PDF.co API error: ${pdfcoResult.message || 'Unknown error'}`);
+    if (!pdfResponse.ok) {
+      throw new Error(`PDF.co API error: ${pdfResponse.statusText}`);
     }
 
-    console.log('✅ PDF.co response received:', pdfcoResult);
-
-    const finalPdfUrl = pdfcoResult.url;
-    console.log('📥 PDF.co URL obtained:', finalPdfUrl);
-
-    // Salvar proposta imediatamente com status de processamento
-    console.log('💾 Saving proposal with processing status...');
+    const pdfResult = await pdfResponse.json();
     
-    const { data: savedProposal, error: proposalError } = await supabase
+    if (!pdfResult.url) {
+      throw new Error('PDF generation failed: no URL returned');
+    }
+
+    // Save proposal to database immediately
+    const proposalNumber = generateProposalNumber();
+    const { data: savedProposal, error: saveError } = await supabase
       .from('proposals')
       .insert({
         proposal_number: proposalNumber,
-        title: `Proposta ${proposalNumber}`,
+        title: proposalData.title || `Proposta ${proposalNumber}`,
+        description: proposalData.description || '',
+        project_type: proposalData.project_type || 'shingle',
+        total_value: proposalData.total_value || 0,
+        discount_value: proposalData.discount_value || 0,
+        discount_percentage: proposalData.discount_percentage || 0,
+        final_value: proposalData.final_value || proposalData.total_value || 0,
         status: 'draft',
-        project_type: proposalData.productType || 'shingle',
-        total_value: proposalData.pricing?.finalValue || 0,
-        final_value: proposalData.pricing?.finalValue || 0,
-        created_by: proposalData.userId,
+        valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        acceptance_link: `${Deno.env.get('SUPABASE_URL')?.replace('/rest/v1', '')}/proposal/${proposalNumber}`,
+        client_data: proposalData.client_data || {},
+        created_by: proposalData.created_by,
         pdf_status: 'processing',
-        pdf_processing_started_at: new Date().toISOString(),
-        pdf_url: finalPdfUrl, // URL temporária inicial
+        pdf_url: pdfResult.url
       })
       .select()
       .single();
 
-    if (proposalError) {
-      throw new Error(`Failed to save proposal: ${proposalError.message}`);
+    if (saveError) {
+      throw new Error(`Database save error: ${saveError.message}`);
     }
 
-    const finalProposalId = savedProposal.id;
-    console.log('✅ Proposal saved with ID:', finalProposalId);
+    console.log('✅ Proposal saved, starting background PDF processing');
 
-    // Processar PDF em background usando EdgeRuntime.waitUntil
+    // Start background processing
     if (shouldSaveToPermanentStorage) {
-      console.log('🔄 Starting background PDF processing...');
-      
-      // Usar setTimeout para processar em background (alternativa ao EdgeRuntime.waitUntil)
-      setTimeout(() => {
-        processPDFInBackground(finalPdfUrl, finalProposalId, proposalData.userId, supabase)
-          .catch(error => console.error('Background processing failed:', error));
-      }, 0);
+      processPDFInBackground(savedProposal.id, pdfResult.url, supabase);
     }
 
-    const result: PDFGenerationResult = {
-      success: true,
-      pdfUrl: finalPdfUrl,
-      proposalId: finalProposalId,
-      templateId: templateId || 'default',
-      generatedAt: new Date().toISOString(),
-      metadata: {
-        template: templateId || 'default',
-        dataSource: 'direct',
-        finalUrlType: 'temporary',
-        pdfStatus: 'processing',
-        message: 'PDF being processed in background. You will be notified when ready.'
-      }
-    };
-
-    console.log('✅ Async PDF generation completed:', result);
-
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Send immediate success notification
+    await supabase.from('user_notifications').insert({
+      user_id: proposalData.created_by,
+      type: 'pdf_processing',
+      title: 'Proposta Criada',
+      message: 'Sua proposta foi criada com sucesso. O PDF está sendo processado.',
+      data: { proposalId: savedProposal.id, proposalNumber }
     });
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        pdfUrl: pdfResult.url,
+        proposalId: savedProposal.id,
+        proposalNumber: proposalNumber
+      } as PDFGenerationResult),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    );
 
   } catch (error: any) {
-    console.error('❌ Async PDF generation error:', error);
+    console.error('❌ PDF generation failed:', error);
     
-    const result: PDFGenerationResult = {
-      success: false,
-      error: error.message || 'Unknown error during PDF generation'
-    };
-
-    return new Response(JSON.stringify(result), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message || 'Unknown error occurred'
+      } as PDFGenerationResult),
+      { 
+        status: 500,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    );
   }
 });
 
-// Função para processar PDF em background
-async function processPDFInBackground(
-  pdfUrl: string, 
-  proposalId: string, 
-  userId: string,
-  supabase: any
-) {
+async function processPDFInBackground(proposalId: string, pdfUrl: string, supabase: any) {
   try {
-    console.log('🔄 Background PDF processing started for proposal:', proposalId);
+    console.log('🔄 Processing PDF in background for proposal:', proposalId);
     
-    // Aguardar um pouco para garantir que o PDF esteja disponível
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    
-    // Chamar função de salvamento
-    const saveResponse = await supabase.functions.invoke('save-proposal-pdf', {
+    // Wait a bit to ensure PDF is available
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Save PDF to permanent storage
+    const { data: saveResult, error: saveError } = await supabase.functions.invoke('save-proposal-pdf', {
       body: {
         pdfUrl,
         proposalId,
-        proposalNumber: `PROP-${proposalId.slice(-8)}`,
-        shouldCompress: true,
-        compressionLevel: 'medium'
+        shouldCompress: true
       }
     });
 
-    if (saveResponse.data?.success) {
-      console.log('✅ Background PDF save successful:', saveResponse.data.finalUrl);
-      
-      // Atualizar proposta com URL permanente
-      await supabase
-        .from('proposals')
-        .update({
-          pdf_status: 'ready',
-          pdf_url: saveResponse.data.finalUrl,
-          pdf_error: null
-        })
-        .eq('id', proposalId);
-
-      // Enviar notificação ao usuário
-      await supabase
-        .from('user_notifications')
-        .insert({
-          user_id: userId,
-          type: 'pdf_ready',
-          title: 'PDF da Proposta Pronto',
-          message: 'Seu PDF foi processado e está disponível para download.',
-          data: {
-            proposalId,
-            pdfUrl: saveResponse.data.finalUrl,
-            isCompressed: saveResponse.data.isCompressed,
-            compressionRatio: saveResponse.data.compressionRatio
-          }
-        });
-
-      console.log('📧 Notification sent to user:', userId);
-      
-    } else {
-      throw new Error(saveResponse.error || 'Unknown error during PDF save');
+    if (saveError) {
+      throw new Error(`PDF save failed: ${saveError.message}`);
     }
-    
+
+    // Update proposal status
+    await supabase
+      .from('proposals')
+      .update({
+        pdf_status: 'ready',
+        pdf_url: saveResult?.finalPdfUrl || pdfUrl,
+        pdf_processing_started_at: null
+      })
+      .eq('id', proposalId);
+
+    // Send success notification
+    await supabase.from('user_notifications').insert({
+      user_id: (await supabase.from('proposals').select('created_by').eq('id', proposalId).single()).data?.created_by,
+      type: 'pdf_ready',
+      title: 'PDF Pronto!',
+      message: 'Sua proposta em PDF está pronta para download.',
+      data: { 
+        proposalId, 
+        pdfUrl: saveResult?.finalPdfUrl || pdfUrl 
+      }
+    });
+
+    console.log('✅ Background PDF processing completed for proposal:', proposalId);
+
   } catch (error: any) {
     console.error('❌ Background PDF processing failed:', error);
     
-    // Atualizar proposta com erro
+    // Update proposal with error status
     await supabase
       .from('proposals')
       .update({
         pdf_status: 'error',
-        pdf_error: error.message
+        pdf_error: error.message,
+        pdf_processing_started_at: null
       })
       .eq('id', proposalId);
 
-    // Enviar notificação de erro
-    await supabase
-      .from('user_notifications')
-      .insert({
-        user_id: userId,
-        type: 'pdf_error',
-        title: 'Erro no Processamento do PDF',
-        message: 'Houve um problema ao processar seu PDF. Tente novamente.',
-        data: {
-          proposalId,
-          error: error.message
-        }
-      });
+    // Send error notification
+    await supabase.from('user_notifications').insert({
+      user_id: (await supabase.from('proposals').select('created_by').eq('id', proposalId).single()).data?.created_by,
+      type: 'pdf_error',
+      title: 'Erro no PDF',
+      message: 'Ocorreu um erro ao processar seu PDF. Tente novamente.',
+      data: { proposalId, error: error.message }
+    });
   }
 }
 
-// Gerar número de proposta único
 function generateProposalNumber(): string {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `PROP-${timestamp}-${random}`;
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  return `PROP-${year}${month}-${random}`;
 }
 
-// Mapear dados para template PDF.co
 function mapDataToPDFTemplate(data: any, templateId: string): Record<string, any> {
-  const templateData: Record<string, any> = {};
-
-  // Dados básicos da proposta
-  templateData.proposalNumber = generateProposalNumber();
-  templateData.proposalDate = new Date().toLocaleDateString('pt-BR');
-  templateData.clientName = getClientName(data);
-  templateData.proposalTitle = `Proposta de ${data.productType || 'Produto'}`;
+  const clientName = getClientName(data);
   
-  // Dados do cliente
-  if (data.clientData) {
-    templateData.clientEmail = data.clientData.email || '';
-    templateData.clientPhone = data.clientData.phone || '';
-    templateData.clientCity = data.clientData.city || '';
-    templateData.clientState = data.clientData.state || '';
-  }
-
-  // Dados do projeto
-  if (data.calculationInput) {
-    templateData.projectArea = data.calculationInput.roofSections?.[0]?.area || 0;
-    templateData.shingleType = data.calculationInput.shingleType || 'Standard';
-  }
-
-  // Items da proposta
-  if (data.pricing?.items) {
-    templateData.items = formatItemsToHTML(data.pricing.items);
-    templateData.itemsText = formatItems(data.pricing.items);
-  }
-
-  // Valores
-  templateData.subtotal = formatCurrency(data.pricing?.subtotal || 0);
-  templateData.discount = formatCurrency(data.pricing?.discountValue || 0);
-  templateData.total = formatCurrency(data.pricing?.finalValue || 0);
-
-  console.log('📋 Template data mapped for template', templateId, ':', Object.keys(templateData));
-  
-  return templateData;
+  return {
+    // Client information
+    client_name: clientName,
+    client_email: data.client_data?.email || data.customer_email || '',
+    client_phone: data.client_data?.phone || data.whatsapp_number || '',
+    client_address: formatAddress(data.client_data?.address || data.address),
+    
+    // Proposal details
+    proposal_number: data.proposal_number || generateProposalNumber(),
+    proposal_date: formatDate(new Date()),
+    valid_until: formatDate(data.valid_until || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+    
+    // Financial information
+    total_value: formatCurrency(data.total_value || 0),
+    discount_value: formatCurrency(data.discount_value || 0),
+    discount_percentage: data.discount_percentage || 0,
+    final_value: formatCurrency(data.final_value || data.total_value || 0),
+    
+    // Project information
+    project_type: data.project_type || 'shingle',
+    description: data.description || '',
+    
+    // Items
+    items_html: formatItemsToHTML(data.items || []),
+    items_text: formatItems(data.items || [])
+  };
 }
 
-// Helper functions
 function getClientName(data: any): string {
-  return data.clientData?.name || 
+  return data.client_data?.name || 
          data.customer_name || 
          data.whatsapp_name || 
          'Cliente';
+}
+
+function formatAddress(address: any): string {
+  if (typeof address === 'string') return address;
+  if (!address) return '';
+  
+  const parts = [
+    address.street,
+    address.number,
+    address.neighborhood,
+    address.city,
+    address.state,
+    address.zipCode
+  ].filter(Boolean);
+  
+  return parts.join(', ');
+}
+
+function formatDate(date: string | Date): string {
+  const d = new Date(date);
+  return d.toLocaleDateString('pt-BR');
 }
 
 function formatCurrency(value: number): string {
@@ -309,20 +298,85 @@ function formatCurrency(value: number): string {
 function formatItemsToHTML(items: any[]): string {
   if (!items || items.length === 0) return '';
   
-  return items.map(item => `
-    <tr>
-      <td>${item.name || item.custom_name}</td>
-      <td>${item.quantity}</td>
+  let html = '<table style="width: 100%; border-collapse: collapse;">';
+  html += '<thead><tr><th>Item</th><th>Qtd</th><th>Valor Unit.</th><th>Total</th></tr></thead>';
+  html += '<tbody>';
+  
+  items.forEach(item => {
+    html += `<tr>
+      <td>${item.custom_name || item.name || 'Item'}</td>
+      <td>${item.quantity || 1}</td>
       <td>${formatCurrency(item.unit_price || 0)}</td>
       <td>${formatCurrency(item.total_price || 0)}</td>
-    </tr>
-  `).join('');
+    </tr>`;
+  });
+  
+  html += '</tbody></table>';
+  return html;
 }
 
 function formatItems(items: any[]): string {
   if (!items || items.length === 0) return '';
   
   return items.map(item => 
-    `${item.name || item.custom_name}: ${item.quantity} un. - ${formatCurrency(item.total_price || 0)}`
+    `${item.custom_name || item.name || 'Item'} - Qtd: ${item.quantity || 1} - ${formatCurrency(item.total_price || 0)}`
   ).join('\n');
+}
+
+function generateHTMLContent(data: Record<string, any>): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .proposal-number { font-size: 24px; font-weight: bold; color: #2563eb; }
+        .section { margin-bottom: 30px; }
+        .section-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #1f2937; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background-color: #f9fafb; font-weight: bold; }
+        .total-section { background-color: #f0f9ff; padding: 20px; margin-top: 30px; }
+        .total-value { font-size: 24px; font-weight: bold; color: #2563eb; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>PROPOSTA COMERCIAL</h1>
+        <div class="proposal-number">${data.proposal_number}</div>
+        <p>Data: ${data.proposal_date} | Válida até: ${data.valid_until}</p>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Dados do Cliente</div>
+        <p><strong>Nome:</strong> ${data.client_name}</p>
+        <p><strong>E-mail:</strong> ${data.client_email}</p>
+        <p><strong>Telefone:</strong> ${data.client_phone}</p>
+        <p><strong>Endereço:</strong> ${data.client_address}</p>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Descrição do Projeto</div>
+        <p>${data.description}</p>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Itens da Proposta</div>
+        ${data.items_html}
+      </div>
+
+      <div class="total-section">
+        <p><strong>Valor Total:</strong> ${data.total_value}</p>
+        ${data.discount_value > 0 ? `<p><strong>Desconto:</strong> ${data.discount_value} (${data.discount_percentage}%)</p>` : ''}
+        <p class="total-value">Valor Final: ${data.final_value}</p>
+      </div>
+
+      <div class="section">
+        <p><em>Esta proposta é válida até ${data.valid_until}.</em></p>
+      </div>
+    </body>
+    </html>
+  `;
 }

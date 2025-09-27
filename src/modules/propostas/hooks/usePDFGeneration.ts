@@ -35,10 +35,16 @@ export function usePDFGeneration() {
     try {
       setGenerationStatus('Criando proposta...');
 
+      // Adicionar created_by se não existir
+      const proposalData = {
+        ...options.proposalData,
+        created_by: options.proposalData.created_by || (await supabase.auth.getUser()).data.user?.id
+      };
+
       const { data, error } = await supabase.functions.invoke('generate-pdf-proposal-async', {
         body: {
-          proposalData: options.proposalData,
-          templateId: options.templateId || getTemplateIdForProduct(options.proposalData.project_type || 'telha_shingle'),
+          proposalData,
+          templateId: options.templateId || getTemplateIdForProduct(proposalData.project_type || 'shingle'),
           shouldSaveToPermanentStorage: true,
           templatePreferences: {
             tone: 'professional',
@@ -49,6 +55,7 @@ export function usePDFGeneration() {
       });
 
       if (error) {
+        console.error('Edge function error:', error);
         throw new Error(`Erro do sistema: ${error.message}`);
       }
 
@@ -67,8 +74,9 @@ export function usePDFGeneration() {
         duration: 8000,
       });
 
+      const proposalKey = data.proposalId || `temp_${Date.now()}`;
       setGeneratedPdfs(prev => ({...prev, 
-        [options.proposalData.id]: {
+        [proposalKey]: {
           url: data.pdfUrl, 
           proposalId: data.proposalId,
           isCompressed: false, // Será comprimido em background
