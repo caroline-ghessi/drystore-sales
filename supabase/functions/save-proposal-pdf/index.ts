@@ -45,15 +45,54 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Download the PDF from temporary URL
-    console.log('📥 Downloading PDF from temporary URL...');
-    const downloadResponse = await fetch(pdfUrl);
+    // Download the PDF with retry logic
+    console.log('📥 Downloading PDF from temporary URL with retry logic...');
+    let pdfBuffer: ArrayBuffer | null = null;
+    let downloadAttempts = 0;
+    const maxDownloadAttempts = 3;
     
-    if (!downloadResponse.ok) {
-      throw new Error(`Failed to download PDF: ${downloadResponse.status} ${downloadResponse.statusText}`);
+    while (downloadAttempts < maxDownloadAttempts && !pdfBuffer) {
+      try {
+        downloadAttempts++;
+        console.log(`📥 Download attempt ${downloadAttempts}/${maxDownloadAttempts}...`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+        
+        const downloadResponse = await fetch(pdfUrl, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Supabase-Edge-Function'
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!downloadResponse.ok) {
+          throw new Error(`HTTP ${downloadResponse.status}: ${downloadResponse.statusText}`);
+        }
+        
+        pdfBuffer = await downloadResponse.arrayBuffer();
+        console.log(`✅ PDF downloaded successfully on attempt ${downloadAttempts}`);
+        
+      } catch (error: any) {
+        console.error(`❌ Download attempt ${downloadAttempts} failed:`, error.message);
+        
+        if (downloadAttempts >= maxDownloadAttempts) {
+          throw new Error(`Failed to download PDF after ${maxDownloadAttempts} attempts: ${error.message}`);
+        }
+        
+        // Wait before retry (exponential backoff)
+        const waitTime = Math.pow(2, downloadAttempts) * 1000;
+        console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
     }
 
-    let pdfBuffer = await downloadResponse.arrayBuffer();
+    if (!pdfBuffer) {
+      throw new Error('Failed to download PDF - buffer is null');
+    }
+
     let originalSize = pdfBuffer.byteLength;
     let isCompressed = false;
     let compressionRatio = 0;

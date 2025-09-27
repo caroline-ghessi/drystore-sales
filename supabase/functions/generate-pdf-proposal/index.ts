@@ -29,6 +29,10 @@ interface PDFGenerationResult {
   pdfUrl?: string;
   error?: string;
   jobId?: string;
+  isCompressed?: boolean;
+  originalSize?: number;
+  finalSize?: number;
+  compressionRatio?: number;
 }
 
 serve(async (req) => {
@@ -86,6 +90,7 @@ serve(async (req) => {
 
     // Map data to PDF.co template variables
     const templateData = mapDataToPDFTemplate(dataToSend, templateId);
+    const proposalNumber = (dataToSend as any).proposal_number || generateProposalNumber();
 
     console.log('📋 Template data prepared:', Object.keys(templateData));
 
@@ -120,50 +125,76 @@ serve(async (req) => {
 
     console.log('✅ PDF.co response received:', pdfcoResult);
 
-    // Verify PDF availability with retry logic
+    // Wait for PDF to be ready with enhanced retries
+    console.log('🔍 Verifying PDF readiness with enhanced validation:', pdfcoResult.url);
+    let pdfReadyForSave = false;
+    
     try {
-      await waitForPDFReadiness(pdfcoResult.url);
-      console.log('✅ PDF verified as accessible');
-    } catch (verifyError) {
-      console.warn('⚠️ PDF verification failed:', verifyError);
-      // Continue anyway, as the PDF might still be processable
+      await waitForPDFReadiness(pdfcoResult.url, 5, 2000); // 5 attempts, 2s intervals
+      pdfReadyForSave = true;
+      console.log('✅ PDF verified as accessible and ready for save');
+    } catch (error) {
+      console.warn('⚠️ PDF readiness check failed, will attempt save anyway with fallback');
+      pdfReadyForSave = false;
     }
 
-    // Save PDF to permanent storage and compress
-    let finalPdfUrl = pdfcoResult.url;
+    // Save PDF to permanent storage with robust error handling
+    console.log('💾 Attempting to save PDF to permanent storage...');
+    let finalPdfUrl = pdfcoResult.url; // fallback to temporary URL
+    let isCompressed = false;
+    let originalSize = 0;
+    let finalSize = 0;
+    let compressionRatio = 0;
+    let saveSuccess = false;
     
-    if (proposalId && pdfcoResult.url) {
+    if (pdfReadyForSave && proposalId) {
       try {
-        console.log('💾 Saving PDF to permanent storage...');
+        // Additional delay to ensure PDF is fully available
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        const saveResponse = await supabase.functions.invoke('save-proposal-pdf', {
+        const saveResult = await supabase.functions.invoke('save-proposal-pdf', {
           body: {
             pdfUrl: pdfcoResult.url,
             proposalId: proposalId,
-            proposalNumber: generateProposalNumber(),
+            proposalNumber: proposalNumber,
             shouldCompress: true,
             compressionLevel: 'medium'
           }
         });
-
-        if (saveResponse.data?.success && saveResponse.data.finalUrl) {
-          finalPdfUrl = saveResponse.data.finalUrl;
-          console.log(`✅ PDF saved permanently: ${finalPdfUrl}`);
-          
-          // Log compression results
-          if (saveResponse.data.isCompressed) {
-            console.log(`🗜️ Compression saved ${saveResponse.data.compressionRatio}% space`);
-          }
-        } else {
-          console.warn('⚠️ PDF save failed, using temporary URL:', saveResponse.error);
+        
+        if (saveResult.error) {
+          throw new Error(`Save PDF function error: ${saveResult.error.message}`);
         }
-      } catch (saveError) {
-        console.warn('⚠️ PDF save error, using temporary URL:', saveError);
+        
+        if (saveResult.data?.success && saveResult.data?.finalUrl) {
+          finalPdfUrl = saveResult.data.finalUrl;
+          isCompressed = saveResult.data.isCompressed || false;
+          originalSize = saveResult.data.originalSize || 0;
+          finalSize = saveResult.data.finalSize || 0;
+          compressionRatio = saveResult.data.compressionRatio || 0;
+          saveSuccess = true;
+          console.log('✅ PDF saved permanently with compression info:', {
+            finalPdfUrl,
+            isCompressed,
+            originalSize,
+            finalSize,
+            compressionRatio
+          });
+        } else {
+          throw new Error('Save PDF function returned invalid response');
+        }
+      } catch (saveError: any) {
+        console.warn('⚠️ PDF save failed, using temporary URL as fallback:', saveError);
+        saveSuccess = false;
+        // Continue with temporary URL as fallback
       }
+    } else {
+      console.log('⚠️ Skipping permanent save due to PDF readiness issues or missing proposalId, using temporary URL');
     }
 
     // Store PDF generation record in database with permanent URL
     if (proposalId) {
+      const pdfStatus = saveSuccess ? 'completed' : 'temporary';
       const { error: logError } = await supabase
         .from('proposal_pdfs')
         .insert({
@@ -171,18 +202,28 @@ serve(async (req) => {
           template_id: templateId,
           pdf_url: finalPdfUrl,
           job_id: pdfcoResult.jobId,
-          status: finalPdfUrl ? 'completed' : 'processing',
+          status: pdfStatus,
+          is_compressed: isCompressed,
+          original_size: originalSize,
+          final_size: finalSize,
+          compression_ratio: compressionRatio,
           generated_at: new Date().toISOString()
         });
 
       if (logError) {
         console.warn('⚠️ Failed to log PDF generation:', logError);
+      } else {
+        console.log(`✅ PDF generation logged with status: ${pdfStatus}`);
       }
     }
 
     const result: PDFGenerationResult = {
       success: true,
       pdfUrl: finalPdfUrl,
+      isCompressed,
+      originalSize,
+      finalSize,
+      compressionRatio,
       jobId: pdfcoResult.jobId
     };
 
@@ -205,6 +246,45 @@ serve(async (req) => {
     });
   }
 });
+
+// Enhanced helper function to wait for PDF readiness
+async function waitForPDFReadiness(pdfUrl: string, maxRetries: number = 5, baseWaitTime: number = 1000): Promise<void> {
+  console.log(`🔄 Starting PDF readiness check with ${maxRetries} max retries...`);
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout per attempt
+      
+      const response = await fetch(pdfUrl, { 
+        method: 'HEAD',
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Supabase-Edge-Function'
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok && response.headers.get('content-type')?.includes('pdf')) {
+        console.log(`✅ PDF is ready on attempt ${i + 1}`);
+        return; // PDF is ready and valid
+      }
+      
+      console.log(`❌ Attempt ${i + 1}/${maxRetries}: PDF not ready (status: ${response.status}, content-type: ${response.headers.get('content-type')})`);
+    } catch (error: any) {
+      console.log(`❌ Attempt ${i + 1}/${maxRetries}: PDF check failed - ${error.message}`);
+    }
+    
+    if (i < maxRetries - 1) {
+      const waitTime = baseWaitTime * Math.pow(1.5, i); // Exponential backoff: 1s, 1.5s, 2.25s, 3.375s
+      console.log(`⏳ Waiting ${Math.round(waitTime)}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
+  
+  throw new Error(`PDF not ready after ${maxRetries} attempts with enhanced validation`);
+}
 
 function mapDataToPDFTemplate(data: any, templateId: string): Record<string, any> {
   // Template-specific mappings
@@ -337,32 +417,4 @@ function generateProposalNumber(): string {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
   return `PROP-${year}${month}-${random}`;
-}
-
-// Helper function to verify PDF readiness
-async function waitForPDFReadiness(pdfUrl: string, maxRetries: number = 3): Promise<void> {
-  console.log(`🔍 Verifying PDF readiness: ${pdfUrl}`);
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(pdfUrl, { method: 'HEAD' });
-      
-      if (response.ok) {
-        console.log(`✅ PDF is ready after ${attempt} attempt(s)`);
-        return;
-      }
-      
-      console.log(`❌ Attempt ${attempt}/${maxRetries}: PDF not ready (status: ${response.status})`);
-    } catch (error) {
-      console.log(`❌ Attempt ${attempt}/${maxRetries}: Network error -`, (error as Error).message || error);
-    }
-    
-    if (attempt < maxRetries) {
-      const delay = 1000 * attempt; // Linear backoff: 1s, 2s, 3s
-      console.log(`⏳ Waiting ${delay}ms before retry...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-  
-  console.warn(`⚠️ PDF readiness check failed after ${maxRetries} attempts, proceeding anyway`);
 }

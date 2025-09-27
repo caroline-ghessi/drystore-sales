@@ -28,61 +28,102 @@ export function usePDFGeneration() {
   const { toast } = useToast();
 
   const generatePDFWithCompression = async (options: PDFGenerationOptions): Promise<{url: string, isCompressed: boolean} | null> => {
-    try {
-      setIsGenerating(true);
-      setGenerationStatus('🔄 Gerando PDF profissional...');
+    if (isGenerating) return null;
+    
+    setIsGenerating(true);
+    setGenerationStatus('Iniciando geração do PDF...');
+    
+    const maxRetries = 2;
+    let attempt = 0;
+    
+    while (attempt < maxRetries) {
+      try {
+        attempt++;
+        console.log(`🔄 PDF generation attempt ${attempt}/${maxRetries}...`);
+        
+        if (attempt > 1) {
+          setGenerationStatus(`Tentativa ${attempt}/${maxRetries}... Aguarde...`);
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } else {
+          setGenerationStatus('Gerando PDF via PDF.co...');
+        }
+        
+        const { data, error } = await supabase.functions.invoke('generate-pdf-proposal', {
+          body: {
+            proposalData: options.proposalData,
+            templateId: options.templateId || getTemplateIdForProduct(options.proposalData.project_type || 'telha_shingle'),
+            options: {
+              orientation: options.options?.orientation || 'portrait',
+              margins: options.options?.margins || { top: 20, right: 20, bottom: 20, left: 20 }
+            }
+          }
+        });
 
-      console.log('🔄 Generating PDF with options:', options);
+        if (error) {
+          console.error('❌ PDF generation error:', error);
+          throw new Error(`Erro na função: ${error.message}`);
+        }
 
-      const { data, error } = await supabase.functions.invoke('generate-pdf-proposal', {
-        body: options
-      });
+        if (!data?.success || !data?.pdfUrl) {
+          throw new Error(data?.error || 'Resposta inválida da geração de PDF');
+        }
 
-      if (error) {
-        throw new Error(error.message || 'Erro na geração do PDF');
-      }
-
-      const result: PDFGenerationResult = data;
-
-      if (!result.success) {
-        throw new Error(result.error || 'Falha na geração do PDF');
-      }
-
-      if (!result.pdfUrl) {
-        throw new Error('URL do PDF não foi retornada');
-      }
-
-      // PDF is already processed and compressed by generate-pdf-proposal
-      let finalUrl = result.pdfUrl;
-      let isCompressed = finalUrl !== result.pdfUrl;
-
-      // PDF is already saved by generate-pdf-proposal function
-      if (options.proposalId) {
+        console.log('✅ PDF generated successfully:', {
+          url: data.pdfUrl,
+          isCompressed: data.isCompressed,
+          originalSize: data.originalSize,
+          finalSize: data.finalSize
+        });
+        
         setGeneratedPdfs(prev => ({
           ...prev,
-          [options.proposalId!]: finalUrl
+          [options.proposalData.id]: {
+            url: data.pdfUrl,
+            isCompressed: data.isCompressed || false,
+            originalSize: data.originalSize,
+            finalSize: data.finalSize,
+            compressionRatio: data.compressionRatio
+          }
         }));
+
+        const statusMessage = data.isCompressed 
+          ? `PDF gerado e comprimido com sucesso! (${data.compressionRatio}% economia)`
+          : 'PDF gerado com sucesso!';
+        setGenerationStatus(statusMessage);
+        
+        // Clear status after 3 seconds
+        setTimeout(() => setGenerationStatus(''), 3000);
+        
+        return {
+          url: data.pdfUrl,
+          isCompressed: data.isCompressed || false
+        };
+
+      } catch (error: any) {
+        console.error(`❌ PDF generation attempt ${attempt} failed:`, error);
+        
+        if (attempt >= maxRetries) {
+          const finalError = `Falha após ${maxRetries} tentativas: ${error.message}`;
+          setGenerationStatus(finalError);
+          
+          toast({
+            variant: "destructive",
+            title: "Erro na Geração do PDF",
+            description: finalError
+          });
+          
+          // Clear error status after 5 seconds
+          setTimeout(() => setGenerationStatus(''), 5000);
+          
+          throw new Error(finalError);
+        }
+        
+        console.log(`⏳ Will retry in 2 seconds... (${maxRetries - attempt} attempts remaining)`);
       }
-
-      setGenerationStatus('✅ PDF pronto para download!');
-
-      console.log('✅ PDF generated successfully:', finalUrl);
-      return { url: finalUrl, isCompressed };
-
-    } catch (error: any) {
-      console.error('❌ PDF generation error:', error);
-      
-      toast({
-        variant: "destructive",
-        title: "Erro na Geração do PDF",
-        description: error.message || 'Erro inesperado ao gerar PDF'
-      });
-
-      return null;
-    } finally {
-      setIsGenerating(false);
-      setGenerationStatus('');
     }
+    
+    return null;
   };
 
   const generatePDF = async (options: PDFGenerationOptions): Promise<string | null> => {
