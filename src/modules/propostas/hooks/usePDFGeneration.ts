@@ -27,19 +27,31 @@ export function usePDFGeneration() {
   const [generationStatus, setGenerationStatus] = useState<string>('');
   const { toast } = useToast();
 
-  const generatePDFWithCompression = async (options: PDFGenerationOptions): Promise<{url: string, isCompressed: boolean, proposalId?: string, status?: string} | null> => {
-    console.log('🚀 Starting async PDF generation...', options);
+  const generatePDFWithCompression = async (options: PDFGenerationOptions, retryCount = 0): Promise<{url: string, isCompressed: boolean, proposalId?: string, status?: string} | null> => {
+    console.log('🚀 Starting async PDF generation...', { ...options, retryCount });
     setIsGenerating(true);
     setGenerationStatus('Iniciando processamento da proposta...');
 
     try {
       setGenerationStatus('Criando proposta...');
 
+      // Verificar se usuário está logado
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
+        throw new Error('Usuário não autenticado. Faça login novamente.');
+      }
+
       // Adicionar created_by se não existir
       const proposalData = {
         ...options.proposalData,
-        created_by: options.proposalData.created_by || (await supabase.auth.getUser()).data.user?.id
+        created_by: options.proposalData.created_by || userData.user.id
       };
+
+      console.log('📤 Invoking edge function with data:', {
+        hasProposalData: !!proposalData,
+        templateId: options.templateId || getTemplateIdForProduct(proposalData.project_type || 'shingle'),
+        userId: proposalData.created_by
+      });
 
       const { data, error } = await supabase.functions.invoke('generate-pdf-proposal-async', {
         body: {
@@ -54,9 +66,24 @@ export function usePDFGeneration() {
         }
       });
 
+      console.log('📥 Edge function response:', { data, error });
+
       if (error) {
         console.error('Edge function error:', error);
-        throw new Error(`Erro do sistema: ${error.message}`);
+        
+        // Tentar retry automático para alguns tipos de erro
+        if (retryCount < 2 && (
+          error.message?.includes('timeout') || 
+          error.message?.includes('network') ||
+          error.message?.includes('500')
+        )) {
+          console.log(`🔄 Retrying request (attempt ${retryCount + 1}/3)...`);
+          setGenerationStatus(`Tentando novamente... (${retryCount + 1}/3)`);
+          await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount + 1)));
+          return generatePDFWithCompression(options, retryCount + 1);
+        }
+        
+        throw new Error(`Erro do sistema: ${error.message || 'Falha na comunicação com servidor'}`);
       }
 
       if (!data?.success) {

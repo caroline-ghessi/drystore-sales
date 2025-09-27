@@ -30,93 +30,176 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  console.log('📥 Received request:', req.method);
+
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const { proposalData, templateId, shouldSaveToPermanentStorage = true, templatePreferences } = await req.json() as PDFGenerationRequest;
-
-    console.log('🚀 Starting async PDF generation for proposal:', proposalData?.id);
-
-    // Generate PDF using PDF.co API
-    const pdfCoApiKey = Deno.env.get('PDFCO_API_KEY');
-    if (!pdfCoApiKey) {
-      throw new Error('PDF.co API key not configured');
+    // Verificar configuração do Supabase
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('❌ Supabase configuration missing');
+      throw new Error('Configuração do Supabase não encontrada');
     }
 
-    // Map data to PDF template format
-    const templateData = mapDataToPDFTemplate(proposalData, templateId);
+    console.log('✅ Supabase configuration found');
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Call PDF.co API
+    // Parse request data
+    let requestData;
+    try {
+      requestData = await req.json() as PDFGenerationRequest;
+      console.log('✅ Request data parsed:', {
+        hasProposalData: !!requestData.proposalData,
+        templateId: requestData.templateId,
+        shouldSave: requestData.shouldSaveToPermanentStorage
+      });
+    } catch (error) {
+      console.error('❌ Failed to parse request JSON:', error);
+      throw new Error('Dados da requisição inválidos');
+    }
+
+    const { proposalData, templateId, shouldSaveToPermanentStorage = true, templatePreferences } = requestData;
+
+    if (!proposalData) {
+      throw new Error('Dados da proposta são obrigatórios');
+    }
+
+    console.log('🚀 Starting async PDF generation for proposal:', proposalData?.id || 'new');
+
+    // Verificar chave da API PDF.co
+    const pdfCoApiKey = Deno.env.get('PDFCO_API_KEY');
+    if (!pdfCoApiKey) {
+      console.error('❌ PDF.co API key not configured');
+      throw new Error('Chave da API PDF.co não configurada');
+    }
+
+    console.log('✅ PDF.co API key found, length:', pdfCoApiKey.length);
+
+    // Map data to PDF template format
+    console.log('📊 Mapping data to template...');
+    const templateData = mapDataToPDFTemplate(proposalData, templateId);
+    console.log('✅ Template data mapped successfully');
+
+    // Generate HTML content
+    console.log('🔨 Generating HTML content...');
+    const htmlContent = generateHTMLContent(templateData);
+    console.log('✅ HTML content generated, length:', htmlContent.length);
+
+    // Call PDF.co API with detailed logging
+    console.log('📡 Calling PDF.co API...');
+    const pdfPayload = {
+      html: htmlContent,
+      name: `proposta-${proposalData.proposal_number || Date.now()}.pdf`,
+      async: false,
+      margins: "10mm",
+      orientation: "Portrait"
+    };
+
     const pdfResponse = await fetch('https://api.pdf.co/v1/pdf/convert/from/html', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': pdfCoApiKey,
       },
-      body: JSON.stringify({
-        html: generateHTMLContent(templateData),
-        name: `proposta-${proposalData.proposal_number || 'temp'}.pdf`,
-        async: false,
-        margins: "10mm",
-        orientation: "Portrait"
-      }),
+      body: JSON.stringify(pdfPayload),
     });
 
+    console.log('📡 PDF.co API response status:', pdfResponse.status);
+
     if (!pdfResponse.ok) {
-      throw new Error(`PDF.co API error: ${pdfResponse.statusText}`);
+      const errorText = await pdfResponse.text();
+      console.error('❌ PDF.co API error:', {
+        status: pdfResponse.status,
+        statusText: pdfResponse.statusText,
+        body: errorText
+      });
+      throw new Error(`Erro na API PDF.co: ${pdfResponse.status} - ${errorText}`);
     }
 
     const pdfResult = await pdfResponse.json();
+    console.log('✅ PDF.co API response:', {
+      success: !!pdfResult.url,
+      url: pdfResult.url?.substring(0, 50) + '...',
+      error: pdfResult.error
+    });
     
     if (!pdfResult.url) {
-      throw new Error('PDF generation failed: no URL returned');
+      console.error('❌ PDF generation failed: no URL returned', pdfResult);
+      throw new Error('Falha na geração do PDF: nenhuma URL retornada');
     }
 
     // Save proposal to database immediately
+    console.log('💾 Saving proposal to database...');
     const proposalNumber = generateProposalNumber();
+    
+    const proposalToInsert = {
+      proposal_number: proposalNumber,
+      title: proposalData.title || `Proposta ${proposalNumber}`,
+      description: proposalData.description || '',
+      project_type: proposalData.project_type || 'shingle',
+      total_value: proposalData.total_value || 0,
+      discount_value: proposalData.discount_value || 0,
+      discount_percentage: proposalData.discount_percentage || 0,
+      final_value: proposalData.final_value || proposalData.total_value || 0,
+      status: 'draft',
+      valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      acceptance_link: `${supabaseUrl?.replace('/rest/v1', '')}/proposal/${proposalNumber}`,
+      client_data: proposalData.client_data || {},
+      created_by: proposalData.created_by,
+      pdf_status: 'processing',
+      pdf_url: pdfResult.url
+    };
+
+    console.log('📊 Proposal data to insert:', {
+      proposal_number: proposalNumber,
+      project_type: proposalData.project_type,
+      total_value: proposalData.total_value,
+      created_by: proposalData.created_by
+    });
+
     const { data: savedProposal, error: saveError } = await supabase
       .from('proposals')
-      .insert({
-        proposal_number: proposalNumber,
-        title: proposalData.title || `Proposta ${proposalNumber}`,
-        description: proposalData.description || '',
-        project_type: proposalData.project_type || 'shingle',
-        total_value: proposalData.total_value || 0,
-        discount_value: proposalData.discount_value || 0,
-        discount_percentage: proposalData.discount_percentage || 0,
-        final_value: proposalData.final_value || proposalData.total_value || 0,
-        status: 'draft',
-        valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        acceptance_link: `${Deno.env.get('SUPABASE_URL')?.replace('/rest/v1', '')}/proposal/${proposalNumber}`,
-        client_data: proposalData.client_data || {},
-        created_by: proposalData.created_by,
-        pdf_status: 'processing',
-        pdf_url: pdfResult.url
-      })
+      .insert(proposalToInsert)
       .select()
       .single();
 
     if (saveError) {
-      throw new Error(`Database save error: ${saveError.message}`);
+      console.error('❌ Database save error:', saveError);
+      throw new Error(`Erro ao salvar proposta: ${saveError.message}`);
     }
 
-    console.log('✅ Proposal saved, starting background PDF processing');
+    console.log('✅ Proposal saved successfully:', savedProposal.id);
+
+    console.log('✅ Starting background PDF processing');
 
     // Start background processing
     if (shouldSaveToPermanentStorage) {
+      console.log('🔄 Scheduling background PDF processing...');
       processPDFInBackground(savedProposal.id, pdfResult.url, supabase);
     }
 
     // Send immediate success notification
-    await supabase.from('user_notifications').insert({
-      user_id: proposalData.created_by,
-      type: 'pdf_processing',
-      title: 'Proposta Criada',
-      message: 'Sua proposta foi criada com sucesso. O PDF está sendo processado.',
-      data: { proposalId: savedProposal.id, proposalNumber }
+    console.log('📢 Sending success notification...');
+    try {
+      await supabase.from('user_notifications').insert({
+        user_id: proposalData.created_by,
+        type: 'pdf_processing',
+        title: 'Proposta Criada',
+        message: 'Sua proposta foi criada com sucesso. O PDF está sendo processado.',
+        data: { proposalId: savedProposal.id, proposalNumber }
+      });
+      console.log('✅ Notification sent successfully');
+    } catch (notifError) {
+      console.error('⚠️ Failed to send notification:', notifError);
+      // Não falhar por causa de notificação
+    }
+
+    console.log('✅ PDF generation completed successfully:', {
+      proposalId: savedProposal.id,
+      proposalNumber,
+      pdfUrl: pdfResult.url?.substring(0, 50) + '...'
     });
 
     return new Response(
@@ -135,12 +218,16 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('❌ PDF generation failed:', error);
+    console.error('❌ PDF generation failed:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || 'Unknown error occurred'
+        error: error.message || 'Erro desconhecido durante geração do PDF'
       } as PDFGenerationResult),
       { 
         status: 500,
