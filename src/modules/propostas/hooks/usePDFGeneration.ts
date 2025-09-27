@@ -27,103 +27,77 @@ export function usePDFGeneration() {
   const [generationStatus, setGenerationStatus] = useState<string>('');
   const { toast } = useToast();
 
-  const generatePDFWithCompression = async (options: PDFGenerationOptions): Promise<{url: string, isCompressed: boolean} | null> => {
-    if (isGenerating) return null;
-    
+  const generatePDFWithCompression = async (options: PDFGenerationOptions): Promise<{url: string, isCompressed: boolean, proposalId?: string, status?: string} | null> => {
+    console.log('🚀 Starting async PDF generation...', options);
     setIsGenerating(true);
-    setGenerationStatus('Iniciando geração do PDF...');
-    
-    const maxRetries = 2;
-    let attempt = 0;
-    
-    while (attempt < maxRetries) {
-      try {
-        attempt++;
-        console.log(`🔄 PDF generation attempt ${attempt}/${maxRetries}...`);
-        
-        if (attempt > 1) {
-          setGenerationStatus(`Tentativa ${attempt}/${maxRetries}... Aguarde...`);
-          // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        } else {
-          setGenerationStatus('Gerando PDF via PDF.co...');
-        }
-        
-        const { data, error } = await supabase.functions.invoke('generate-pdf-proposal', {
-          body: {
-            proposalData: options.proposalData,
-            templateId: options.templateId || getTemplateIdForProduct(options.proposalData.project_type || 'telha_shingle'),
-            options: {
-              orientation: options.options?.orientation || 'portrait',
-              margins: options.options?.margins || { top: 20, right: 20, bottom: 20, left: 20 }
-            }
+    setGenerationStatus('Iniciando processamento da proposta...');
+
+    try {
+      setGenerationStatus('Criando proposta...');
+
+      const { data, error } = await supabase.functions.invoke('generate-pdf-proposal-async', {
+        body: {
+          proposalData: options.proposalData,
+          templateId: options.templateId || getTemplateIdForProduct(options.proposalData.project_type || 'telha_shingle'),
+          shouldSaveToPermanentStorage: true,
+          templatePreferences: {
+            tone: 'professional',
+            includeWarranty: true,
+            includeTechnicalSpecs: true
           }
-        });
-
-        if (error) {
-          console.error('❌ PDF generation error:', error);
-          throw new Error(`Erro na função: ${error.message}`);
         }
+      });
 
-        if (!data?.success || !data?.pdfUrl) {
-          throw new Error(data?.error || 'Resposta inválida da geração de PDF');
-        }
-
-        console.log('✅ PDF generated successfully:', {
-          url: data.pdfUrl,
-          isCompressed: data.isCompressed,
-          originalSize: data.originalSize,
-          finalSize: data.finalSize
-        });
-        
-        setGeneratedPdfs(prev => ({
-          ...prev,
-          [options.proposalData.id]: {
-            url: data.pdfUrl,
-            isCompressed: data.isCompressed || false,
-            originalSize: data.originalSize,
-            finalSize: data.finalSize,
-            compressionRatio: data.compressionRatio
-          }
-        }));
-
-        const statusMessage = data.isCompressed 
-          ? `PDF gerado e comprimido com sucesso! (${data.compressionRatio}% economia)`
-          : 'PDF gerado com sucesso!';
-        setGenerationStatus(statusMessage);
-        
-        // Clear status after 3 seconds
-        setTimeout(() => setGenerationStatus(''), 3000);
-        
-        return {
-          url: data.pdfUrl,
-          isCompressed: data.isCompressed || false
-        };
-
-      } catch (error: any) {
-        console.error(`❌ PDF generation attempt ${attempt} failed:`, error);
-        
-        if (attempt >= maxRetries) {
-          const finalError = `Falha após ${maxRetries} tentativas: ${error.message}`;
-          setGenerationStatus(finalError);
-          
-          toast({
-            variant: "destructive",
-            title: "Erro na Geração do PDF",
-            description: finalError
-          });
-          
-          // Clear error status after 5 seconds
-          setTimeout(() => setGenerationStatus(''), 5000);
-          
-          throw new Error(finalError);
-        }
-        
-        console.log(`⏳ Will retry in 2 seconds... (${maxRetries - attempt} attempts remaining)`);
+      if (error) {
+        throw new Error(`Erro do sistema: ${error.message}`);
       }
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Falha na geração da proposta');
+      }
+
+      console.log('✅ Proposal created, PDF processing in background:', data);
+      
+      setGenerationStatus('Proposta criada! PDF sendo processado...');
+      
+      // Mostrar mensagem de sucesso para o usuário
+      toast({
+        title: "Proposta criada com sucesso!",
+        description: "Seu PDF está sendo processado. Você será notificado quando estiver pronto.",
+        duration: 8000,
+      });
+
+      setGeneratedPdfs(prev => ({...prev, 
+        [options.proposalData.id]: {
+          url: data.pdfUrl, 
+          proposalId: data.proposalId,
+          isCompressed: false, // Será comprimido em background
+          status: 'processing'
+        }
+      }));
+
+      return {
+        url: data.pdfUrl,
+        isCompressed: false,
+        proposalId: data.proposalId,
+        status: 'processing'
+      };
+
+    } catch (error: any) {
+      console.error('❌ Proposal creation failed:', error);
+      setGenerationStatus('Erro na criação da proposta');
+      
+      toast({
+        title: "Erro na criação da proposta",
+        description: error.message || "Ocorreu um erro inesperado. Tente novamente.",
+        variant: "destructive",
+        duration: 5000,
+      });
+
+      return null;
+    } finally {
+      setIsGenerating(false);
     }
-    
-    return null;
   };
 
   const generatePDF = async (options: PDFGenerationOptions): Promise<string | null> => {

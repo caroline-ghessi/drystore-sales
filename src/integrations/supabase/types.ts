@@ -2154,6 +2154,9 @@ export type Database = {
           final_value: number | null
           id: string
           opportunity_id: string | null
+          pdf_error: string | null
+          pdf_processing_started_at: string | null
+          pdf_status: string | null
           project_type: Database["public"]["Enums"]["product_category"] | null
           proposal_number: string
           status: Database["public"]["Enums"]["proposal_status"] | null
@@ -2177,6 +2180,9 @@ export type Database = {
           final_value?: number | null
           id?: string
           opportunity_id?: string | null
+          pdf_error?: string | null
+          pdf_processing_started_at?: string | null
+          pdf_status?: string | null
           project_type?: Database["public"]["Enums"]["product_category"] | null
           proposal_number: string
           status?: Database["public"]["Enums"]["proposal_status"] | null
@@ -2200,6 +2206,9 @@ export type Database = {
           final_value?: number | null
           id?: string
           opportunity_id?: string | null
+          pdf_error?: string | null
+          pdf_processing_started_at?: string | null
+          pdf_status?: string | null
           project_type?: Database["public"]["Enums"]["product_category"] | null
           proposal_number?: string
           status?: Database["public"]["Enums"]["proposal_status"] | null
@@ -2534,6 +2543,42 @@ export type Database = {
           level?: string
           message?: string
           source?: string
+        }
+        Relationships: []
+      }
+      user_notifications: {
+        Row: {
+          created_at: string | null
+          data: Json | null
+          id: string
+          message: string
+          read: boolean | null
+          title: string
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          message: string
+          read?: boolean | null
+          title: string
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          message?: string
+          read?: boolean | null
+          title?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
