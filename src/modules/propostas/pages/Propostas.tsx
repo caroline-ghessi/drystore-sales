@@ -1,74 +1,36 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calculator, FileText, Zap } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { ProposalGenerator } from '../components/generator/ProposalGenerator';
 
 export default function Propostas() {
-  const [activeTab, setActiveTab] = useState('generator');
-
   return (
-    <div className="p-6 space-y-6 bg-drystore-light-gray min-h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-drystore-dark-gray">Criar Nova Proposta</h1>
-          <p className="text-drystore-medium-gray mt-1">
-            Sistema inteligente para geração automática de propostas com IA
+    <div className="min-h-full bg-gradient-to-br from-background to-muted/20">
+      <div className="container mx-auto p-6 space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-full">
+              <Sparkles className="h-6 w-6 text-primary" />
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+              Nova Proposta
+            </h1>
+            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+              ✨ Powered by IA
+            </Badge>
+          </div>
+          
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Crie propostas profissionais em segundos com nossa tecnologia de inteligência artificial avançada
           </p>
         </div>
-        <Badge variant="default" className="bg-drystore-orange text-drystore-white">
-          ✨ Com IA
-        </Badge>
-      </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="generator" className="flex items-center">
-            <Zap className="mr-2 h-4 w-4" />
-            Gerador IA
-          </TabsTrigger>
-          <TabsTrigger value="list">
-            <FileText className="mr-2 h-4 w-4" />
-            Lista
-          </TabsTrigger>
-          <TabsTrigger value="analytics">
-            <Calculator className="mr-2 h-4 w-4" />
-            Analytics
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="generator">
+        {/* Generator */}
+        <div className="max-w-4xl mx-auto">
           <ProposalGenerator />
-        </TabsContent>
-
-        <TabsContent value="list">
-          <Card>
-            <CardHeader>
-              <CardTitle>Lista de Propostas</CardTitle>
-              <CardDescription>Gerencie todas as propostas criadas</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Em desenvolvimento</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="analytics">
-          <Card>
-            <CardHeader>
-              <CardTitle>Analytics</CardTitle>
-              <CardDescription>Métricas e relatórios de propostas</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Em desenvolvimento</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
   );
 }
