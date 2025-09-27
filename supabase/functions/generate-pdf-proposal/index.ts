@@ -129,16 +129,49 @@ serve(async (req) => {
       // Continue anyway, as the PDF might still be processable
     }
 
-    // Store PDF generation record in database
+    // Save PDF to permanent storage and compress
+    let finalPdfUrl = pdfcoResult.url;
+    
+    if (proposalId && pdfcoResult.url) {
+      try {
+        console.log('💾 Saving PDF to permanent storage...');
+        
+        const saveResponse = await supabase.functions.invoke('save-proposal-pdf', {
+          body: {
+            pdfUrl: pdfcoResult.url,
+            proposalId: proposalId,
+            proposalNumber: generateProposalNumber(),
+            shouldCompress: true,
+            compressionLevel: 'medium'
+          }
+        });
+
+        if (saveResponse.data?.success && saveResponse.data.finalUrl) {
+          finalPdfUrl = saveResponse.data.finalUrl;
+          console.log(`✅ PDF saved permanently: ${finalPdfUrl}`);
+          
+          // Log compression results
+          if (saveResponse.data.isCompressed) {
+            console.log(`🗜️ Compression saved ${saveResponse.data.compressionRatio}% space`);
+          }
+        } else {
+          console.warn('⚠️ PDF save failed, using temporary URL:', saveResponse.error);
+        }
+      } catch (saveError) {
+        console.warn('⚠️ PDF save error, using temporary URL:', saveError);
+      }
+    }
+
+    // Store PDF generation record in database with permanent URL
     if (proposalId) {
       const { error: logError } = await supabase
         .from('proposal_pdfs')
         .insert({
           proposal_id: proposalId,
           template_id: templateId,
-          pdf_url: pdfcoResult.url,
+          pdf_url: finalPdfUrl,
           job_id: pdfcoResult.jobId,
-          status: pdfcoResult.url ? 'completed' : 'processing',
+          status: finalPdfUrl ? 'completed' : 'processing',
           generated_at: new Date().toISOString()
         });
 
@@ -149,7 +182,7 @@ serve(async (req) => {
 
     const result: PDFGenerationResult = {
       success: true,
-      pdfUrl: pdfcoResult.url,
+      pdfUrl: finalPdfUrl,
       jobId: pdfcoResult.jobId
     };
 

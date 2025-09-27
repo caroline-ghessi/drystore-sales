@@ -52,65 +52,12 @@ export function usePDFGeneration() {
         throw new Error('URL do PDF não foi retornada');
       }
 
-      setGenerationStatus('📦 Otimizando arquivo...');
-
-      // Try to compress PDF with retry logic
+      // PDF is already processed and compressed by generate-pdf-proposal
       let finalUrl = result.pdfUrl;
-      let isCompressed = false;
+      let isCompressed = finalUrl !== result.pdfUrl;
 
-      try {
-        setGenerationStatus('📦 Aguardando processamento...');
-        
-        // Wait a bit for PDF to be fully available
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const compressResponse = await supabase.functions.invoke('compress-pdf', {
-          body: {
-            pdfUrl: result.pdfUrl,
-            compressionLevel: 'medium',
-            options: {
-              name: `proposal-${options.proposalId || 'temp'}-compressed.pdf`
-            }
-          }
-        });
-
-        if (compressResponse.error) {
-          console.warn('⚠️ Compression service error:', compressResponse.error);
-          throw new Error(compressResponse.error.message || 'Compression failed');
-        }
-
-        if (compressResponse.data?.success && compressResponse.data.compressedUrl) {
-          finalUrl = compressResponse.data.compressedUrl;
-          isCompressed = true;
-          console.log('✅ PDF compressed successfully, saved:', compressResponse.data.compressionRatio + '% space');
-        } else {
-          console.warn('⚠️ Compression returned no compressed URL');
-        }
-      } catch (compressionError: any) {
-        console.warn('⚠️ PDF compression failed, using original:', compressionError.message || compressionError);
-        // Continue with original PDF if compression fails
-      }
-
-      // Save PDF to database if proposalId exists
+      // PDF is already saved by generate-pdf-proposal function
       if (options.proposalId) {
-        try {
-          const { error: saveError } = await supabase
-            .from('proposal_pdfs')
-            .insert({
-              proposal_id: options.proposalId,
-              pdf_url: finalUrl,
-              is_compressed: isCompressed,
-              template_id: options.templateId,
-              created_at: new Date().toISOString()
-            });
-
-          if (saveError) {
-            console.warn('⚠️ Could not save PDF to database:', saveError);
-          }
-        } catch (saveError) {
-          console.warn('⚠️ Database save failed:', saveError);
-        }
-
         setGeneratedPdfs(prev => ({
           ...prev,
           [options.proposalId!]: finalUrl
