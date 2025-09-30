@@ -91,67 +91,20 @@ serve(async (req) => {
     }
 
     // A mensagem já foi salva pelo webhook, não precisamos salvar novamente
-    // Apenas gerenciamos o buffer aqui
+    // O buffer será processado automaticamente pelo worker periódico (process-pending-buffers)
+    // que roda a cada 60 segundos no frontend
 
-    // Agendar processamento do buffer usando setTimeout como fallback
-    // Em ambiente de produção, seria melhor usar um sistema de filas dedicado
-    console.log(`Scheduling buffer processing for conversation ${conversationId} in 60 seconds`);
-    
-    // Usar EdgeRuntime.waitUntil para agendar o processamento do buffer
-    const processBufferTask = async () => {
-      await new Promise(resolve => setTimeout(resolve, 60000)); // 60 segundos
-      
-      try {
-        console.log(`Processing buffer for conversation ${conversationId}`);
-        
-        const result = await supabase.functions.invoke('process-message-buffer', {
-          body: { conversationId }
-        });
-        
-        if (result.error) {
-          console.error('Error processing buffer:', result.error);
-          await supabase.from('system_logs').insert({
-            level: 'error',
-            source: 'process-whatsapp-message-scheduler',
-            message: 'Failed to process buffer',
-            data: { 
-              conversationId, 
-              error: result.error.message,
-              scheduled_at: shouldProcessAt.toISOString()
-            }
-          });
-        } else {
-          console.log(`Buffer processed successfully for conversation ${conversationId}:`, result.data);
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error('Error in scheduled buffer processing:', error);
-        await supabase.from('system_logs').insert({
-          level: 'error',
-          source: 'process-whatsapp-message-scheduler',
-          message: 'Exception in scheduled buffer processing',
-          data: { 
-            conversationId, 
-            error: errorMessage,
-            scheduled_at: shouldProcessAt.toISOString()
-          }
-        });
-      }
-    };
-
-    // Executar o agendamento em background
-    processBufferTask().catch(error => 
-      console.error('Error in background buffer processing:', error)
-    );
-
-    console.log(`Message buffered for conversation ${conversationId}, will process at ${shouldProcessAt.toISOString()}`);
+    console.log(`Buffer ${existingBuffer?.id || 'new'} ready for processing at ${shouldProcessAt.toISOString()}`);
 
     return new Response(JSON.stringify({ 
       success: true, 
       buffered: true,
-      will_process_at: shouldProcessAt.toISOString()
+      conversation_id: conversationId,
+      should_process_at: shouldProcessAt.toISOString(),
+      will_be_processed_by_worker: true
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
     });
 
   } catch (error) {
