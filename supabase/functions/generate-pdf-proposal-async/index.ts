@@ -139,25 +139,24 @@ serve(async (req) => {
 
     // Call PDF.co API usando o template
     console.log('📡 Calling PDF.co API with template...');
-    console.log('📊 Template data to send:', {
-      templateId: pdfCoTemplateId,
-      templateDataKeys: Object.keys(templateData),
-      templateDataSample: {
-        nome_do_cliente: templateData.nome_do_cliente,
-        data_proposta: templateData.data_proposta,
-        valor_total: templateData.valor_total
-      },
-      filename: `proposta-${proposal.proposal_number || Date.now()}.pdf`
-    });
 
+    // IMPORTANTE: templateData deve ser STRING para PDF.co
     const pdfPayload = {
       templateId: pdfCoTemplateId,
-      templateData: JSON.stringify(templateData), // ✅ Converter para string JSON
+      templateData: JSON.stringify(templateData), // ✅ STRINGIFY AQUI!
       name: `proposta-${proposal.proposal_number || Date.now()}.pdf`,
       async: false
     };
 
-    const pdfResponse = await fetch('https://api.pdf.co/v1/pdf/convert/from/html-template', {
+    // Log para debug
+    console.log('📡 Payload sendo enviado:', {
+      templateId: pdfPayload.templateId,
+      templateDataType: typeof pdfPayload.templateData,
+      name: pdfPayload.name
+    });
+
+    // ENDPOINT CORRETO: /v1/pdf/convert/from/html (não html-template!)
+    const pdfResponse = await fetch('https://api.pdf.co/v1/pdf/convert/from/html', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
