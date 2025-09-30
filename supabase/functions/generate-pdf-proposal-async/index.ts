@@ -139,9 +139,20 @@ serve(async (req) => {
 
     // Call PDF.co API usando o template
     console.log('📡 Calling PDF.co API with template...');
+    console.log('📊 Template data to send:', {
+      templateId: pdfCoTemplateId,
+      templateDataKeys: Object.keys(templateData),
+      templateDataSample: {
+        nome_do_cliente: templateData.nome_do_cliente,
+        data_proposta: templateData.data_proposta,
+        valor_total: templateData.valor_total
+      },
+      filename: `proposta-${proposal.proposal_number || Date.now()}.pdf`
+    });
+
     const pdfPayload = {
       templateId: pdfCoTemplateId,
-      templateData: templateData,
+      templateData: JSON.stringify(templateData), // ✅ Converter para string JSON
       name: `proposta-${proposal.proposal_number || Date.now()}.pdf`,
       async: false
     };
@@ -162,7 +173,12 @@ serve(async (req) => {
       console.error('❌ PDF.co API error:', {
         status: pdfResponse.status,
         statusText: pdfResponse.statusText,
-        body: errorText
+        body: errorText,
+        sentPayload: {
+          templateId: pdfCoTemplateId,
+          templateDataType: typeof pdfPayload.templateData,
+          filename: pdfPayload.name
+        }
       });
       throw new Error(`Erro na API PDF.co: ${pdfResponse.status} - ${errorText}`);
     }
