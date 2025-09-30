@@ -157,7 +157,7 @@ serve(async (req) => {
       async: false
     };
 
-    const pdfResponse = await fetch('https://api.pdf.co/v1/pdf/convert/from/html', {
+    const pdfResponse = await fetch('https://api.pdf.co/v1/pdf/convert/from/html-template', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
