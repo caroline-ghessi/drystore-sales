@@ -90,15 +90,8 @@ serve(async (req) => {
       console.log(`Created new buffer ${newBuffer.id} for conversation ${conversationId}`);
     }
 
-    // Salvar mensagem do cliente imediatamente
-    await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        content: message,
-        sender_type: 'customer',
-        status: 'delivered'
-      });
+    // A mensagem já foi salva pelo webhook, não precisamos salvar novamente
+    // Apenas gerenciamos o buffer aqui
 
     // Agendar processamento do buffer usando setTimeout como fallback
     // Em ambiente de produção, seria melhor usar um sistema de filas dedicado
