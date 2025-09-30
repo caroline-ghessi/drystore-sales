@@ -119,16 +119,18 @@ serve(async (req) => {
     }
 
     const pdfResult = await pdfResponse.json();
-    console.log('✅ PDF.co API response:', {
-      success: !!pdfResult.url,
-      url: pdfResult.url?.substring(0, 50) + '...',
-      error: pdfResult.error
-    });
     
-    if (!pdfResult.url) {
-      console.error('❌ PDF generation failed: no URL returned', pdfResult);
-      throw new Error('Falha na geração do PDF: nenhuma URL retornada');
+    // Validar resposta segundo documentação PDF.co
+    if (pdfResult.error === true || !pdfResult.url) {
+      console.error('❌ PDF.co error:', pdfResult);
+      throw new Error(`PDF.co API error: ${pdfResult.message || 'URL não retornada'}`);
     }
+
+    console.log('✅ PDF gerado:', {
+      url: pdfResult.url.substring(0, 50) + '...',
+      pageCount: pdfResult.pageCount,
+      status: pdfResult.status
+    });
 
     // Save proposal to database immediately
     console.log('💾 Saving proposal to database...');
@@ -240,11 +242,11 @@ serve(async (req) => {
   }
 });
 
-async function processPDFInBackground(proposalId: string, pdfUrl: string, supabase: any) {
+async function processPDFInBackground(proposalId: string, pdfUrl: string, supabase: any, retries = 0) {
   try {
-    console.log('🔄 Processing PDF in background for proposal:', proposalId);
+    console.log(`🔄 Processing PDF in background for proposal: ${proposalId} (attempt ${retries + 1}/3)`);
     
-    // Wait a bit to ensure PDF is available
+    // Wait a bit to ensure PDF is available (URL temporária)
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Save PDF to permanent storage
@@ -256,16 +258,24 @@ async function processPDFInBackground(proposalId: string, pdfUrl: string, supaba
       }
     });
 
-    if (saveError) {
-      throw new Error(`PDF save failed: ${saveError.message}`);
+    // Retry logic: até 3 tentativas com delay incremental
+    if (saveError && retries < 2) {
+      const delay = 5000 * (retries + 1); // 5s, 10s
+      console.warn(`⚠️ PDF save failed (attempt ${retries + 1}), retrying in ${delay}ms...`, saveError);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return processPDFInBackground(proposalId, pdfUrl, supabase, retries + 1);
     }
 
-    // Update proposal status
+    if (saveError) {
+      throw new Error(`PDF save failed after ${retries + 1} attempts: ${saveError.message}`);
+    }
+
+    // Update proposal status with permanent URL
     await supabase
       .from('proposals')
       .update({
         pdf_status: 'ready',
-        pdf_url: saveResult?.finalPdfUrl || pdfUrl,
+        pdf_url: saveResult?.finalPdfUrl || pdfUrl, // URL permanente do Storage
         pdf_processing_started_at: null
       })
       .eq('id', proposalId);

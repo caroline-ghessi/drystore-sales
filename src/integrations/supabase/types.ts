@@ -2157,6 +2157,7 @@ export type Database = {
           pdf_error: string | null
           pdf_processing_started_at: string | null
           pdf_status: string | null
+          pdf_url: string | null
           project_type: Database["public"]["Enums"]["product_category"] | null
           proposal_number: string
           status: Database["public"]["Enums"]["proposal_status"] | null
@@ -2183,6 +2184,7 @@ export type Database = {
           pdf_error?: string | null
           pdf_processing_started_at?: string | null
           pdf_status?: string | null
+          pdf_url?: string | null
           project_type?: Database["public"]["Enums"]["product_category"] | null
           proposal_number: string
           status?: Database["public"]["Enums"]["proposal_status"] | null
@@ -2209,6 +2211,7 @@ export type Database = {
           pdf_error?: string | null
           pdf_processing_started_at?: string | null
           pdf_status?: string | null
+          pdf_url?: string | null
           project_type?: Database["public"]["Enums"]["product_category"] | null
           proposal_number?: string
           status?: Database["public"]["Enums"]["proposal_status"] | null
