@@ -44,6 +44,49 @@ interface PDFGenerationResult {
   isNewProposal?: boolean;
 }
 
+// Mapeamento de tipos de produto: Frontend → Database enum
+const PRODUCT_TYPE_MAPPING: Record<string, string> = {
+  // Frontend values → Database enum values
+  'shingle': 'telha_shingle',
+  'telha_shingle': 'telha_shingle',
+  'solar': 'energia_solar',
+  'energia_solar': 'energia_solar',
+  'drywall': 'drywall_divisorias',
+  'drywall_divisorias': 'drywall_divisorias',
+  'steel': 'steel_frame',
+  'steel_frame': 'steel_frame',
+  'forros': 'forros',
+  'ferramentas': 'ferramentas',
+  'impermeabilizacao': 'impermeabilizacao_mapei',
+  'impermeabilizacao_mapei': 'impermeabilizacao_mapei',
+  'piso': 'preparacao_piso_mapei',
+  'preparacao_piso_mapei': 'preparacao_piso_mapei',
+  'pisos': 'pisos',
+  'acabamentos': 'acabamentos',
+  'indefinido': 'indefinido',
+  'geral': 'indefinido'
+};
+
+/**
+ * Mapeia o tipo de produto do frontend para o valor correto do enum do banco
+ */
+function mapProjectType(frontendType: string | undefined): string {
+  if (!frontendType) {
+    console.log('⚠️ No project_type provided, using default: indefinido');
+    return 'indefinido';
+  }
+  
+  const mapped = PRODUCT_TYPE_MAPPING[frontendType.toLowerCase()] || 'indefinido';
+  
+  if (mapped === 'indefinido' && frontendType !== 'indefinido' && frontendType !== 'geral') {
+    console.warn(`⚠️ Unknown project_type "${frontendType}", mapped to: indefinido`);
+  } else {
+    console.log(`✅ Mapped project_type: "${frontendType}" → "${mapped}"`);
+  }
+  
+  return mapped;
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -204,11 +247,17 @@ serve(async (req) => {
       console.log('💾 Saving new proposal to database...');
       proposalNumber = generateProposalNumber();
       
+      // Log de mapeamento para debug
+      console.log('📋 Mapping project_type:', {
+        original: proposal.project_type,
+        mapped: mapProjectType(proposal.project_type)
+      });
+      
       const proposalToInsert = {
         proposal_number: proposalNumber,
         title: proposal.title || `Proposta ${proposalNumber}`,
         description: proposal.description || '',
-        project_type: proposal.project_type || 'shingle',
+        project_type: mapProjectType(proposal.project_type),
         total_value: proposal.total_value || 0,
         discount_value: proposal.discount_value || 0,
         discount_percentage: proposal.discount_percentage || 0,
