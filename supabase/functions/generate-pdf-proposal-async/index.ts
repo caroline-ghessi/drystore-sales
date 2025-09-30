@@ -77,24 +77,22 @@ serve(async (req) => {
 
     console.log('✅ PDF.co API key found, length:', pdfCoApiKey.length);
 
+    // Determinar qual template usar baseado no tipo de projeto
+    const pdfCoTemplateId = proposalData.project_type === 'shingle' ? '14564' : '14564'; // Por enquanto só temos template de shingle
+    console.log('🎨 Using PDF.co template ID:', pdfCoTemplateId);
+
     // Map data to PDF template format
     console.log('📊 Mapping data to template...');
-    const templateData = mapDataToPDFTemplate(proposalData, templateId);
-    console.log('✅ Template data mapped successfully');
+    const templateData = mapDataToPDFTemplate(proposalData, pdfCoTemplateId);
+    console.log('✅ Template data mapped:', Object.keys(templateData));
 
-    // Generate HTML content
-    console.log('🔨 Generating HTML content...');
-    const htmlContent = generateHTMLContent(templateData);
-    console.log('✅ HTML content generated, length:', htmlContent.length);
-
-    // Call PDF.co API with detailed logging
-    console.log('📡 Calling PDF.co API...');
+    // Call PDF.co API usando o template
+    console.log('📡 Calling PDF.co API with template...');
     const pdfPayload = {
-      html: htmlContent,
+      templateId: pdfCoTemplateId,
+      templateData: templateData,
       name: `proposta-${proposalData.proposal_number || Date.now()}.pdf`,
-      async: false,
-      margins: "10mm",
-      orientation: "Portrait"
+      async: false
     };
 
     const pdfResponse = await fetch('https://api.pdf.co/v1/pdf/convert/from/html', {
@@ -329,31 +327,28 @@ function generateProposalNumber(): string {
 function mapDataToPDFTemplate(data: any, templateId: string): Record<string, any> {
   const clientName = getClientName(data);
   
+  // Template 14564 - Shingle Drystore
+  if (templateId === '14564') {
+    return {
+      nome_do_cliente: clientName,
+      data_proposta: formatDate(new Date()),
+      linha_shingle: data.product_line || 'Supreme',
+      listagem_dos_produtos: formatItemsList(data.items || []),
+      valor_total: formatValue(data.final_value || data.total_value || 0),
+      nome_vendedor: data.seller_name || 'Equipe Drystore',
+      whatsapp_vendedor: data.seller_whatsapp || '51 99999-9999'
+    };
+  }
+  
+  // Fallback para templates futuros ou formato genérico
   return {
-    // Client information
     client_name: clientName,
     client_email: data.client_data?.email || data.customer_email || '',
     client_phone: data.client_data?.phone || data.whatsapp_number || '',
-    client_address: formatAddress(data.client_data?.address || data.address),
-    
-    // Proposal details
-    proposal_number: data.proposal_number || generateProposalNumber(),
     proposal_date: formatDate(new Date()),
-    valid_until: formatDate(data.valid_until || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
-    
-    // Financial information
     total_value: formatCurrency(data.total_value || 0),
-    discount_value: formatCurrency(data.discount_value || 0),
-    discount_percentage: data.discount_percentage || 0,
     final_value: formatCurrency(data.final_value || data.total_value || 0),
-    
-    // Project information
-    project_type: data.project_type || 'shingle',
-    description: data.description || '',
-    
-    // Items
-    items_html: formatItemsToHTML(data.items || []),
-    items_text: formatItems(data.items || [])
+    items_html: formatItemsToHTML(data.items || [])
   };
 }
 
@@ -390,6 +385,32 @@ function formatCurrency(value: number): string {
     style: 'currency',
     currency: 'BRL'
   }).format(value);
+}
+
+function formatValue(value: number): string {
+  // Formatar valor sem símbolo de moeda (para template que já tem formatação própria)
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
+}
+
+function formatItemsList(items: any[]): string {
+  // Formatar produtos para o template 14564 da PDF.co
+  if (!items || items.length === 0) {
+    return '<div class="proposal-item"><span class="item-description">Produtos a definir</span></div>';
+  }
+  
+  return items.map(item => {
+    const name = item.custom_name || item.name || 'Item';
+    const quantity = item.quantity || 1;
+    const value = item.total_price || 0;
+    
+    return `<div class="proposal-item">
+      <span class="item-description">${name} - Qtd: ${quantity}</span>
+      <span class="item-value">${formatCurrency(value)}</span>
+    </div>`;
+  }).join('');
 }
 
 function formatItemsToHTML(items: any[]): string {
