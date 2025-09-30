@@ -1,3 +1,25 @@
+/**
+ * ✨ Função Unificada de Geração de PDF para Propostas
+ * 
+ * Esta função é responsável por TODA geração de PDFs de propostas:
+ * 
+ * 🆕 CRIAR NOVA PROPOSTA:
+ *    - Input: { proposalData, templateId }
+ *    - Cria registro no banco
+ *    - Gera PDF via template PDF.co
+ *    - Salva no Storage
+ * 
+ * 🔄 REGENERAR PDF EXISTENTE:
+ *    - Input: { proposalId, templateId }
+ *    - Busca dados da proposta no banco
+ *    - Regenera PDF via template PDF.co
+ *    - Atualiza URL no banco
+ * 
+ * Template usado: 14564 (Shingle Drystore)
+ * 
+ * ⚠️ Esta é a ÚNICA função para geração de PDFs de propostas!
+ */
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -7,14 +29,10 @@ const corsHeaders = {
 }
 
 interface PDFGenerationRequest {
-  proposalData: any;
-  templateId: string;
+  proposalId?: string; // Para regenerar PDF de proposta existente
+  proposalData?: any; // Para criar nova proposta
+  templateId?: string;
   shouldSaveToPermanentStorage?: boolean;
-  templatePreferences?: {
-    tone: string;
-    includeWarranty: boolean;
-    includeTechnicalSpecs: boolean;
-  };
 }
 
 interface PDFGenerationResult {
@@ -22,6 +40,8 @@ interface PDFGenerationResult {
   pdfUrl?: string;
   error?: string;
   proposalId?: string;
+  proposalNumber?: string;
+  isNewProposal?: boolean;
 }
 
 serve(async (req) => {
@@ -51,22 +71,53 @@ serve(async (req) => {
     try {
       requestData = await req.json() as PDFGenerationRequest;
       console.log('✅ Request data parsed:', {
+        hasProposalId: !!requestData.proposalId,
         hasProposalData: !!requestData.proposalData,
-        templateId: requestData.templateId,
-        shouldSave: requestData.shouldSaveToPermanentStorage
+        templateId: requestData.templateId
       });
     } catch (error) {
       console.error('❌ Failed to parse request JSON:', error);
       throw new Error('Dados da requisição inválidos');
     }
 
-    const { proposalData, templateId, shouldSaveToPermanentStorage = true, templatePreferences } = requestData;
+    const { proposalId, proposalData, templateId = '14564', shouldSaveToPermanentStorage = true } = requestData;
 
-    if (!proposalData) {
-      throw new Error('Dados da proposta são obrigatórios');
+    // Validar que pelo menos um dos dois foi fornecido
+    if (!proposalId && !proposalData) {
+      throw new Error('É necessário fornecer proposalId (regenerar) ou proposalData (criar nova)');
     }
 
-    console.log('🚀 Starting async PDF generation for proposal:', proposalData?.id || 'new');
+    let proposal: any;
+    let isNewProposal = false;
+    
+    // 🔄 REGENERAR: Se tem proposalId, buscar dados existentes
+    if (proposalId) {
+      console.log('🔄 Regenerating PDF for existing proposal:', proposalId);
+      
+      const { data: existingProposal, error: fetchError } = await supabase
+        .from('proposals')
+        .select(`
+          *,
+          proposal_items(*)
+        `)
+        .eq('id', proposalId)
+        .single();
+        
+      if (fetchError || !existingProposal) {
+        throw new Error(`Proposta não encontrada: ${fetchError?.message}`);
+      }
+      
+      proposal = existingProposal;
+      console.log('✅ Existing proposal loaded:', proposal.proposal_number);
+    } 
+    // 🆕 CRIAR: Se não tem proposalId, criar nova proposta
+    else if (proposalData) {
+      console.log('🆕 Creating new proposal');
+      isNewProposal = true;
+      proposal = proposalData; // Será salva após gerar PDF
+    }
+
+    console.log('🚀 Starting PDF generation:', isNewProposal ? 'NEW' : 'REGENERATE');
 
     // Verificar chave da API PDF.co
     const pdfCoApiKey = Deno.env.get('PDFCO_API_KEY');
@@ -77,13 +128,13 @@ serve(async (req) => {
 
     console.log('✅ PDF.co API key found, length:', pdfCoApiKey.length);
 
-    // Determinar qual template usar baseado no tipo de projeto
-    const pdfCoTemplateId = proposalData.project_type === 'shingle' ? '14564' : '14564'; // Por enquanto só temos template de shingle
+    // Determinar qual template usar
+    const pdfCoTemplateId = templateId || '14564';
     console.log('🎨 Using PDF.co template ID:', pdfCoTemplateId);
 
     // Map data to PDF template format
     console.log('📊 Mapping data to template...');
-    const templateData = mapDataToPDFTemplate(proposalData, pdfCoTemplateId);
+    const templateData = mapDataToPDFTemplate(proposal, pdfCoTemplateId);
     console.log('✅ Template data mapped:', Object.keys(templateData));
 
     // Call PDF.co API usando o template
@@ -91,7 +142,7 @@ serve(async (req) => {
     const pdfPayload = {
       templateId: pdfCoTemplateId,
       templateData: templateData,
-      name: `proposta-${proposalData.proposal_number || Date.now()}.pdf`,
+      name: `proposta-${proposal.proposal_number || Date.now()}.pdf`,
       async: false
     };
 
@@ -130,84 +181,97 @@ serve(async (req) => {
       status: pdfResult.status
     });
 
-    // Save proposal to database immediately
-    console.log('💾 Saving proposal to database...');
-    const proposalNumber = generateProposalNumber();
-    
-    const proposalToInsert = {
-      proposal_number: proposalNumber,
-      title: proposalData.title || `Proposta ${proposalNumber}`,
-      description: proposalData.description || '',
-      project_type: proposalData.project_type || 'shingle',
-      total_value: proposalData.total_value || 0,
-      discount_value: proposalData.discount_value || 0,
-      discount_percentage: proposalData.discount_percentage || 0,
-      final_value: proposalData.final_value || proposalData.total_value || 0,
-      status: 'draft',
-      valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      acceptance_link: `${supabaseUrl?.replace('/rest/v1', '')}/proposal/${proposalNumber}`,
-      client_data: proposalData.client_data || {},
-      created_by: proposalData.created_by,
-      pdf_status: 'processing',
-      pdf_url: pdfResult.url
-    };
+    let savedProposal: any;
+    let proposalNumber: string;
 
-    console.log('📊 Proposal data to insert:', {
-      proposal_number: proposalNumber,
-      project_type: proposalData.project_type,
-      total_value: proposalData.total_value,
-      created_by: proposalData.created_by
-    });
+    // 🆕 Se é nova proposta, salvar no banco
+    if (isNewProposal) {
+      console.log('💾 Saving new proposal to database...');
+      proposalNumber = generateProposalNumber();
+      
+      const proposalToInsert = {
+        proposal_number: proposalNumber,
+        title: proposal.title || `Proposta ${proposalNumber}`,
+        description: proposal.description || '',
+        project_type: proposal.project_type || 'shingle',
+        total_value: proposal.total_value || 0,
+        discount_value: proposal.discount_value || 0,
+        discount_percentage: proposal.discount_percentage || 0,
+        final_value: proposal.final_value || proposal.total_value || 0,
+        status: 'draft',
+        valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        acceptance_link: `${supabaseUrl?.replace('/rest/v1', '')}/proposal/${proposalNumber}`,
+        client_data: proposal.client_data || {},
+        created_by: proposal.created_by,
+        pdf_status: 'processing',
+        pdf_url: pdfResult.url
+      };
 
-    const { data: savedProposal, error: saveError } = await supabase
-      .from('proposals')
-      .insert(proposalToInsert)
-      .select()
-      .single();
+      const { data, error: saveError } = await supabase
+        .from('proposals')
+        .insert(proposalToInsert)
+        .select()
+        .single();
 
-    if (saveError) {
-      console.error('❌ Database save error:', saveError);
-      throw new Error(`Erro ao salvar proposta: ${saveError.message}`);
+      if (saveError) {
+        console.error('❌ Database save error:', saveError);
+        throw new Error(`Erro ao salvar proposta: ${saveError.message}`);
+      }
+
+      savedProposal = data;
+      console.log('✅ New proposal saved:', savedProposal.id);
+
+      // Send notification
+      try {
+        await supabase.from('user_notifications').insert({
+          user_id: proposal.created_by,
+          type: 'pdf_processing',
+          title: 'Proposta Criada',
+          message: 'Sua proposta foi criada com sucesso. O PDF está sendo processado.',
+          data: { proposalId: savedProposal.id, proposalNumber }
+        });
+      } catch (notifError) {
+        console.error('⚠️ Failed to send notification:', notifError);
+      }
+    } 
+    // 🔄 Se é regeneração, atualizar registro existente
+    else {
+      console.log('🔄 Updating existing proposal with new PDF...');
+      proposalNumber = proposal.proposal_number;
+      
+      const { error: updateError } = await supabase
+        .from('proposals')
+        .update({
+          pdf_url: pdfResult.url,
+          pdf_status: 'processing',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', proposal.id);
+
+      if (updateError) {
+        console.error('❌ Database update error:', updateError);
+        throw new Error(`Erro ao atualizar proposta: ${updateError.message}`);
+      }
+
+      savedProposal = proposal;
+      console.log('✅ Proposal PDF regenerated:', proposal.id);
     }
 
-    console.log('✅ Proposal saved successfully:', savedProposal.id);
-
-    console.log('✅ Starting background PDF processing');
-
-    // Start background processing
+    // Start background processing for permanent storage
     if (shouldSaveToPermanentStorage) {
       console.log('🔄 Scheduling background PDF processing...');
       processPDFInBackground(savedProposal.id, pdfResult.url, supabase);
     }
 
-    // Send immediate success notification
-    console.log('📢 Sending success notification...');
-    try {
-      await supabase.from('user_notifications').insert({
-        user_id: proposalData.created_by,
-        type: 'pdf_processing',
-        title: 'Proposta Criada',
-        message: 'Sua proposta foi criada com sucesso. O PDF está sendo processado.',
-        data: { proposalId: savedProposal.id, proposalNumber }
-      });
-      console.log('✅ Notification sent successfully');
-    } catch (notifError) {
-      console.error('⚠️ Failed to send notification:', notifError);
-      // Não falhar por causa de notificação
-    }
-
-    console.log('✅ PDF generation completed successfully:', {
-      proposalId: savedProposal.id,
-      proposalNumber,
-      pdfUrl: pdfResult.url?.substring(0, 50) + '...'
-    });
+    console.log('✅ PDF generation completed successfully');
 
     return new Response(
       JSON.stringify({
         success: true,
         pdfUrl: pdfResult.url,
         proposalId: savedProposal.id,
-        proposalNumber: proposalNumber
+        proposalNumber: proposalNumber,
+        isNewProposal
       } as PDFGenerationResult),
       { 
         headers: { 

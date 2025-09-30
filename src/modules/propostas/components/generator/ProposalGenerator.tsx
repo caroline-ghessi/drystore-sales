@@ -175,31 +175,35 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
       // Gerar itens da proposta
       const proposalItems = calculator.generateProposalItems();
       
-      const request = {
-        calculationId: undefined,
-        userId: user?.id,
-        clientData,
-        productType,
-        calculationInput: calculator.calculationInput!,
-        templatePreferences: {
-          tone: 'friendly' as const,
-          includeWarranty: true,
-          includeTestimonials: false,
-          includeTechnicalSpecs: true
+      // Preparar dados da proposta para a função unificada
+      const proposalData = {
+        title: `Proposta ${productType === 'shingle' ? 'Telha Shingle' : productType}`,
+        description: `Proposta gerada automaticamente para ${clientData.name}`,
+        project_type: productType,
+        client_data: {
+          name: clientData.name,
+          email: clientData.email,
+          phone: clientData.phone,
+          address: clientData.address
         },
-        pricing: {
-          ...calculator.calculationResult,
-          items: proposalItems,
-          subtotal,
-          discountPercent,
-          discountValue,
-          finalValue
-        },
-        status: 'draft' // Proposta salva como rascunho
+        total_value: subtotal,
+        discount_value: discountValue,
+        discount_percentage: discountPercent,
+        final_value: finalValue,
+        items: proposalItems,
+        created_by: user?.id,
+        product_line: productType === 'shingle' ? 'Supreme' : undefined, // Adicionar se disponível
+        seller_name: user?.user_metadata?.display_name || user?.email,
+        seller_whatsapp: user?.user_metadata?.phone || '51 99999-9999'
       };
 
-      const { data, error } = await supabase.functions.invoke('generate-proposal', {
-        body: request
+      // Chamar função unificada de geração de PDF
+      const { data, error } = await supabase.functions.invoke('generate-pdf-proposal-async', {
+        body: {
+          proposalData,
+          templateId: '14564', // Template Shingle Drystore
+          shouldSaveToPermanentStorage: true
+        }
       });
 
       if (error) {
@@ -211,7 +215,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
         
         toast({
           title: "Proposta Gerada com Sucesso!",
-          description: "Proposta criada e pronta para visualização."
+          description: `PDF gerado e proposta ${data.proposalNumber} criada.`
         });
         
         // Buscar dados completos da proposta
