@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { 
   Bot, Settings, TestTube, Save, X, Play, Pause, 
-  Zap, MessageSquare, Brain, Eye, Edit3 
+  Zap, MessageSquare, Brain, Eye, Edit3, Database 
 } from 'lucide-react';
 import { AgentConfig } from '@/hooks/useAgentConfigs';
+import { KnowledgeBaseManager } from './KnowledgeBaseManager';
 
 interface AgentEditorProps {
   agent: AgentConfig | null;
@@ -101,6 +102,10 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
               <TabsTrigger value="behavior" className="flex items-center gap-2">
                 <Brain className="w-4 h-4" />
                 Comportamento
+              </TabsTrigger>
+              <TabsTrigger value="knowledge" className="flex items-center gap-2">
+                <Database className="w-4 h-4" />
+                Base de Conhecimento
               </TabsTrigger>
               <TabsTrigger value="test" className="flex items-center gap-2">
                 <TestTube className="w-4 h-4" />
@@ -280,6 +285,20 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
                   </div>
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="knowledge" className="p-6">
+              {editAgent.product_category ? (
+                <KnowledgeBaseManager agentCategory={editAgent.product_category} />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Database className="w-12 h-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Categoria não definida</h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Para gerenciar a base de conhecimento, primeiro defina uma categoria para este agente na aba "Configuração".
+                  </p>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="test" className="p-6 space-y-4">
