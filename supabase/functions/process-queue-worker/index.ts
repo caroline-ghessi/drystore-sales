@@ -81,17 +81,22 @@ serve(async (req) => {
         }
 
         if (data?.success) {
-          // Sucesso: deletar todas as mensagens da conversa da fila
-          for (const msg of messageArray) {
-            const { error: deleteError } = await supabase.rpc('pgmq.delete', {
+          // Sucesso: deletar todas as mensagens da conversa da fila em paralelo
+          const deletePromises = messageArray.map(msg => 
+            supabase.rpc('pgmq.delete', {
               queue_name: 'whatsapp_messages_queue',
               msg_id: msg.msg_id
-            });
+            })
+          );
 
-            if (deleteError) {
-              console.error(`[QueueWorker] Error deleting message ${msg.msg_id}:`, deleteError);
+          const deleteResults = await Promise.all(deletePromises);
+          
+          // Log erros se houver
+          deleteResults.forEach((result, idx) => {
+            if (result.error) {
+              console.error(`[QueueWorker] Error deleting message ${messageArray[idx].msg_id}:`, result.error);
             }
-          }
+          });
 
           console.log(`✅ [QueueWorker] Successfully processed and deleted ${messageArray.length} messages for conversation ${conversationId}`);
           stats.processed += messageArray.length;
@@ -108,38 +113,36 @@ serve(async (req) => {
         stats.errors.push(`Conversation ${conversationId}: ${errorMessage}`);
 
         // Incrementar contador de retry e mover para DLQ se necessário
+        const archivePromises = [];
+        
         for (const msg of messageArray) {
           const retryCount = (msg.message.retry_count || 0) + 1;
 
           if (retryCount >= 3) {
-            // Mover para Dead Letter Queue após 3 tentativas
-            const { error: dlqError } = await supabase
-              .from('failed_whatsapp_messages')
-              .insert({
-                conversation_id: conversationId,
-                message_content: msg.message.message,
-                whatsapp_number: msg.message.whatsappNumber,
-                retry_count: retryCount,
-                last_error: errorMessage,
-                metadata: msg.message
-              });
-
-            if (dlqError) {
-              console.error(`[QueueWorker] Error inserting to DLQ:`, dlqError);
-            }
-
-            // Deletar da fila principal
-            await supabase.rpc('pgmq.delete', {
-              queue_name: 'whatsapp_messages_queue',
-              msg_id: msg.msg_id
-            });
-
-            console.log(`🔴 [QueueWorker] Moved message ${msg.msg_id} to DLQ after ${retryCount} failures`);
+            // Usar pgmq.archive() nativo para mover para histórico após 3 tentativas
+            archivePromises.push(
+              supabase.rpc('pgmq.archive', {
+                queue_name: 'whatsapp_messages_queue',
+                msg_id: msg.msg_id
+              }).then(result => ({ msg, result, retryCount }))
+            );
           } else {
-            // Atualizar retry count (mensagem voltará à fila após VT expirar)
+            // Mensagem voltará à fila após VT expirar automaticamente
             console.log(`⚠️ [QueueWorker] Retry ${retryCount}/3 for message ${msg.msg_id} (will retry automatically)`);
-            // Não precisamos fazer nada - o VT fará a mensagem voltar automaticamente
           }
+        }
+
+        // Arquivar mensagens que falharam 3x em paralelo
+        if (archivePromises.length > 0) {
+          const archiveResults = await Promise.all(archivePromises);
+          
+          archiveResults.forEach(({ msg, result, retryCount }) => {
+            if (result.error) {
+              console.error(`[QueueWorker] Error archiving message ${msg.msg_id}:`, result.error);
+            } else {
+              console.log(`🔴 [QueueWorker] Archived message ${msg.msg_id} after ${retryCount} failures`);
+            }
+          });
         }
       }
     }
