@@ -17,8 +17,11 @@ interface FirecrawlRequest {
 interface FirecrawlResponse {
   success: boolean;
   message: string;
-  processedFiles: number;
-  files: any[];
+  processedFiles?: number;
+  files?: any[];
+  jobId?: string;
+  firecrawlJobId?: string;
+  status?: string;
   error?: string;
 }
 
@@ -38,7 +41,16 @@ export const useFirecrawlScrape = () => {
       return data;
     },
     onSuccess: (data, variables) => {
-      toast.success(data.message);
+      if (data.status === 'processing') {
+        // Async crawl started
+        toast.success('Crawl iniciado! Você será notificado quando concluir.', {
+          description: `Job ID: ${data.jobId}`,
+        });
+      } else {
+        // Sync scrape completed
+        toast.success(data.message);
+      }
+      
       // Invalidate knowledge files query for this agent
       queryClient.invalidateQueries({ 
         queryKey: ['knowledge-files', variables.agentCategory] 

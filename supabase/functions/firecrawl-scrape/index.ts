@@ -32,270 +32,315 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('📝 Reading request body...');
-    
-    // Verificar se conseguimos ler o body
-    let requestBody;
-    try {
-      requestBody = await req.json();
-      console.log('✅ Request body parsed successfully:', JSON.stringify(requestBody, null, 2));
-    } catch (parseError) {
-      console.error('❌ Failed to parse request body:', parseError);
-      throw new Error('Invalid JSON in request body');
+    console.log('🔍 Processing Firecrawl request');
+    const { url, agentCategory, mode, options = {} } = await req.json();
+
+    // Validation
+    if (!url || !agentCategory) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Missing required fields: url and agentCategory',
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
-
-    const { url, agentCategory, mode, options = {} } = requestBody;
-
-    if (!url || !agentCategory || !mode) {
-      throw new Error('Missing required parameters: url, agentCategory, or mode');
-    }
-
-    console.log('🔧 Environment variables check:', {
-      hasSupabaseUrl: !!supabaseUrl,
-      hasSupabaseKey: !!supabaseServiceKey,
-      hasFirecrawlKey: !!firecrawlApiKey,
-      supabaseUrlPreview: supabaseUrl?.substring(0, 20) + '...',
-      firecrawlKeyPreview: firecrawlApiKey?.substring(0, 10) + '...'
-    });
 
     if (!firecrawlApiKey) {
       throw new Error('FIRECRAWL_API_KEY not configured in environment variables');
     }
 
+    console.log(`📝 Mode: ${mode}, Category: ${agentCategory}, URL: ${url}`);
+
+    // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    console.log(`🔥 Starting Firecrawl ${mode} for URL: ${url}, Agent: ${agentCategory}`);
 
-    // Prepare Firecrawl API request for v2 - CORRIGIDO CONFORME DOCUMENTAÇÃO
-    const firecrawlEndpoint = mode === 'scrape' 
-      ? 'https://api.firecrawl.dev/v2/scrape' 
-      : 'https://api.firecrawl.dev/v2/crawl';
+    // For CRAWL mode: use webhook approach (async)
+    if (mode === 'crawl') {
+      console.log('🕷️ Starting async crawl with webhook');
 
-    // ✅ PAYLOAD CORRIGIDO PARA V2 - APENAS PARÂMETROS VÁLIDOS
-    let firecrawlPayload;
-    
-    if (mode === 'scrape') {
-      // Para scrape: pode usar formats (baseado na documentação)
-      firecrawlPayload = {
+      // Generate webhook URL
+      const webhookUrl = `${supabaseUrl}/functions/v1/firecrawl-webhook`;
+      console.log('🔗 Webhook URL:', webhookUrl);
+
+      // Create job record BEFORE calling Firecrawl
+      const { data: job, error: jobError } = await supabase
+        .from('crawl_jobs')
+        .insert({
+          firecrawl_job_id: 'pending', // Will be updated after Firecrawl response
+          agent_category: agentCategory,
+          source_url: url,
+          status: 'pending',
+          mode: 'crawl',
+          options: options || {},
+        })
+        .select()
+        .single();
+
+      if (jobError || !job) {
+        console.error('❌ Failed to create job:', jobError);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Failed to create crawl job',
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      console.log('✅ Job created:', job.id);
+
+      // Prepare Firecrawl crawl payload
+      const crawlPayload: any = {
         url,
-        formats: [{ type: 'markdown' }], // Formato correto conforme docs v2
-        onlyMainContent: true,
-        removeBase64Images: true
+        formats: ['markdown'],
+        webhook: webhookUrl,
       };
-    } else {
-      // Para crawl: NÃO pode usar formats (causava o erro)
-      firecrawlPayload = {
-        url,
-        limit: options.maxDepth ? Math.min(options.maxDepth * 5, 100) : 10
-      } as any;
-      
-      // Para crawl, usar includeUrls/excludeUrls ao invés de includePaths/excludePaths
-      if (options.includePatterns?.length) {
-        // Converter patterns para URLs válidas
-        (firecrawlPayload as any).includeUrls = options.includePatterns.map((pattern: string) => {
-          // Se é um pattern relativo, criar URL completa
-          if (pattern.startsWith('/')) {
-            const baseUrl = new URL(url);
-            return `${baseUrl.origin}${pattern}`;
-          }
-          return pattern;
-        });
+
+      // Add optional crawl parameters
+      if (options.maxDepth) {
+        crawlPayload.limit = options.maxDepth;
       }
-      
-      if (options.excludePatterns?.length) {
-        (firecrawlPayload as any).excludeUrls = options.excludePatterns.map((pattern: string) => {
-          if (pattern.startsWith('/')) {
-            const baseUrl = new URL(url);
-            return `${baseUrl.origin}${pattern}`;
-          }
-          return pattern;
-        });
+      if (options.includePatterns && options.includePatterns.length > 0) {
+        crawlPayload.includePaths = options.includePatterns;
       }
+      if (options.excludePatterns && options.excludePatterns.length > 0) {
+        crawlPayload.excludePaths = options.excludePatterns;
+      }
+
+      console.log('🚀 Calling Firecrawl crawl API with webhook');
+
+      // Call Firecrawl /v2/crawl endpoint
+      const firecrawlResponse = await fetch('https://api.firecrawl.dev/v2/crawl', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${firecrawlApiKey}`,
+        },
+        body: JSON.stringify(crawlPayload),
+      });
+
+      const firecrawlData = await firecrawlResponse.json();
+      console.log('📦 Firecrawl response:', JSON.stringify(firecrawlData, null, 2));
+
+      if (!firecrawlResponse.ok) {
+        console.error('❌ Firecrawl API error:', firecrawlData);
+        
+        // Update job status to failed
+        await supabase
+          .from('crawl_jobs')
+          .update({
+            status: 'failed',
+            error_message: firecrawlData.error || 'Firecrawl API error',
+          })
+          .eq('id', job.id);
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: firecrawlData.error || 'Firecrawl API request failed',
+          }),
+          {
+            status: firecrawlResponse.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Extract Firecrawl job ID from response
+      const firecrawlJobId = firecrawlData.id;
+      if (!firecrawlJobId) {
+        console.error('❌ No job ID in Firecrawl response');
+        
+        await supabase
+          .from('crawl_jobs')
+          .update({
+            status: 'failed',
+            error_message: 'No job ID received from Firecrawl',
+          })
+          .eq('id', job.id);
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Invalid response from Firecrawl',
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Update job with Firecrawl job ID
+      await supabase
+        .from('crawl_jobs')
+        .update({
+          firecrawl_job_id: firecrawlJobId,
+          status: 'processing',
+        })
+        .eq('id', job.id);
+
+      console.log('✅ Crawl job started:', firecrawlJobId);
+
+      // Return immediate response (202 Accepted)
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Crawl job started. You will be notified when complete.',
+          jobId: job.id,
+          firecrawlJobId: firecrawlJobId,
+          status: 'processing',
+        }),
+        {
+          status: 202,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
-    console.log('📤 Firecrawl payload:', JSON.stringify(firecrawlPayload, null, 2));
-    console.log('🌐 Firecrawl endpoint:', firecrawlEndpoint);
+    // For SCRAPE mode: synchronous processing (immediate response)
+    console.log('📄 Starting synchronous scrape');
 
-    // Call Firecrawl API
-    console.log('⏳ Making request to Firecrawl...');
-    const firecrawlResponse = await fetch(firecrawlEndpoint, {
+    const scrapePayload = {
+      url,
+      formats: ['markdown'],
+    };
+
+    const firecrawlResponse = await fetch('https://api.firecrawl.dev/v2/scrape', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${firecrawlApiKey}`
+        'Authorization': `Bearer ${firecrawlApiKey}`,
       },
-      body: JSON.stringify(firecrawlPayload)
+      body: JSON.stringify(scrapePayload),
     });
-
-    console.log('📡 Firecrawl response status:', firecrawlResponse.status);
-    console.log('📡 Firecrawl response headers:', Object.fromEntries(firecrawlResponse.headers.entries()));
-
-    if (!firecrawlResponse.ok) {
-      const errorText = await firecrawlResponse.text();
-      console.error('❌ Firecrawl API error:', errorText);
-      console.error('❌ Response status:', firecrawlResponse.status);
-      console.error('❌ Response status text:', firecrawlResponse.statusText);
-      throw new Error(`Firecrawl API error: ${firecrawlResponse.status} - ${errorText}`);
-    }
 
     const firecrawlData = await firecrawlResponse.json();
-    console.log('✅ Firecrawl response received:', JSON.stringify(firecrawlData, null, 2));
 
-    // ✅ PROCESSAMENTO CORRIGIDO DA RESPOSTA V2
-    if (!firecrawlData.success) {
-      console.error('❌ Firecrawl returned success=false:', firecrawlData);
-      throw new Error(`Firecrawl failed: ${firecrawlData.error || 'Unknown error'}`);
-    }
-
-    // Para v2, sempre verificar se existe data
-    if (!firecrawlData.data) {
-      throw new Error('No data returned from Firecrawl');
-    }
-
-    // Processar resultados - v2 sempre retorna 'data'
-    let results;
-    if (mode === 'scrape') {
-      // Para scrape, data contém o conteúdo diretamente
-      // Verificar se tem markdown no objeto principal ou na estrutura formats
-      const dataItem = firecrawlData.data;
-      if (dataItem.formats?.markdown) {
-        results = [{ ...dataItem, markdown: dataItem.formats.markdown }];
-      } else if (dataItem.markdown) {
-        results = [dataItem];
-      } else {
-        throw new Error('No markdown content found in scrape response');
-      }
-      } else {
-        // Para crawl, data é um array de objetos
-        if (Array.isArray(firecrawlData.data)) {
-          results = firecrawlData.data.map((item: any) => {
-            // Garantir que o markdown está no local correto
-            if (item.formats?.markdown && !item.markdown) {
-              return { ...item, markdown: item.formats.markdown };
-            }
-            return item;
-          });
-        } else {
-          results = [firecrawlData.data];
+    if (!firecrawlResponse.ok) {
+      console.error('❌ Firecrawl API error:', firecrawlData);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: firecrawlData.error || 'Firecrawl API request failed',
+        }),
+        {
+          status: firecrawlResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
-      }
+      );
+    }
 
-    console.log(`📊 Processing ${results.length} items`);
+    // Extract markdown from response
+    const markdown = firecrawlData.data?.markdown || firecrawlData.data?.content;
+    if (!markdown) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'No content returned from Firecrawl',
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
-    const processedFiles = [];
+    // Generate filename
+    const urlObj = new URL(url);
+    const sanitizedPath = urlObj.pathname
+      .replace(/^\/+|\/+$/g, '')
+      .replace(/\//g, '-')
+      .replace(/[^a-zA-Z0-9-_]/g, '_')
+      .substring(0, 100);
+    const filename = `${sanitizedPath || 'index'}-${Date.now()}.md`;
+    const storagePath = `${agentCategory}/${filename}`;
 
-    for (const [index, item] of results.entries()) {
-      console.log(`📝 Processing item ${index + 1}:`, {
-        hasMarkdown: !!item.markdown,
-        markdownLength: item.markdown?.length || 0,
-        markdownPreview: item.markdown?.substring(0, 200) || 'No markdown',
-        hasMetadata: !!item.metadata,
-        url: item.metadata?.sourceURL || item.url || url
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from('agent-knowledge')
+      .upload(storagePath, markdown, {
+        contentType: 'text/markdown',
+        upsert: false,
       });
 
-      // Validação melhorada - aceitar conteúdo mínimo
-      if (!item.markdown || item.markdown.trim().length < 50) {
-        console.log(`⚠️ Skipping item ${index + 1}: insufficient content (${item.markdown?.length || 0} chars)`);
-        continue;
-      }
-
-      // Generate filename melhorado
-      const title = item.metadata?.title || 
-                   item.metadata?.og?.title || 
-                   `Content_${index + 1}`;
-      
-      const sanitizedTitle = title
-        .replace(/[^a-zA-Z0-9\s\-_]/g, '')
-        .replace(/\s+/g, '_')
-        .substring(0, 50);
-      
-      const fileName = `${sanitizedTitle}_${Date.now()}_${index}.md`;
-      const storagePath = `${agentCategory}/${fileName}`;
-
-      try {
-        // Upload to storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('agent-knowledge')
-          .upload(storagePath, new Blob([item.markdown], { type: 'text/markdown' }));
-
-        if (uploadError) {
-          console.error('❌ Storage upload error:', uploadError);
-          continue;
+    if (uploadError) {
+      console.error('❌ Upload error:', uploadError);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Failed to upload file: ${uploadError.message}`,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
-
-        // Save to database com metadata melhorada
-        const { data: fileRecord, error: dbError } = await supabase
-          .from('agent_knowledge_files')
-          .insert({
-            agent_category: agentCategory,
-            file_name: fileName,
-            file_type: 'text/markdown',
-            storage_path: storagePath,
-            file_size: new TextEncoder().encode(item.markdown).length,
-            extracted_content: item.markdown,
-            processing_status: 'completed',
-            metadata: {
-              source_type: 'web',
-              source_url: item.metadata?.sourceURL || item.url || url,
-              title: title,
-              description: item.metadata?.description || item.metadata?.og?.description,
-              scraped_at: new Date().toISOString(),
-              firecrawl_metadata: item.metadata,
-              confidence_score: 1.0,
-              // Adicionar mais metadados úteis
-              language: item.metadata?.language,
-              author: item.metadata?.author,
-              publishedTime: item.metadata?.publishedTime,
-              statusCode: item.metadata?.statusCode,
-              contentLength: item.markdown.length
-            }
-          })
-          .select()
-          .single();
-
-        if (dbError) {
-          console.error('❌ Database error:', dbError);
-          continue;
-        }
-
-        console.log(`✅ Processed: ${fileName} (${item.markdown.length} chars)`);
-        processedFiles.push(fileRecord);
-
-        // Generate embeddings in background
-        try {
-          supabase.functions.invoke('generate-embeddings', {
-            body: { fileId: fileRecord.id }
-          }).catch(embeddingError => {
-            console.warn('⚠️ Embedding generation failed:', embeddingError);
-          });
-        } catch (embeddingError) {
-          console.warn('⚠️ Could not trigger embedding generation:', embeddingError);
-        }
-
-      } catch (itemError) {
-        console.error(`❌ Error processing item ${index + 1}:`, itemError);
-        continue;
-      }
+      );
     }
 
-    console.log(`🎉 Successfully processed ${processedFiles.length} files`);
+    // Insert into agent_knowledge_files
+    const { data: knowledgeFile, error: insertError } = await supabase
+      .from('agent_knowledge_files')
+      .insert({
+        file_name: filename,
+        file_type: 'text/markdown',
+        storage_path: storagePath,
+        file_size: new TextEncoder().encode(markdown).length,
+        agent_category: agentCategory,
+        extracted_content: markdown,
+        processing_status: 'pending',
+        metadata: {
+          source_type: 'web',
+          source_url: url,
+          scraped_at: new Date().toISOString(),
+        },
+      })
+      .select()
+      .single();
 
-    // Resposta melhorada
-    return new Response(JSON.stringify({
-      success: true,
-      message: `Successfully processed ${processedFiles.length} ${mode === 'scrape' ? 'page' : 'pages'} from ${url}`,
-      processedFiles: processedFiles.length,
-      totalItemsFound: results.length,
-      skippedItems: results.length - processedFiles.length,
-      files: processedFiles,
-      agentCategory,
-      timestamp: new Date().toISOString()
-    }), {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json'
+    if (insertError) {
+      console.error('❌ Insert error:', insertError);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Failed to insert file record: ${insertError.message}`,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Trigger embeddings generation in background
+    supabase.functions
+      .invoke('generate-embeddings', {
+        body: { fileId: knowledgeFile.id },
+      })
+      .then(() => console.log('✅ Embeddings generation triggered'))
+      .catch((err) => console.error('❌ Failed to trigger embeddings:', err));
+
+    console.log('✅ Scrape completed successfully');
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Successfully scraped page',
+        processedFiles: 1,
+        files: [knowledgeFile],
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
-    });
-
+    );
   } catch (error) {
     console.error('❌ Firecrawl processing error:', error);
     

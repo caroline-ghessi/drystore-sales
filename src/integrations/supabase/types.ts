@@ -676,6 +676,54 @@ export type Database = {
           },
         ]
       }
+      crawl_jobs: {
+        Row: {
+          agent_category: Database["public"]["Enums"]["product_category"]
+          created_at: string
+          error_message: string | null
+          firecrawl_job_id: string
+          id: string
+          mode: string
+          options: Json | null
+          processed_pages: number | null
+          source_url: string
+          status: string
+          total_pages: number | null
+          updated_at: string
+          webhook_received_at: string | null
+        }
+        Insert: {
+          agent_category: Database["public"]["Enums"]["product_category"]
+          created_at?: string
+          error_message?: string | null
+          firecrawl_job_id: string
+          id?: string
+          mode?: string
+          options?: Json | null
+          processed_pages?: number | null
+          source_url: string
+          status?: string
+          total_pages?: number | null
+          updated_at?: string
+          webhook_received_at?: string | null
+        }
+        Update: {
+          agent_category?: Database["public"]["Enums"]["product_category"]
+          created_at?: string
+          error_message?: string | null
+          firecrawl_job_id?: string
+          id?: string
+          mode?: string
+          options?: Json | null
+          processed_pages?: number | null
+          source_url?: string
+          status?: string
+          total_pages?: number | null
+          updated_at?: string
+          webhook_received_at?: string | null
+        }
+        Relationships: []
+      }
       crm_customer_segments: {
         Row: {
           color_code: string | null
