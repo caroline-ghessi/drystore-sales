@@ -51,6 +51,11 @@ const ProposalsListPage = () => {
       
       await previewPDF({
         proposalId: proposal.id,
+        proposalData: {
+          ...proposal,
+          created_by: proposal.created_by,
+          client_data: getClientData(proposal.client_data)
+        },
         templateId: templateId,
         options: {}
       });

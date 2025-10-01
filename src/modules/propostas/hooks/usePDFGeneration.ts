@@ -41,10 +41,26 @@ export function usePDFGeneration() {
         throw new Error('Usuário não autenticado. Faça login novamente.');
       }
 
+      // Se proposalData não foi fornecido mas temos proposalId, buscar do banco
+      if (!options.proposalData && options.proposalId) {
+        console.log('📥 Proposal data not provided, fetching from database...');
+        const { data: fetchedProposal, error: fetchError } = await supabase
+          .from('proposals')
+          .select('*')
+          .eq('id', options.proposalId)
+          .single();
+        
+        if (fetchError || !fetchedProposal) {
+          throw new Error('Proposta não encontrada no banco de dados');
+        }
+        
+        options.proposalData = fetchedProposal;
+      }
+
       // Adicionar created_by se não existir
       const proposalData = {
         ...options.proposalData,
-        created_by: options.proposalData.created_by || userData.user.id
+        created_by: options.proposalData?.created_by || userData.user.id
       };
 
       console.log('📤 Invoking edge function with data:', {

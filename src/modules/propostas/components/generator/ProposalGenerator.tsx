@@ -92,16 +92,7 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
     try {
       const { data, error } = await supabase
         .from('proposals')
-        .select(`
-          *,
-          crm_customers!conversation_id (
-            name,
-            email,
-            phone,
-            city,
-            state
-          )
-        `)
+        .select('*')
         .eq('id', proposalId)
         .single();
 
