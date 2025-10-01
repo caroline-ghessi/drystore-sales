@@ -209,7 +209,11 @@ export function ProposalGenerator({ projectContextId, onProposalGenerated }: Pro
           description: `PDF gerado e proposta ${data.proposalNumber} criada.`
         });
         
-        // Buscar dados completos da proposta
+        // Aguardar processamento em background do PDF
+        console.log('⏳ Aguardando processamento do PDF...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Buscar dados completos da proposta com PDF permanente
         await fetchGeneratedProposal(data.proposalId);
         setStep(4); // Ir para o step de resultado
       } else {

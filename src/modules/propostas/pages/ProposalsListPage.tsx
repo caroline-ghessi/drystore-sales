@@ -47,6 +47,19 @@ const ProposalsListPage = () => {
   const handlePreviewPDF = async (proposal: any) => {
     try {
       setLoadingPdfId(proposal.id);
+      
+      // ✅ Se já tem PDF do Supabase pronto, abrir diretamente
+      if (proposal.pdf_url && 
+          proposal.pdf_status === 'ready' && 
+          proposal.pdf_url.includes('supabase.co/storage')) {
+        console.log('📄 Opening existing PDF from Supabase:', proposal.pdf_url);
+        window.open(proposal.pdf_url, '_blank');
+        setLoadingPdfId(null);
+        return;
+      }
+      
+      // ❌ Só gerar novo PDF se não tiver ou estiver com erro
+      console.log('🔄 PDF not ready, generating new one...');
       const templateId = getTemplateId(proposal.project_type);
       
       await previewPDF({
@@ -77,6 +90,29 @@ const ProposalsListPage = () => {
   const handleDownloadPDF = async (proposal: any) => {
     try {
       setLoadingPdfId(proposal.id);
+      
+      // ✅ Se já tem PDF do Supabase pronto, baixar diretamente
+      if (proposal.pdf_url && 
+          proposal.pdf_status === 'ready' && 
+          proposal.pdf_url.includes('supabase.co/storage')) {
+        console.log('📥 Downloading existing PDF from Supabase:', proposal.pdf_url);
+        const link = document.createElement('a');
+        link.href = proposal.pdf_url;
+        link.download = `proposta-${proposal.proposal_number}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({
+          title: "Download iniciado",
+          description: "O PDF está sendo baixado",
+        });
+        setLoadingPdfId(null);
+        return;
+      }
+      
+      // ❌ Só gerar novo PDF se não tiver ou estiver com erro
+      console.log('🔄 PDF not ready, generating for download...');
       const templateId = getTemplateId(proposal.project_type);
       
       await downloadPDF({
