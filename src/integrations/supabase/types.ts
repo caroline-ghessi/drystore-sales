@@ -1088,6 +1088,42 @@ export type Database = {
           },
         ]
       }
+      failed_whatsapp_messages: {
+        Row: {
+          conversation_id: string
+          created_at: string | null
+          failed_at: string | null
+          id: string
+          last_error: string | null
+          message_content: string
+          metadata: Json | null
+          retry_count: number | null
+          whatsapp_number: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string | null
+          failed_at?: string | null
+          id?: string
+          last_error?: string | null
+          message_content: string
+          metadata?: Json | null
+          retry_count?: number | null
+          whatsapp_number: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string | null
+          failed_at?: string | null
+          id?: string
+          last_error?: string | null
+          message_content?: string
+          metadata?: Json | null
+          retry_count?: number | null
+          whatsapp_number?: string
+        }
+        Relationships: []
+      }
       faq_patterns: {
         Row: {
           agent_type: Database["public"]["Enums"]["product_category"]

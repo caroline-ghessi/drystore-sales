@@ -29,79 +29,33 @@ serve(async (req) => {
 
     console.log(`Received message for conversation ${conversationId}: ${message}`);
 
-    // Este edge function agora apenas cria/atualiza o buffer de mensagens
-    // O processamento real é feito pelo process-message-buffer após 60 segundos
+    // Enfileirar mensagem com buffer de 60 segundos nativo (via pgmq)
+    const { data: queueData, error: queueError } = await supabase.rpc('pgmq.send', {
+      queue_name: 'whatsapp_messages_queue',
+      msg: {
+        conversationId,
+        message,
+        whatsappNumber,
+        timestamp: new Date().toISOString(),
+        sender_type: 'customer',
+        retry_count: 0
+      },
+      delay: 60 // Buffer de 60 segundos NATIVO da fila
+    });
 
-    const bufferTime = 60; // 60 segundos de buffer
-    const now = new Date();
-    const shouldProcessAt = new Date(now.getTime() + bufferTime * 1000);
-
-    // Buscar buffer existente ou criar novo
-    const { data: existingBuffer } = await supabase
-      .from('message_buffers')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .eq('processed', false)
-      .single();
-
-    if (existingBuffer) {
-      // Atualizar buffer existente com nova mensagem
-      const currentMessages = existingBuffer.messages || [];
-      const updatedMessages = [
-        ...currentMessages,
-        {
-          content: message,
-          timestamp: now.toISOString(),
-          sender_type: 'customer'
-        }
-      ];
-
-      await supabase
-        .from('message_buffers')
-        .update({
-          messages: updatedMessages,
-          should_process_at: shouldProcessAt.toISOString() // Resetar timer
-        })
-        .eq('id', existingBuffer.id);
-
-      console.log(`Updated existing buffer ${existingBuffer.id} with new message`);
-    } else {
-      // Criar novo buffer
-      const { data: newBuffer, error: bufferError } = await supabase
-        .from('message_buffers')
-        .insert({
-          conversation_id: conversationId,
-          messages: [{
-            content: message,
-            timestamp: now.toISOString(),
-            sender_type: 'customer'
-          }],
-          buffer_started_at: now.toISOString(),
-          should_process_at: shouldProcessAt.toISOString(),
-          processed: false
-        })
-        .select()
-        .single();
-
-      if (bufferError) {
-        throw new Error(`Failed to create buffer: ${bufferError.message}`);
-      }
-
-      console.log(`Created new buffer ${newBuffer.id} for conversation ${conversationId}`);
+    if (queueError) {
+      console.error('Error enqueueing message:', queueError);
+      throw new Error(`Failed to enqueue message: ${queueError.message}`);
     }
 
-    // A mensagem já foi salva pelo webhook, não precisamos salvar novamente
-    // O buffer será processado automaticamente pelo worker periódico (process-pending-buffers)
-    // que roda a cada 60 segundos no frontend
-
-    console.log(`Buffer ${existingBuffer?.id || 'new'} ready for processing at ${shouldProcessAt.toISOString()}`);
+    console.log(`✅ Message enqueued with ID ${queueData} - will be processed in 60 seconds by worker`);
 
     return new Response(JSON.stringify({ 
       success: true, 
-      buffered: true,
+      enqueued: true,
       conversation_id: conversationId,
-      should_process_at: shouldProcessAt.toISOString(),
-      will_be_processed_by_worker: true
+      queue_message_id: queueData,
+      will_process_in_seconds: 60
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

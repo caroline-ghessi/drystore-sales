@@ -19,9 +19,9 @@ export function useBufferWorker() {
         isProcessingRef.current = true;
         console.log('[BufferWorker] Checking for pending buffers...');
 
-        const { data, error } = await supabase.functions.invoke('process-pending-buffers', {
-          body: {}
-        });
+      const { data, error } = await supabase.functions.invoke('process-queue-worker', {
+        body: {}
+      });
 
         if (error) {
           console.error('[BufferWorker] Error invoking worker:', error);
@@ -72,7 +72,7 @@ export function useBufferWorker() {
       isProcessingRef.current = true;
       console.log('[BufferWorker] Manual processing triggered');
 
-      const { data, error } = await supabase.functions.invoke('process-pending-buffers', {
+      const { data, error } = await supabase.functions.invoke('process-queue-worker', {
         body: {}
       });
 
