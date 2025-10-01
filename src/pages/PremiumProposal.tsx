@@ -31,10 +31,11 @@ export default function PremiumProposal() {
       }
 
       // Gerar HTML usando a edge function com os dados da proposta
-      const { data, error: functionError } = await supabase.functions.invoke('generate-proposal', {
+      const { data, error: functionError } = await supabase.functions.invoke('generate-pdf-proposal-async', {
         body: {
           proposalId: proposalData.id,
-          regenerate: true
+          templateId: '14564',
+          shouldSaveToPermanentStorage: true
         }
       });
 

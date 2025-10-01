@@ -68,16 +68,12 @@ const ProposalsListPage = () => {
       }
       
       // ❌ Só gerar novo PDF se não tiver ou estiver com erro
-      console.log('🔄 PDF not ready, generating new one...');
+      console.log('🔄 PDF not ready, regenerating from database...');
       const templateId = getTemplateId(proposal.project_type);
       
+      // ✅ Passar apenas proposalId - não proposalData para evitar duplicação
       await previewPDF({
         proposalId: proposal.id,
-        proposalData: {
-          ...proposal,
-          created_by: proposal.created_by,
-          client_data: getClientData(proposal.client_data)
-        },
         templateId: templateId,
         options: {}
       });
@@ -121,9 +117,10 @@ const ProposalsListPage = () => {
       }
       
       // ❌ Só gerar novo PDF se não tiver ou estiver com erro
-      console.log('🔄 PDF not ready, generating for download...');
+      console.log('🔄 PDF not ready, regenerating for download...');
       const templateId = getTemplateId(proposal.project_type);
       
+      // ✅ Passar apenas proposalId - não proposalData para evitar duplicação
       await downloadPDF({
         proposalId: proposal.id,
         templateId: templateId,

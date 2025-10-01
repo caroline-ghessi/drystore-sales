@@ -63,23 +63,36 @@ export function usePDFGeneration() {
         created_by: options.proposalData?.created_by || userData.user.id
       };
 
-      console.log('📤 Invoking edge function with data:', {
+      // Distinguir entre criar nova proposta vs regenerar PDF existente
+      const isRegenerating = options.proposalId && !options.proposalData;
+      
+      console.log('📤 Invoking edge function:', {
+        mode: isRegenerating ? 'REGENERATE' : 'CREATE',
+        hasProposalId: !!options.proposalId,
         hasProposalData: !!proposalData,
-        templateId: options.templateId || getTemplateIdForProduct(proposalData.project_type || 'shingle'),
-        userId: proposalData.created_by
+        templateId: options.templateId || getTemplateIdForProduct(proposalData?.project_type || 'shingle'),
+        userId: proposalData?.created_by
       });
 
       const { data, error } = await supabase.functions.invoke('generate-pdf-proposal-async', {
-        body: {
-          proposalData,
-          templateId: options.templateId || getTemplateIdForProduct(proposalData.project_type || 'shingle'),
-          shouldSaveToPermanentStorage: true,
-          templatePreferences: {
-            tone: 'professional',
-            includeWarranty: true,
-            includeTechnicalSpecs: true
-          }
-        }
+        body: isRegenerating
+          ? {
+              // 🔄 REGENERAR: Apenas proposalId para regenerar PDF existente
+              proposalId: options.proposalId,
+              templateId: options.templateId || '14564',
+              shouldSaveToPermanentStorage: true
+            }
+          : {
+              // 🆕 CRIAR NOVA: proposalData para criar nova proposta
+              proposalData,
+              templateId: options.templateId || getTemplateIdForProduct(proposalData.project_type || 'shingle'),
+              shouldSaveToPermanentStorage: true,
+              templatePreferences: {
+                tone: 'professional',
+                includeWarranty: true,
+                includeTechnicalSpecs: true
+              }
+            }
       });
 
       console.log('📥 Edge function response:', { data, error });
