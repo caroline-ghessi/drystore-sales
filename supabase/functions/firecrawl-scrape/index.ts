@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
       const { data: job, error: jobError } = await supabase
         .from('crawl_jobs')
         .insert({
-          firecrawl_job_id: 'pending', // Will be updated after Firecrawl response
+          firecrawl_job_id: null, // ✅ Usa NULL até receber ID real do Firecrawl
           agent_category: agentCategory,
           source_url: url,
           status: 'pending',
@@ -97,11 +97,13 @@ Deno.serve(async (req) => {
       console.log('✅ Job created:', job.id);
 
       // Prepare Firecrawl crawl payload
-      const crawlPayload: any = {
-        url,
-        formats: ['markdown'],
-        webhook: webhookUrl,
-      };
+    const crawlPayload: any = {
+      url,
+      scrapeOptions: {
+        formats: ['markdown']
+      },
+      webhook: webhookUrl,
+    };
 
       // Add optional crawl parameters
       if (options.maxDepth) {

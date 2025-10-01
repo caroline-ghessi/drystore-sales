@@ -681,7 +681,7 @@ export type Database = {
           agent_category: Database["public"]["Enums"]["product_category"]
           created_at: string
           error_message: string | null
-          firecrawl_job_id: string
+          firecrawl_job_id: string | null
           id: string
           mode: string
           options: Json | null
@@ -696,7 +696,7 @@ export type Database = {
           agent_category: Database["public"]["Enums"]["product_category"]
           created_at?: string
           error_message?: string | null
-          firecrawl_job_id: string
+          firecrawl_job_id?: string | null
           id?: string
           mode?: string
           options?: Json | null
@@ -711,7 +711,7 @@ export type Database = {
           agent_category?: Database["public"]["Enums"]["product_category"]
           created_at?: string
           error_message?: string | null
-          firecrawl_job_id?: string
+          firecrawl_job_id?: string | null
           id?: string
           mode?: string
           options?: Json | null
