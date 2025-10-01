@@ -78,7 +78,7 @@ serve(async (req) => {
 
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('proposal-assets')
+      .from('proposals-documents')
       .upload(filePath, finalPdfBuffer, {
         contentType: 'application/pdf',
         upsert: true
@@ -90,7 +90,7 @@ serve(async (req) => {
 
     // Get public URL
     const { data: publicUrlData } = supabase.storage
-      .from('proposal-assets')
+      .from('proposals-documents')
       .getPublicUrl(filePath);
 
     console.log('✅ PDF saved to storage:', publicUrlData.publicUrl);

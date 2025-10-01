@@ -269,7 +269,7 @@ serve(async (req) => {
         final_value: proposal.final_value || proposal.total_value || 0,
         status: 'draft',
         valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        acceptance_link: `https://arquivos.drystore.com.br/storage/v1/object/public/proposal-assets/proposals/${new Date().getFullYear()}/${proposalNumber}.pdf`,
+        acceptance_link: `https://arquivos.drystore.com.br/storage/v1/object/public/proposals-documents/proposals/${new Date().getFullYear()}/${proposalNumber}.pdf`,
         client_data: proposal.client_data || {},
         created_by: proposal.created_by,
         pdf_status: 'processing',
