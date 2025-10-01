@@ -220,22 +220,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Salvar resposta do bot
-    const { error: insertError } = await supabase
+    // Salvar resposta do bot e capturar o ID
+    const { data: savedMessage, error: insertError } = await supabase
       .from('messages')
       .insert({
         conversation_id: conversationId,
         content: botResponse.text,
         sender_type: 'bot',
         status: 'sent'
-      });
+      })
+      .select()
+      .single();
 
-    if (insertError) {
+    if (insertError || !savedMessage) {
       console.error('Error saving bot message:', insertError);
       throw new Error('Failed to save bot message');
     }
 
-    console.log(`Sending WhatsApp message to ${conversation.whatsapp_number}`);
+    console.log(`✅ Bot message saved with ID: ${savedMessage.id}`);
+    console.log(`📤 Sending WhatsApp message to ${conversation.whatsapp_number}`);
 
     // Enviar mensagem via WhatsApp
     const whatsappResult = await supabase.functions.invoke('send-whatsapp-message', {
@@ -246,8 +249,22 @@ Deno.serve(async (req) => {
     });
 
     if (whatsappResult.error) {
-      console.error('Error sending WhatsApp message:', whatsappResult.error);
+      console.error('❌ Error sending WhatsApp message:', whatsappResult.error);
       // Não falhar aqui, mensagem já foi salva
+    } else if (whatsappResult.data) {
+      console.log(`✅ WhatsApp message sent successfully`);
+      
+      // Atualizar delivered_at após envio bem-sucedido
+      const { error: updateError } = await supabase
+        .from('messages')
+        .update({ delivered_at: now.toISOString() })
+        .eq('id', savedMessage.id);
+
+      if (updateError) {
+        console.error('❌ Error updating delivered_at:', updateError);
+      } else {
+        console.log(`✅ Message ${savedMessage.id} marked as delivered at ${now.toISOString()}`);
+      }
     }
 
     // Atualizar status da conversa e marcar buffer como processado
