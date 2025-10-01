@@ -189,37 +189,6 @@ Deno.serve(async (req) => {
 
     console.log(`Generated response: ${botResponse.text.substring(0, 100)}...`);
 
-    // Verificar se já existe uma mensagem idêntica (proteção contra duplicatas)
-    const { data: existingMessage } = await supabase
-      .from('messages')
-      .select('id')
-      .eq('conversation_id', conversationId)
-      .eq('content', botResponse.text)
-      .eq('sender_type', 'bot')
-      .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()) // Últimos 5 minutos
-      .single();
-
-    if (existingMessage) {
-      console.log('Identical message already exists, skipping duplicate');
-      
-      // Marcar buffer como processado mesmo assim
-      await supabase
-        .from('message_buffers')
-        .update({
-          processed: true,
-          processed_at: now.toISOString()
-        })
-        .eq('id', lockedBuffer.id);
-
-      return new Response(JSON.stringify({ 
-        processed: true,
-        skipped_duplicate: true,
-        productGroup: newProductGroup
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
     // Salvar resposta do bot e capturar o ID
     const { data: savedMessage, error: insertError } = await supabase
       .from('messages')
