@@ -145,7 +145,7 @@ serve(async (req) => {
           throw error;
         }
 
-        if (data?.success) {
+        if (data?.processed) {
           // Sucesso: deletar todas as mensagens usando wrapper function em paralelo
           const deletePromises = messageArray.map(msg => 
             supabase.rpc('delete_queue_message', {
