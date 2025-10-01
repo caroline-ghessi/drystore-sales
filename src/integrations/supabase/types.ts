@@ -1903,6 +1903,51 @@ export type Database = {
         }
         Relationships: []
       }
+      proposal_edit_history: {
+        Row: {
+          change_summary: string | null
+          changes: Json
+          created_at: string
+          edited_at: string
+          edited_by: string
+          id: string
+          proposal_id: string
+        }
+        Insert: {
+          change_summary?: string | null
+          changes?: Json
+          created_at?: string
+          edited_at?: string
+          edited_by: string
+          id?: string
+          proposal_id: string
+        }
+        Update: {
+          change_summary?: string | null
+          changes?: Json
+          created_at?: string
+          edited_at?: string
+          edited_by?: string
+          id?: string
+          proposal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_edit_history_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_with_context"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_edit_history_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proposal_items: {
         Row: {
           created_at: string | null
@@ -2151,6 +2196,8 @@ export type Database = {
           description: string | null
           discount_percentage: number | null
           discount_value: number | null
+          edited_at: string | null
+          edited_by: string | null
           final_value: number | null
           id: string
           opportunity_id: string | null
@@ -2178,6 +2225,8 @@ export type Database = {
           description?: string | null
           discount_percentage?: number | null
           discount_value?: number | null
+          edited_at?: string | null
+          edited_by?: string | null
           final_value?: number | null
           id?: string
           opportunity_id?: string | null
@@ -2205,6 +2254,8 @@ export type Database = {
           description?: string | null
           discount_percentage?: number | null
           discount_value?: number | null
+          edited_at?: string | null
+          edited_by?: string | null
           final_value?: number | null
           id?: string
           opportunity_id?: string | null

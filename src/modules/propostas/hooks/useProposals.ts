@@ -20,7 +20,12 @@ export interface ProposalFromDB {
   created_by: string;
   created_at: string;
   updated_at: string;
+  edited_by?: string;
+  edited_at?: string;
   profiles?: {
+    display_name: string;
+  };
+  edited_by_profile?: {
     display_name: string;
   };
 }
@@ -48,8 +53,27 @@ export function useProposals() {
         throw new Error('Erro ao buscar propostas');
       }
 
-      console.log(`Fetched ${data?.length || 0} proposals`);
-      return data || [];
+      // Buscar perfis dos editores manualmente
+      const proposalsWithEditors = await Promise.all(
+        (data || []).map(async (proposal: any) => {
+          if (proposal.edited_by) {
+            const { data: editorProfile } = await supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('user_id', proposal.edited_by)
+              .single();
+            
+            return {
+              ...proposal,
+              edited_by_profile: editorProfile || undefined,
+            };
+          }
+          return proposal;
+        })
+      );
+
+      console.log(`Fetched ${proposalsWithEditors?.length || 0} proposals`);
+      return proposalsWithEditors || [];
     },
     enabled: true,
   });

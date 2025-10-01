@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Download, Eye, MessageCircle, MoreHorizontal, Loader2, Calculator } from 'lucide-react';
+import { Search, FileText, Calculator, Eye, Download, Send, MoreVertical, MoreHorizontal, Copy, Archive, Trash, Edit, Loader2, Plus, MessageCircle } from 'lucide-react';
 import { DryStoreBadge } from '@/modules/propostas/components/ui/DryStoreBadge';
 import { useNavigate } from 'react-router-dom';
 import { Separator } from '@/components/ui/separator';
@@ -14,20 +14,29 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useProposals, useProposalStats } from '../hooks/useProposals';
 import { usePDFGeneration } from '../hooks/usePDFGeneration';
+import { useDeleteProposal } from '../hooks/useProposalMutations';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { useAuth } from '@/contexts/AuthContext';
+import { DeleteProposalDialog } from '../components/DeleteProposalDialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const ProposalsListPage = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [loadingPdfId, setLoadingPdfId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { isAdmin, isSupervisor } = useUserPermissions();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loadingPdfId, setLoadingPdfId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [proposalToDelete, setProposalToDelete] = useState<any>(null);
   
   // Buscar dados reais das propostas
   const { data: proposalsData = [], isLoading, error } = useProposals();
   const stats = useProposalStats();
   const { previewPDF, downloadPDF, isGenerating } = usePDFGeneration();
+  const deleteProposal = useDeleteProposal();
 
   // Função para mapear project_type para template ID
   const getTemplateId = (projectType: string) => {
@@ -147,6 +156,24 @@ const ProposalsListPage = () => {
       }
     }
     return clientData || { name: 'Cliente não informado', phone: '', email: '' };
+  };
+
+  const canEditDelete = (proposal: any) => {
+    if (isAdmin || isSupervisor) return true;
+    return proposal.created_by === user?.id;
+  };
+
+  const handleDeleteClick = (proposal: any) => {
+    setProposalToDelete(proposal);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!proposalToDelete) return;
+    
+    await deleteProposal.mutateAsync(proposalToDelete.id);
+    setDeleteDialogOpen(false);
+    setProposalToDelete(null);
   };
 
   // Filtrar propostas baseado no termo de busca
@@ -342,6 +369,14 @@ const ProposalsListPage = () => {
                               <span>Por: {proposal.profiles.display_name}</span>
                             </>
                           )}
+                          {proposal.edited_at && proposal.edited_by_profile && (
+                            <>
+                              <span>•</span>
+                              <span className="text-blue-600 font-medium">
+                                Editada em {format(new Date(proposal.edited_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })} por {proposal.edited_by_profile.display_name}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -405,16 +440,40 @@ const ProposalsListPage = () => {
                       
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-drystore-medium-gray hover:text-drystore-orange">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-drystore-medium-gray hover:text-drystore-orange"
+                            disabled={loadingPdfId === proposal.id || deleteProposal.isPending}
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem>Editar</DropdownMenuItem>
-                          <DropdownMenuItem>Duplicar</DropdownMenuItem>
-                          <DropdownMenuItem>Arquivar</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
-                            Excluir
+                          {canEditDelete(proposal) && (
+                            <>
+                              <DropdownMenuItem 
+                                onClick={() => navigate(`/propostas/editar/${proposal.id}`)}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteClick(proposal)}
+                                className="text-red-600"
+                              >
+                                <Trash className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          <DropdownMenuItem>
+                            <Copy className="mr-2 h-4 w-4" />
+                            Duplicar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Archive className="mr-2 h-4 w-4" />
+                            Arquivar
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -433,6 +492,15 @@ const ProposalsListPage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <DeleteProposalDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+        proposalNumber={proposalToDelete?.proposal_number || ''}
+        isLoading={deleteProposal.isPending}
+      />
     </div>
   );
 };
