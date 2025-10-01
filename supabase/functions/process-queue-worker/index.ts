@@ -70,7 +70,73 @@ serve(async (req) => {
       try {
         console.log(`[QueueWorker] Processing conversation ${conversationId} with ${messageArray.length} messages`);
 
-        // Chamar process-message-buffer com a lógica existente
+        // 🆕 PASSO 1: Transformar mensagens PGMQ para formato do buffer
+        const bufferMessages = messageArray.map(msg => ({
+          content: msg.message.message || '',
+          sender_type: msg.message.sender_type || 'customer',
+          timestamp: msg.message.timestamp || new Date().toISOString(),
+          whatsapp_number: msg.message.whatsappNumber || ''
+        }));
+
+        console.log(`[QueueWorker] Transformed ${bufferMessages.length} messages for buffer`);
+
+        // 🆕 PASSO 2: Buscar buffer existente não processado
+        const { data: existingBuffer, error: bufferSearchError } = await supabase
+          .from('message_buffers')
+          .select('*')
+          .eq('conversation_id', conversationId)
+          .eq('processed', false)
+          .maybeSingle();
+
+        if (bufferSearchError) {
+          console.error(`[QueueWorker] Error searching for buffer:`, bufferSearchError);
+        }
+
+        // 🆕 PASSO 3: Criar ou atualizar o buffer
+        if (existingBuffer) {
+          // Atualizar buffer existente adicionando novas mensagens
+          const updatedMessages = [
+            ...(existingBuffer.messages || []),
+            ...bufferMessages
+          ];
+
+          const { error: updateError } = await supabase
+            .from('message_buffers')
+            .update({
+              messages: updatedMessages,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingBuffer.id);
+
+          if (updateError) {
+            console.error(`[QueueWorker] Error updating buffer:`, updateError);
+            throw updateError;
+          }
+
+          console.log(`✅ [QueueWorker] Updated existing buffer ${existingBuffer.id} with ${bufferMessages.length} new messages`);
+        } else {
+          // Criar novo buffer
+          const { error: insertError } = await supabase
+            .from('message_buffers')
+            .insert({
+              conversation_id: conversationId,
+              messages: bufferMessages,
+              buffer_started_at: new Date().toISOString(),
+              should_process_at: new Date().toISOString(), // Processar imediatamente
+              processed: false,
+              processing_started_at: null,
+              processed_at: null
+            });
+
+          if (insertError) {
+            console.error(`[QueueWorker] Error creating buffer:`, insertError);
+            throw insertError;
+          }
+
+          console.log(`✅ [QueueWorker] Created new buffer for conversation ${conversationId} with ${bufferMessages.length} messages`);
+        }
+
+        // PASSO 4: Chamar process-message-buffer com a lógica existente
         const { data, error } = await supabase.functions.invoke('process-message-buffer', {
           body: { conversationId }
         });
