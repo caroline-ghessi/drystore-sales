@@ -253,18 +253,23 @@ serve(async (req) => {
         mapped: mapProjectType(proposal.project_type)
       });
       
+      // Usar custom domain do frontend para links de aceitação
+      const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://arquivos.drystore.com.br';
+      const mappedProjectType = mapProjectType(proposal.project_type);
+      const proposalRoute = mappedProjectType === 'telha_shingle' ? 'proposta-premium' : 'proposta';
+      
       const proposalToInsert = {
         proposal_number: proposalNumber,
         title: proposal.title || `Proposta ${proposalNumber}`,
         description: proposal.description || '',
-        project_type: mapProjectType(proposal.project_type),
+        project_type: mappedProjectType,
         total_value: proposal.total_value || 0,
         discount_value: proposal.discount_value || 0,
         discount_percentage: proposal.discount_percentage || 0,
         final_value: proposal.final_value || proposal.total_value || 0,
         status: 'draft',
         valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        acceptance_link: `${supabaseUrl?.replace('/rest/v1', '')}/proposal/${proposalNumber}`,
+        acceptance_link: `${frontendUrl}/${proposalRoute}/${proposalNumber}`,
         client_data: proposal.client_data || {},
         created_by: proposal.created_by,
         pdf_status: 'processing',
