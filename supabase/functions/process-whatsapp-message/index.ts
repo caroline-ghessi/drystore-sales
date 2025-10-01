@@ -29,18 +29,12 @@ serve(async (req) => {
 
     console.log(`Received message for conversation ${conversationId}: ${message}`);
 
-    // Enfileirar mensagem com buffer de 60 segundos nativo (via pgmq)
-    const { data: queueData, error: queueError } = await supabase.rpc('pgmq.send', {
-      queue_name: 'whatsapp_messages_queue',
-      msg: {
-        conversationId,
-        message,
-        whatsappNumber,
-        timestamp: new Date().toISOString(),
-        sender_type: 'customer',
-        retry_count: 0
-      },
-      delay: 60 // Buffer de 60 segundos NATIVO da fila
+    // Enfileirar mensagem usando wrapper function (corrige ordem de parâmetros PGMQ)
+    const { data: queueData, error: queueError } = await supabase.rpc('enqueue_whatsapp_message', {
+      p_conversation_id: conversationId,
+      p_message: message,
+      p_whatsapp_number: whatsappNumber,
+      p_delay: 60 // Buffer de 60 segundos
     });
 
     if (queueError) {

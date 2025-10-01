@@ -27,11 +27,10 @@ serve(async (req) => {
 
     console.log('[QueueWorker] Starting queue processing cycle...');
 
-    // Ler até 10 mensagens da fila (VT de 60s garante buffer automático)
-    const { data: messages, error: readError } = await supabase.rpc('pgmq.read', {
-      queue_name: 'whatsapp_messages_queue',
-      vt: 60, // Visibility timeout - mensagem fica invisível por 60s se falhar
-      qty: 10
+    // Ler até 10 mensagens da fila usando wrapper function
+    const { data: messages, error: readError } = await supabase.rpc('read_whatsapp_queue', {
+      p_vt: 60, // Visibility timeout de 60 segundos
+      p_qty: 10 // Máximo de 10 mensagens por ciclo
     });
 
     if (readError) {
@@ -81,11 +80,10 @@ serve(async (req) => {
         }
 
         if (data?.success) {
-          // Sucesso: deletar todas as mensagens da conversa da fila em paralelo
+          // Sucesso: deletar todas as mensagens usando wrapper function em paralelo
           const deletePromises = messageArray.map(msg => 
-            supabase.rpc('pgmq.delete', {
-              queue_name: 'whatsapp_messages_queue',
-              msg_id: msg.msg_id
+            supabase.rpc('delete_queue_message', {
+              p_msg_id: msg.msg_id
             })
           );
 
@@ -119,11 +117,10 @@ serve(async (req) => {
           const retryCount = (msg.message.retry_count || 0) + 1;
 
           if (retryCount >= 3) {
-            // Usar pgmq.archive() nativo para mover para histórico após 3 tentativas
+            // Usar wrapper function para arquivar após 3 tentativas
             archivePromises.push(
-              supabase.rpc('pgmq.archive', {
-                queue_name: 'whatsapp_messages_queue',
-                msg_id: msg.msg_id
+              supabase.rpc('archive_queue_message', {
+                p_msg_id: msg.msg_id
               }).then(result => ({ msg, result, retryCount }))
             );
           } else {

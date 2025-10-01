@@ -3360,9 +3360,26 @@ export type Database = {
       }
     }
     Functions: {
+      archive_queue_message: {
+        Args: { p_msg_id: number }
+        Returns: boolean
+      }
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
+      }
+      delete_queue_message: {
+        Args: { p_msg_id: number }
+        Returns: boolean
+      }
+      enqueue_whatsapp_message: {
+        Args: {
+          p_conversation_id: string
+          p_delay?: number
+          p_message: string
+          p_whatsapp_number: string
+        }
+        Returns: number
       }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
@@ -3434,6 +3451,16 @@ export type Database = {
       migrate_conversations_to_crm: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      read_whatsapp_queue: {
+        Args: { p_qty?: number; p_vt?: number }
+        Returns: {
+          enqueued_at: string
+          message: Json
+          msg_id: number
+          read_ct: number
+          vt: string
+        }[]
       }
       schedule_buffer_processing: {
         Args: {
