@@ -385,7 +385,7 @@ async function processPDFInBackground(proposalId: string, pdfUrl: string, supaba
       body: {
         pdfUrl,
         proposalId,
-        shouldCompress: true
+        shouldCompress: false
       }
     });
 

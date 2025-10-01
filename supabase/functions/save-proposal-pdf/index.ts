@@ -34,7 +34,7 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { pdfUrl, proposalId, shouldCompress = true } = await req.json() as SavePDFRequest;
+    const { pdfUrl, proposalId, shouldCompress = false } = await req.json() as SavePDFRequest;
 
     console.log('📥 Starting PDF save process for proposal:', proposalId);
 
