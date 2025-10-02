@@ -102,10 +102,13 @@ async function sendRecoveryEmail(email: string, recoveryLink: string, requestId:
 const handler = async (req: Request): Promise<Response> => {
   const requestId = crypto.randomUUID().substring(0, 8);
 
+  // Log inicial - FORÇANDO DEPLOYMENT
+  console.log('=== EDGE FUNCTION SEND-RECOVERY-EMAIL INICIADA ===');
   logWithTimestamp('INFO', requestId, '🚀 Nova requisição de recuperação de senha', {
     method: req.method,
     url: req.url,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    headers: Object.fromEntries(req.headers)
   });
 
   // Handle CORS preflight

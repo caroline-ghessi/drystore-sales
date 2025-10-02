@@ -119,22 +119,28 @@ export default function Index() {
     setResetMessage(null);
 
     try {
+      // Logs detalhados para debug
+      console.log('🌐 Supabase URL:', 'https://groqsnnytvjabgeaekkw.supabase.co');
+      console.log('📍 Endpoint:', 'https://groqsnnytvjabgeaekkw.supabase.co/functions/v1/send-recovery-email');
       console.log('📤 Chamando Edge Function send-recovery-email');
+      console.log('📧 Email:', resetEmail);
       
       const { data, error } = await supabase.functions.invoke('send-recovery-email', {
         body: { email: resetEmail }
       });
 
-      console.log('📥 Resposta do Edge Function:', { data, error });
+      console.log('📥 Resposta completa do Edge Function:', JSON.stringify({ data, error }, null, 2));
 
       if (error) {
         console.error('❌ Erro ao chamar Edge Function:', error);
+        console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2));
         setResetMessage({
           type: 'error',
-          text: 'Erro ao enviar email de recuperação. Tente novamente.'
+          text: `Erro ao enviar email de recuperação: ${error.message || 'Tente novamente.'}`
         });
       } else if (data?.success) {
         console.log('✅ Email de recuperação enviado com sucesso!');
+        console.log('✅ Email ID:', data.emailId);
         setResetMessage({
           type: 'success',
           text: 'Email de recuperação enviado! Verifique sua caixa de entrada.'
@@ -149,6 +155,7 @@ export default function Index() {
       }
     } catch (err) {
       console.error('❌ Erro inesperado:', err);
+      console.error('❌ Stack:', err instanceof Error ? err.stack : 'No stack');
       setResetMessage({
         type: 'error',
         text: 'Erro inesperado. Tente novamente.'
