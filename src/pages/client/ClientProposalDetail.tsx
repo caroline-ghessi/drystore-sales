@@ -10,8 +10,20 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { OrderBumpCard } from '@/components/proposals/OrderBumpCard';
 import { useOrderBumps } from '@/hooks/useOrderBumps';
-import { ArrowLeft, Phone, Mail, Calendar, Clock, CheckCircle2, FileText } from 'lucide-react';
+import { useProposalActions } from '@/hooks/useProposalActions';
+import { ArrowLeft, Phone, Mail, Calendar, Clock, CheckCircle2, FileText, Gift, Check, X, MessageCircle, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 interface ProposalItem {
   id: string;
@@ -55,15 +67,25 @@ export default function ClientProposalDetail() {
   const { toast } = useToast();
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   const { bumps, isLoading: bumpsLoading, registerDisplay, updateInteraction } = useOrderBumps(
     id || '',
     proposal
   );
 
+  const { acceptProposal, rejectProposal, markAsViewed, loading: actionLoading } = useProposalActions();
+
   useEffect(() => {
     fetchProposal();
   }, [id, client]);
+
+  useEffect(() => {
+    if (proposal && id) {
+      markAsViewed(id);
+    }
+  }, [proposal, id]);
 
   const fetchProposal = async () => {
     if (!client || !id) return;
@@ -120,6 +142,50 @@ export default function ClientProposalDetail() {
     );
     window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
   };
+
+  const handleAcceptWithBump = async () => {
+    if (!id || !bumps || bumps.length === 0) return;
+    
+    const result = await acceptProposal({
+      proposalId: id,
+      includeOrderBump: true,
+      orderBumpRuleId: bumps[0].id,
+    });
+
+    if (result.success) {
+      setTimeout(() => navigate('/client'), 2000);
+    }
+  };
+
+  const handleAcceptOnly = async () => {
+    if (!id) return;
+    
+    const result = await acceptProposal({
+      proposalId: id,
+      includeOrderBump: false,
+      orderBumpRuleId: bumps && bumps.length > 0 ? bumps[0].id : undefined,
+    });
+
+    if (result.success) {
+      setTimeout(() => navigate('/client'), 2000);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!id) return;
+    
+    const result = await rejectProposal(id, rejectReason);
+
+    if (result.success) {
+      setRejectDialogOpen(false);
+      setTimeout(() => navigate('/client'), 2000);
+    }
+  };
+
+  const canInteract = proposal && !['accepted', 'rejected', 'expired'].includes(proposal.status);
+  const totalSavings = bumps && bumps.length > 0 && bumps[0].bump_discount_percentage 
+    ? (proposal?.final_value || 0) * (bumps[0].bump_discount_percentage / 100)
+    : 0;
 
   if (loading) {
     return (
@@ -224,35 +290,47 @@ export default function ClientProposalDetail() {
 
             <Separator />
 
-            {/* Informações do Vendedor */}
-            <div>
-              <h3 className="font-semibold mb-3">Criada por</h3>
-              <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12">
+            {/* Informações do Vendedor - DESTAQUE MAIOR */}
+            <div className="bg-primary/5 rounded-lg p-6 border border-primary/20">
+              <div className="flex items-center gap-2 mb-4">
+                <Star className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold text-lg">Seu Consultor de Vendas</h3>
+              </div>
+              <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16 border-2 border-primary/30">
                   <AvatarImage src={proposal.vendor.avatar_url || undefined} />
-                  <AvatarFallback>
+                  <AvatarFallback className="text-lg font-semibold">
                     {proposal.vendor.display_name?.charAt(0) || 'V'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <p className="font-medium">{proposal.vendor.display_name}</p>
+                  <p className="font-semibold text-lg">{proposal.vendor.display_name}</p>
                   {proposal.vendor.department && (
-                    <p className="text-sm text-muted-foreground">{proposal.vendor.department}</p>
+                    <Badge variant="secondary" className="mb-2">
+                      {proposal.vendor.department}
+                    </Badge>
                   )}
                   {proposal.vendor.email && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
                       <Mail className="h-3 w-3" />
                       {proposal.vendor.email}
+                    </p>
+                  )}
+                  {proposal.vendor.phone && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Phone className="h-3 w-3" />
+                      {proposal.vendor.phone}
                     </p>
                   )}
                 </div>
                 {proposal.vendor.phone && (
                   <Button
-                    variant="default"
+                    size="lg"
+                    className="bg-green-500 hover:bg-green-600 text-white"
                     onClick={() => openWhatsApp(proposal.vendor.phone!, proposal.vendor.display_name)}
                   >
-                    <Phone className="h-4 w-4 mr-2" />
-                    Contatar via WhatsApp
+                    <MessageCircle className="h-5 w-5 mr-2" />
+                    WhatsApp
                   </Button>
                 )}
               </div>
@@ -336,22 +414,160 @@ export default function ClientProposalDetail() {
           </CardContent>
         </Card>
 
-        {/* Order Bumps */}
-        {bumps && bumps.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Ofertas Personalizadas para Você</h2>
-            {bumps.map((bump) => (
-              <OrderBumpCard
-                key={bump.id}
-                proposalId={proposal.id}
-                rule={bump}
-                onDisplay={() => registerDisplay(bump.id)}
-                onInteraction={(action) => updateInteraction({ ruleId: bump.id, action })}
-              />
-            ))}
-          </div>
+        {/* Order Bumps - ANTES dos botões de ação */}
+        {bumps && bumps.length > 0 && canInteract && (
+          <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Gift className="w-6 h-6 text-primary" />
+                <CardTitle className="text-xl">🎁 Oferta Exclusiva para Você!</CardTitle>
+              </div>
+              <CardDescription>
+                Aproveite esta promoção especial ao aceitar sua proposta
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {bumps.map((bump) => (
+                <OrderBumpCard
+                  key={bump.id}
+                  proposalId={proposal.id}
+                  rule={bump}
+                  onDisplay={() => registerDisplay(bump.id)}
+                  onInteraction={(action) => updateInteraction({ ruleId: bump.id, action })}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Ações sobre a Proposta */}
+        {canInteract && (
+          <Card className="border-2 border-primary/20">
+            <CardHeader>
+              <CardTitle>Ações sobre a Proposta</CardTitle>
+              <CardDescription>
+                Escolha como deseja prosseguir com esta proposta
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Botão PRINCIPAL - Aceitar com Promoção */}
+              {bumps && bumps.length > 0 && (
+                <Button
+                  onClick={handleAcceptWithBump}
+                  disabled={actionLoading}
+                  size="lg"
+                  className="w-full h-auto py-6 text-lg font-bold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all"
+                >
+                  <Gift className="w-6 h-6 mr-3" />
+                  <div className="flex flex-col items-start">
+                    <span>ACEITAR PROPOSTA + PROMOÇÃO</span>
+                    {totalSavings > 0 && (
+                      <span className="text-sm font-normal opacity-90">
+                        💰 Economize {formatCurrency(totalSavings)}
+                      </span>
+                    )}
+                  </div>
+                </Button>
+              )}
+
+              {/* Botão Secundário - Aceitar Apenas Proposta */}
+              <Button
+                onClick={handleAcceptOnly}
+                disabled={actionLoading}
+                size="lg"
+                variant="default"
+                className="w-full"
+              >
+                <Check className="w-5 h-5 mr-2" />
+                Aceitar Apenas a Proposta
+              </Button>
+
+              <Separator />
+
+              {/* Botão Terciário - Recusar */}
+              <Button
+                onClick={() => setRejectDialogOpen(true)}
+                disabled={actionLoading}
+                size="lg"
+                variant="destructive"
+                className="w-full"
+              >
+                <X className="w-5 h-5 mr-2" />
+                Recusar Proposta
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Status de proposta já processada */}
+        {!canInteract && (
+          <Card className="border-muted">
+            <CardContent className="py-8 text-center">
+              {proposal?.status === 'accepted' && (
+                <>
+                  <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-500" />
+                  <h3 className="text-xl font-semibold mb-2">Proposta Aceita</h3>
+                  <p className="text-muted-foreground">
+                    Esta proposta já foi aceita. Em breve entraremos em contato.
+                  </p>
+                </>
+              )}
+              {proposal?.status === 'rejected' && (
+                <>
+                  <X className="w-16 h-16 mx-auto mb-4 text-red-500" />
+                  <h3 className="text-xl font-semibold mb-2">Proposta Recusada</h3>
+                  <p className="text-muted-foreground">
+                    Esta proposta foi recusada anteriormente.
+                  </p>
+                </>
+              )}
+              {proposal?.status === 'expired' && (
+                <>
+                  <Clock className="w-16 h-16 mx-auto mb-4 text-amber-500" />
+                  <h3 className="text-xl font-semibold mb-2">Proposta Expirada</h3>
+                  <p className="text-muted-foreground">
+                    Esta proposta já expirou. Entre em contato para uma nova proposta.
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
         )}
       </div>
+
+      {/* Dialog de Confirmação de Recusa */}
+      <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Recusar Proposta</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem certeza que deseja recusar esta proposta? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="py-4">
+            <label className="text-sm font-medium mb-2 block">
+              Gostaria de compartilhar o motivo? (Opcional)
+            </label>
+            <Textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Ex: Valor acima do orçamento, prazo não adequado, etc."
+              className="min-h-[100px]"
+            />
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleReject}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Confirmar Recusa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ClientLayout>
   );
 }

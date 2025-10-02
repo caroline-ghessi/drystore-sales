@@ -79,6 +79,7 @@ export default function ClientPortal() {
           )
         `)
         .eq('customer_id', client?.id)
+        .neq('status', 'draft')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -135,7 +136,7 @@ export default function ClientPortal() {
   const filterProposals = (proposals: Proposal[], filter: string) => {
     switch (filter) {
       case 'open':
-        return proposals.filter(p => ['draft', 'sent'].includes(p.status));
+        return proposals.filter(p => ['sent', 'viewed', 'under_review'].includes(p.status));
       case 'accepted':
         return proposals.filter(p => p.status === 'accepted');
       case 'rejected':
@@ -262,7 +263,7 @@ export default function ClientPortal() {
                 ) : (
                   <div className="space-y-4">
                     {filteredProposals.map((proposal) => (
-                      <Card key={proposal.id} className="hover:shadow-md transition-shadow">
+                      <Card key={proposal.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = `/client/proposta/${proposal.id}`}>
                         <CardContent className="p-6">
                           <div className="flex items-start justify-between">
                             <div className="flex items-start gap-4 flex-1">
@@ -284,6 +285,24 @@ export default function ClientPortal() {
                                   <p className="text-sm text-foreground mb-4">
                                     {proposal.description}
                                   </p>
+                                )}
+
+                                {/* Vendedor */}
+                                {proposal.vendorInfo && (
+                                  <div className="flex items-center gap-2 mb-4 p-3 bg-muted/50 rounded-md">
+                                    <Avatar className="w-8 h-8">
+                                      <AvatarImage src={proposal.vendorInfo.avatar_url} />
+                                      <AvatarFallback className="text-xs">
+                                        {proposal.vendorInfo.name.split(' ').map(n => n[0]).join('')}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="text-sm font-medium">{proposal.vendorInfo.name}</p>
+                                      {proposal.vendorInfo.phone && (
+                                        <p className="text-xs text-muted-foreground">{proposal.vendorInfo.phone}</p>
+                                      )}
+                                    </div>
+                                  </div>
                                 )}
                                 
                                 <div className="flex items-center gap-6 text-sm text-muted-foreground">
