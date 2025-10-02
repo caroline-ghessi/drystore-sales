@@ -246,62 +246,64 @@ export default function Index() {
               </form>
             ) : (
               // Vendor/Admin Login
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-                
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Entrar
-                </Button>
-                
-                <div className="text-center">
-                  <Button 
-                    type="button" 
-                    variant="link" 
-                    className={`text-sm text-muted-foreground hover:text-primary transition-all ${debugClick ? 'ring-2 ring-blue-500' : ''}`}
-                    onClick={() => {
-                      console.log('🔘 Botão "Esqueci minha senha" clicado');
-                      setDebugClick(true);
-                      setTimeout(() => setDebugClick(false), 300);
-                      
-                      try {
-                        setShowResetForm(true);
-                        console.log('✅ showResetForm definido como true');
-                      } catch (err) {
-                        console.error('❌ Erro ao definir showResetForm:', err);
-                      }
-                    }}
-                  >
-                    Esqueci minha senha
+              <>
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Senha</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Entrar
                   </Button>
-                </div>
+                  
+                  <div className="text-center">
+                    <Button 
+                      type="button" 
+                      variant="link" 
+                      className={`text-sm text-muted-foreground hover:text-primary transition-all ${debugClick ? 'ring-2 ring-blue-500' : ''}`}
+                      onClick={() => {
+                        console.log('🔘 Botão "Esqueci minha senha" clicado');
+                        setDebugClick(true);
+                        setTimeout(() => setDebugClick(false), 300);
+                        
+                        try {
+                          setShowResetForm(true);
+                          console.log('✅ showResetForm definido como true');
+                        } catch (err) {
+                          console.error('❌ Erro ao definir showResetForm:', err);
+                        }
+                      }}
+                    >
+                      Esqueci minha senha
+                    </Button>
+                  </div>
+                </form>
 
                 {showResetForm && (
                   <div className="mt-6 p-4 border rounded-lg bg-muted/20">
@@ -351,7 +353,7 @@ export default function Index() {
                     </form>
                   </div>
                 )}
-              </form>
+              </>
             )}
           </CardContent>
         </Card>
