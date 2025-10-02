@@ -105,38 +105,58 @@ export default function Index() {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('🔄 Iniciando recuperação de senha para:', resetEmail);
+    
+    if (!resetEmail) {
+      console.log('❌ Email vazio');
+      setResetMessage({
+        type: 'error',
+        text: 'Por favor, digite seu email.'
+      });
+      return;
+    }
+
     setResetLoading(true);
     setResetMessage(null);
 
     try {
-      const baseUrl = window.location.origin;
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${baseUrl}/reset-password`,
+      console.log('📤 Chamando Edge Function send-recovery-email');
+      
+      const { data, error } = await supabase.functions.invoke('send-recovery-email', {
+        body: { email: resetEmail }
       });
 
+      console.log('📥 Resposta do Edge Function:', { data, error });
+
       if (error) {
-        console.error('❌ Erro ao enviar email de recuperação:', error);
-        setResetMessage({ 
-          type: 'error', 
-          text: 'Erro ao enviar email. Verifique o endereço e tente novamente.' 
+        console.error('❌ Erro ao chamar Edge Function:', error);
+        setResetMessage({
+          type: 'error',
+          text: 'Erro ao enviar email de recuperação. Tente novamente.'
         });
-      } else {
-        console.log('✅ Email de recuperação enviado com sucesso');
-        setResetMessage({ 
-          type: 'success', 
-          text: 'Email de recuperação enviado! Verifique sua caixa de entrada.' 
+      } else if (data?.success) {
+        console.log('✅ Email de recuperação enviado com sucesso!');
+        setResetMessage({
+          type: 'success',
+          text: 'Email de recuperação enviado! Verifique sua caixa de entrada.'
         });
         setResetEmail('');
+      } else {
+        console.error('❌ Resposta inesperada do Edge Function:', data);
+        setResetMessage({
+          type: 'error',
+          text: data?.error || 'Erro ao enviar email. Tente novamente.'
+        });
       }
     } catch (err) {
       console.error('❌ Erro inesperado:', err);
-      setResetMessage({ 
-        type: 'error', 
-        text: 'Erro inesperado. Tente novamente.' 
+      setResetMessage({
+        type: 'error',
+        text: 'Erro inesperado. Tente novamente.'
       });
+    } finally {
+      setResetLoading(false);
+      console.log('✅ Processo de recuperação finalizado');
     }
-
-    setResetLoading(false);
   };
 
 

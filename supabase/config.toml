@@ -1,5 +1,8 @@
 project_id = "groqsnnytvjabgeaekkw"
 
+[functions.send-recovery-email]
+verify_jwt = false
+
 [functions.firecrawl-webhook]
 verify_jwt = false
 
