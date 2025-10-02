@@ -7,6 +7,7 @@ import { WhatsAppInput } from '@/components/ui/whatsapp-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, Building2, ArrowLeft, Users, MessageCircle } from 'lucide-react';
@@ -20,6 +21,10 @@ export default function Index() {
   const [error, setError] = useState('');
   
   const [showResetForm, setShowResetForm] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [debugClick, setDebugClick] = useState(false);
   
   const { signIn, user } = useAuth();
   const { signInWithWhatsApp, client } = useClientAuth();
@@ -95,6 +100,43 @@ export default function Index() {
     }
     
     setLoading(false);
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('🔄 Iniciando recuperação de senha para:', resetEmail);
+    setResetLoading(true);
+    setResetMessage(null);
+
+    try {
+      const baseUrl = window.location.origin;
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${baseUrl}/reset-password`,
+      });
+
+      if (error) {
+        console.error('❌ Erro ao enviar email de recuperação:', error);
+        setResetMessage({ 
+          type: 'error', 
+          text: 'Erro ao enviar email. Verifique o endereço e tente novamente.' 
+        });
+      } else {
+        console.log('✅ Email de recuperação enviado com sucesso');
+        setResetMessage({ 
+          type: 'success', 
+          text: 'Email de recuperação enviado! Verifique sua caixa de entrada.' 
+        });
+        setResetEmail('');
+      }
+    } catch (err) {
+      console.error('❌ Erro inesperado:', err);
+      setResetMessage({ 
+        type: 'error', 
+        text: 'Erro inesperado. Tente novamente.' 
+      });
+    }
+
+    setResetLoading(false);
   };
 
 
@@ -216,12 +258,72 @@ export default function Index() {
                   <Button 
                     type="button" 
                     variant="link" 
-                    className="text-sm text-muted-foreground hover:text-primary"
-                    onClick={() => setShowResetForm(true)}
+                    className={`text-sm text-muted-foreground hover:text-primary transition-all ${debugClick ? 'ring-2 ring-blue-500' : ''}`}
+                    onClick={() => {
+                      console.log('🔘 Botão "Esqueci minha senha" clicado');
+                      setDebugClick(true);
+                      setTimeout(() => setDebugClick(false), 300);
+                      
+                      try {
+                        setShowResetForm(true);
+                        console.log('✅ showResetForm definido como true');
+                      } catch (err) {
+                        console.error('❌ Erro ao definir showResetForm:', err);
+                      }
+                    }}
                   >
                     Esqueci minha senha
                   </Button>
                 </div>
+
+                {showResetForm && (
+                  <div className="mt-6 p-4 border rounded-lg bg-muted/20">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowResetForm(false);
+                          setResetMessage(null);
+                          setResetEmail('');
+                        }}
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        Voltar
+                      </Button>
+                      <h3 className="text-sm font-semibold">Recuperar Senha</h3>
+                    </div>
+
+                    <form onSubmit={handleForgotPassword} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="reset-email">Email</Label>
+                        <Input
+                          id="reset-email"
+                          type="email"
+                          placeholder="seu@email.com"
+                          value={resetEmail}
+                          onChange={(e) => setResetEmail(e.target.value)}
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Digite o email da sua conta para receber o link de recuperação
+                        </p>
+                      </div>
+
+                      {resetMessage && (
+                        <Alert variant={resetMessage.type === 'error' ? 'destructive' : 'default'}>
+                          <AlertDescription>{resetMessage.text}</AlertDescription>
+                        </Alert>
+                      )}
+
+                      <Button type="submit" className="w-full" disabled={resetLoading}>
+                        {resetLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Enviar Email de Recuperação
+                      </Button>
+                    </form>
+                  </div>
+                )}
               </form>
             )}
           </CardContent>
