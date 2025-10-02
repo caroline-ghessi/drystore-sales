@@ -25,6 +25,7 @@ import ConfiguracoesPage from './ConfiguracoesPage';
 import ComissoesPage from './ComissoesPage';
 import VendedoresPage from './VendedoresPage';
 import DebugPage from './DebugPage';
+import OrderBumpsPage from './OrderBumpsPage';
 import { TemplateAssetsPage } from '../TemplateAssetsPage';
 import VendorMappingModal from '../../components/admin/VendorMappingModal';
 import { VendorEmailSetupModal } from '../../components/admin/VendorEmailSetupModal';
@@ -78,6 +79,11 @@ export default function AdminLayout() {
       title: 'Comissões',
       path: '/propostas/administracao/comissoes',
       icon: Percent
+    },
+    {
+      title: 'Order Bumps',
+      path: '/propostas/administracao/order-bumps',
+      icon: Target
     },
     {
       title: 'Templates',
@@ -183,6 +189,7 @@ export default function AdminLayout() {
           <Route path="metas" element={<MetasPage />} />
           <Route path="aprovacoes" element={<ApprovacoesPage />} />
           <Route path="comissoes" element={<ComissoesPage />} />
+          <Route path="order-bumps" element={<OrderBumpsPage />} />
           <Route path="templates" element={<TemplateAssetsPage />} />
           <Route path="configuracoes" element={<ConfiguracoesPage />} />
           <Route path="debug" element={

@@ -12,6 +12,7 @@ import ResetPasswordPage from "@/pages/ResetPassword";
 import HomePage from "@/pages/Home";
 import PublicProposal from "@/pages/PublicProposal";
 import ClientPortal from "@/pages/client/ClientPortal";
+import ClientProposalDetail from "@/pages/client/ClientProposalDetail";
 const PremiumProposal = React.lazy(() => import("@/pages/PremiumProposal"));
 import { useStorageCleanup } from "@/hooks/useStorageCleanup";
 
@@ -75,6 +76,12 @@ function AppContent() {
         <Route path="/cliente" element={
           <ClientProtectedRoute>
             <ClientPortal />
+          </ClientProtectedRoute>
+        } />
+        
+        <Route path="/client/proposta/:id" element={
+          <ClientProtectedRoute>
+            <ClientProposalDetail />
           </ClientProtectedRoute>
         } />
         

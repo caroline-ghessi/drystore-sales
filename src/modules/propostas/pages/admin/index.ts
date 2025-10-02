@@ -5,3 +5,4 @@ export { default as ConfiguracoesPage } from './ConfiguracoesPage';
 export { default as ComissoesPage } from './ComissoesPage';
 export { default as VendedoresPage } from './VendedoresPage';
 export { default as DebugPage } from './DebugPage';
+export { default as OrderBumpsPage } from './OrderBumpsPage';

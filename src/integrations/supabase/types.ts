@@ -1691,6 +1691,63 @@ export type Database = {
           },
         ]
       }
+      order_bump_rules: {
+        Row: {
+          bump_description: string
+          bump_discount_percentage: number | null
+          bump_image_url: string | null
+          bump_price: number | null
+          bump_title: string
+          created_at: string | null
+          created_by: string | null
+          current_displays: number | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          max_displays: number | null
+          name: string
+          priority: number | null
+          trigger_conditions: Json
+          updated_at: string | null
+        }
+        Insert: {
+          bump_description: string
+          bump_discount_percentage?: number | null
+          bump_image_url?: string | null
+          bump_price?: number | null
+          bump_title: string
+          created_at?: string | null
+          created_by?: string | null
+          current_displays?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_displays?: number | null
+          name: string
+          priority?: number | null
+          trigger_conditions?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          bump_description?: string
+          bump_discount_percentage?: number | null
+          bump_image_url?: string | null
+          bump_price?: number | null
+          bump_title?: string
+          created_at?: string | null
+          created_by?: string | null
+          current_displays?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_displays?: number | null
+          name?: string
+          priority?: number | null
+          trigger_conditions?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       product_categories: {
         Row: {
           category_code: string | null
@@ -2092,6 +2149,58 @@ export type Database = {
             columns: ["proposal_id"]
             isOneToOne: false
             referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_order_bumps: {
+        Row: {
+          bump_data: Json
+          displayed_at: string | null
+          id: string
+          interacted_at: string | null
+          proposal_id: string | null
+          rule_id: string | null
+          status: string | null
+        }
+        Insert: {
+          bump_data: Json
+          displayed_at?: string | null
+          id?: string
+          interacted_at?: string | null
+          proposal_id?: string | null
+          rule_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          bump_data?: Json
+          displayed_at?: string | null
+          id?: string
+          interacted_at?: string | null
+          proposal_id?: string | null
+          rule_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_order_bumps_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_with_context"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_order_bumps_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_order_bumps_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "order_bump_rules"
             referencedColumns: ["id"]
           },
         ]

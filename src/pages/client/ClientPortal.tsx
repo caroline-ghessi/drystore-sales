@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { OrderBumpCard } from '@/components/proposals/OrderBumpCard';
+import { useOrderBumps } from '@/hooks/useOrderBumps';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   FileText, 
@@ -318,5 +320,27 @@ export default function ClientPortal() {
         </Card>
       </div>
     </ClientLayout>
+  );
+}
+
+function ProposalOrderBumps({ proposalId }: { proposalId: string }) {
+  const { bumps, isLoading, registerDisplay, updateInteraction } = useOrderBumps(proposalId);
+
+  if (isLoading || !bumps || bumps.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-4">
+      {bumps.map((bump) => (
+        <OrderBumpCard
+          key={bump.id}
+          proposalId={proposalId}
+          rule={bump}
+          onDisplay={() => registerDisplay(bump.id)}
+          onInteraction={(action) => updateInteraction({ ruleId: bump.id, action })}
+        />
+      ))}
+    </div>
   );
 }
