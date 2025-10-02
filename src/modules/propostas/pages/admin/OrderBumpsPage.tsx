@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { getCategoryLabel } from '@/lib/constants/asset-types';
 import {
   Dialog,
   DialogContent,
@@ -271,6 +272,32 @@ export default function OrderBumpsPage() {
                                   </Badge>
                                 )}
                               </span>
+                            </div>
+                          )}
+
+                          {rule.trigger_conditions?.product_category && 
+                           Array.isArray(rule.trigger_conditions.product_category) && 
+                           rule.trigger_conditions.product_category.length > 0 && (
+                            <div>
+                              <span className="font-medium">Categorias: </span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {rule.trigger_conditions.product_category.map((cat: string) => (
+                                  <Badge key={cat} variant="outline" className="text-xs">
+                                    {getCategoryLabel(cat)}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {(!rule.trigger_conditions?.product_category || 
+                            !Array.isArray(rule.trigger_conditions.product_category) ||
+                            rule.trigger_conditions.product_category.length === 0) && (
+                            <div>
+                              <span className="font-medium">Categorias: </span>
+                              <Badge variant="secondary" className="text-xs">
+                                Todas as categorias
+                              </Badge>
                             </div>
                           )}
 

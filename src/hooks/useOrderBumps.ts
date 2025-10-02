@@ -76,8 +76,15 @@ export function useOrderBumps(proposalId: string, proposalData?: any) {
 
           // Verificar categoria de produto
           if (conditions.product_category && Array.isArray(conditions.product_category)) {
-            if (!conditions.product_category.includes(proposalData.category)) {
-              return false;
+            // Se o array estiver vazio, aplicar a todas
+            if (conditions.product_category.length === 0) {
+              // Não filtrar - permitir para todas as categorias
+            } else {
+              // Verificar tanto project_type quanto category para compatibilidade
+              const proposalCategory = proposalData.project_type || proposalData.category;
+              if (proposalCategory && !conditions.product_category.includes(proposalCategory)) {
+                return false;
+              }
             }
           }
         }

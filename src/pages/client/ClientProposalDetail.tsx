@@ -72,7 +72,11 @@ export default function ClientProposalDetail() {
 
   const { bumps, isLoading: bumpsLoading, registerDisplay, updateInteraction } = useOrderBumps(
     id || '',
-    proposal
+    proposal ? {
+      final_value: proposal.final_value,
+      project_type: proposal.category, // Categoria da proposta
+      category: proposal.category, // Compatibilidade
+    } : undefined
   );
 
   const { acceptProposal, rejectProposal, markAsViewed, loading: actionLoading } = useProposalActions();

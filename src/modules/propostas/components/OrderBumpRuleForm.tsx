@@ -16,8 +16,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import type { OrderBumpRule } from '@/hooks/useOrderBumps';
+import { PRODUCT_CATEGORIES } from '@/lib/constants/asset-types';
 
 const formSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
@@ -283,18 +285,43 @@ export function OrderBumpRuleForm({ rule, onSuccess, onCancel }: OrderBumpRuleFo
           <FormField
             control={form.control}
             name="product_categories"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Categorias de Produto (opcional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="solar, drywall, gesso (separado por vírgula)" {...field} />
-                </FormControl>
-                <FormDescription>
-                  Deixe em branco para aplicar a todas as categorias
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const selectedCategories = field.value 
+                ? field.value.split(',').map(c => c.trim()).filter(Boolean)
+                : [];
+
+              return (
+                <FormItem>
+                  <FormLabel>Categorias de Produto</FormLabel>
+                  <FormDescription>
+                    Selecione as categorias onde este order bump será exibido. Se nenhuma for selecionada, aparecerá em todas.
+                  </FormDescription>
+                  <div className="grid grid-cols-2 gap-3 mt-2 border rounded-lg p-4 bg-muted/30">
+                    {PRODUCT_CATEGORIES.map((category) => (
+                      <div key={category.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`category-${category.value}`}
+                          checked={selectedCategories.includes(category.value)}
+                          onCheckedChange={(checked) => {
+                            const newCategories = checked
+                              ? [...selectedCategories, category.value]
+                              : selectedCategories.filter(c => c !== category.value);
+                            field.onChange(newCategories.join(', '));
+                          }}
+                        />
+                        <label
+                          htmlFor={`category-${category.value}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {category.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
         </div>
 
