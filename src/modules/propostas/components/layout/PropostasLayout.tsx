@@ -48,10 +48,8 @@ export default function PropostasLayout() {
                   </RouteGuard>
                 } 
               />
-              <Route path="templates" element={<div className="p-6 bg-drystore-light-gray min-h-full"><div className="text-center py-20 text-drystore-medium-gray">Templates - Em desenvolvimento</div></div>} />
-              <Route path="configuracoes" element={<div className="p-6 bg-drystore-light-gray min-h-full"><div className="text-center py-20 text-drystore-medium-gray">Configurações - Em desenvolvimento</div></div>} />
               <Route path="notificacoes" element={<div className="p-6 bg-drystore-light-gray min-h-full"><div className="text-center py-20 text-drystore-medium-gray">Notificações - Em desenvolvimento</div></div>} />
-              <Route 
+              <Route
                 path="relatorios/geral" 
                 element={
                   <RouteGuard requireAdmin={true}>

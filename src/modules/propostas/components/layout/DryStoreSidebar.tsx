@@ -14,10 +14,17 @@ import {
   X,
   CheckCircle2,
   TrendingUp,
-  FileDown
+  FileDown,
+  Target,
+  CheckCircle,
+  Percent,
+  Image,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { useVendedoresProposta } from '../../hooks/useVendedoresProposta';
+import { useVendorApprovals } from '../../hooks/useVendorApprovals';
 
 const dryStoreItems = [
   { title: 'Dashboard', url: '/propostas', icon: BarChart3, exact: true },
@@ -27,11 +34,18 @@ const dryStoreItems = [
   { title: 'Notificações', url: '/propostas/notificacoes', icon: Bell, badge: '3' },
 ];
 
-const adminItems = [
-  { title: 'Visão Geral', url: '/propostas/administracao', icon: Settings },
+const getAdminItems = (vendorsCount: number, pendingApprovalsCount: number) => [
+  { title: 'Visão Geral', url: '/propostas/administracao', icon: BarChart3, exact: true },
+  { title: 'Vendedores', url: '/propostas/administracao/vendedores', icon: Users, badge: vendorsCount > 0 ? `${vendorsCount}` : undefined },
+  { title: 'Metas de Vendas', url: '/propostas/administracao/metas', icon: Target },
+  { title: 'Aprovações', url: '/propostas/administracao/aprovacoes', icon: CheckCircle, badge: pendingApprovalsCount > 0 ? `${pendingApprovalsCount}` : undefined },
+  { title: 'Comissões', url: '/propostas/administracao/comissoes', icon: Percent },
+  { title: 'Order Bumps', url: '/propostas/administracao/order-bumps', icon: Target },
+  { title: 'Templates', url: '/propostas/administracao/templates', icon: Image },
   { title: 'Produtos', url: '/propostas/produtos', icon: ShoppingBag },
   { title: 'Relatórios', url: '/propostas/relatorios/geral', icon: FileDown },
-  { title: 'Analytics', url: '/propostas/analytics', icon: TrendingUp }
+  { title: 'Analytics', url: '/propostas/analytics', icon: TrendingUp },
+  { title: 'Debug', url: '/propostas/administracao/debug', icon: AlertTriangle }
 ];
 
 export function DryStoreSidebar() {
@@ -39,12 +53,24 @@ export function DryStoreSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const { isAdmin } = useUserPermissions();
+  
+  // Fetch admin stats for badges
+  const { data: vendors } = useVendedoresProposta();
+  const { data: approvals } = useVendorApprovals();
+  
+  const vendorsCount = vendors?.length || 0;
+  const pendingApprovalsCount = approvals?.filter(a => a.status === 'pending').length || 0;
+  
+  const adminItems = getAdminItems(vendorsCount, pendingApprovalsCount);
 
   const isActive = (path: string, exact: boolean = false) => {
     if (exact) {
-      return currentPath === '/propostas' || currentPath === '/propostas/';
+      if (path === '/propostas') {
+        return currentPath === '/propostas' || currentPath === '/propostas/';
+      }
+      return currentPath === path;
     }
-    return currentPath.startsWith(path);
+    return currentPath === path || currentPath.startsWith(path + '/');
   };
 
   return (
@@ -137,11 +163,12 @@ export function DryStoreSidebar() {
             )}
             
             {adminItems.map((item) => {
-              const active = isActive(item.url, false);
+              const active = isActive(item.url, item.exact);
               return (
                 <NavLink
                   key={item.title}
                   to={item.url}
+                  end={item.exact}
                   className={cn(
                     "flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
                     active 
@@ -153,6 +180,11 @@ export function DryStoreSidebar() {
                   {!collapsed && (
                     <div className="ml-3 flex items-center justify-between w-full">
                       <span>{item.title}</span>
+                      {item.badge && (
+                        <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center">
+                          {item.badge}
+                        </span>
+                      )}
                     </div>
                   )}
                 </NavLink>
