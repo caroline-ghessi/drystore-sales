@@ -11,6 +11,8 @@ import { Loader2, Bot, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function AuthPage() {
+  console.log('[Auth] Component rendered');
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,9 +22,12 @@ export default function AuthPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState('');
   const [showResetForm, setShowResetForm] = useState(false);
+  const [debugClick, setDebugClick] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  
+  console.log('[Auth] showResetForm state:', showResetForm);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -179,12 +184,68 @@ export default function AuthPage() {
                     <Button 
                       type="button" 
                       variant="link" 
-                      className="text-sm text-muted-foreground hover:text-primary"
-                      onClick={() => setShowResetForm(true)}
+                      className={`text-sm text-muted-foreground hover:text-primary transition-all ${debugClick ? 'ring-2 ring-blue-500' : ''}`}
+                      onClick={() => {
+                        console.log('[Auth] Forgot password button clicked!');
+                        setDebugClick(true);
+                        setTimeout(() => setDebugClick(false), 300);
+                        
+                        try {
+                          console.log('[Auth] Setting showResetForm to true...');
+                          setShowResetForm(true);
+                          console.log('[Auth] showResetForm updated');
+                        } catch (err) {
+                          console.error('[Auth] Error setting showResetForm:', err);
+                        }
+                      }}
                     >
                       Esqueci minha senha
                     </Button>
                   </div>
+                  
+                  {showResetForm && (
+                    <div className="mt-6 p-4 border rounded-lg bg-muted/20 animate-in fade-in-50 slide-in-from-top-2">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            console.log('[Auth] Back button clicked');
+                            setShowResetForm(false);
+                          }}
+                        >
+                          <ArrowLeft className="w-4 h-4 mr-1" />
+                          Voltar
+                        </Button>
+                        <h3 className="font-medium">Recuperar Senha</h3>
+                      </div>
+                      
+                      <form onSubmit={handleForgotPassword} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="reset-email">Email</Label>
+                          <Input
+                            id="reset-email"
+                            type="email"
+                            placeholder="seu@email.com"
+                            value={resetEmail}
+                            onChange={(e) => setResetEmail(e.target.value)}
+                            required
+                          />
+                        </div>
+                        
+                        {resetMessage && (
+                          <Alert variant={resetMessage.includes('Erro') ? 'destructive' : 'default'}>
+                            <AlertDescription>{resetMessage}</AlertDescription>
+                          </Alert>
+                        )}
+                        
+                        <Button type="submit" className="w-full" disabled={resetLoading}>
+                          {resetLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Enviar Email de Recuperação
+                        </Button>
+                      </form>
+                    </div>
+                  )}
                 </form>
               </TabsContent>
               
@@ -233,47 +294,6 @@ export default function AuthPage() {
                 </form>
               </TabsContent>
             </Tabs>
-            
-            {showResetForm && (
-              <div className="mt-6 p-4 border rounded-lg bg-muted/20">
-                <div className="flex items-center gap-2 mb-4">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setShowResetForm(false)}
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-1" />
-                    Voltar
-                  </Button>
-                  <h3 className="font-medium">Recuperar Senha</h3>
-                </div>
-                
-                <form onSubmit={handleForgotPassword} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="reset-email">Email</Label>
-                    <Input
-                      id="reset-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  
-                  {resetMessage && (
-                    <Alert variant={resetMessage.includes('Erro') ? 'destructive' : 'default'}>
-                      <AlertDescription>{resetMessage}</AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  <Button type="submit" className="w-full" disabled={resetLoading}>
-                    {resetLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Enviar Email de Recuperação
-                  </Button>
-                </form>
-              </div>
-            )}
           </CardContent>
         </Card>
         
