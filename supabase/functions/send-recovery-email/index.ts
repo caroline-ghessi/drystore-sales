@@ -162,11 +162,17 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     // FASE 4: Gerar link de recuperação via Supabase Admin
+    // Usar a URL de produção do Lovable
+    const baseUrl = 'https://a8d68d6e-4efd-4093-966f-bddf0a89dc45.lovableproject.com';
+    const redirectUrl = `${baseUrl}/reset-password`;
+    
+    logWithTimestamp('DEBUG', requestId, '🔗 Gerando link com redirect para', { redirectUrl });
+    
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
       email: email,
       options: {
-        redirectTo: 'https://a8d68d6e-4efd-4093-966f-bddf0a89dc45.lovableproject.com/reset-password'
+        redirectTo: redirectUrl
       }
     });
 
