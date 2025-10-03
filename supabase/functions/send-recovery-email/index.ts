@@ -188,7 +188,17 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const recoveryLink = linkData.properties.action_link;
+    let recoveryLink = linkData.properties.action_link;
+    
+    // Se o link gerado está usando o domínio customizado, substituir pelo domínio do Supabase
+    if (recoveryLink.includes('arquivos.drystore.com.br')) {
+      recoveryLink = recoveryLink.replace(
+        'https://arquivos.drystore.com.br/auth/v1/verify',
+        'https://groqsnnytvjabgeaekkw.supabase.co/auth/v1/verify'
+      );
+      logWithTimestamp('DEBUG', requestId, '🔄 Link corrigido para usar endpoint Supabase', { recoveryLink });
+    }
+    
     logWithTimestamp('INFO', requestId, '✅ Link de recuperação gerado', { 
       linkPreview: recoveryLink.substring(0, 100) + '...'
     });
