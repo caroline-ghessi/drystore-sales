@@ -21,10 +21,20 @@ export default function ResetPasswordPage() {
 
   // Verificar se há tokens de reset na URL (tanto query params quanto hash fragments)
   const getTokenFromUrl = () => {
+    console.log('🔍 ResetPasswordPage - URL completa:', window.location.href);
+    console.log('🔍 ResetPasswordPage - Hash:', window.location.hash);
+    console.log('🔍 ResetPasswordPage - Search:', window.location.search);
+    
     // Primeiro tenta query params
     let accessToken = searchParams.get('access_token');
     let refreshToken = searchParams.get('refresh_token');
     let type = searchParams.get('type');
+    
+    console.log('🔍 ResetPasswordPage - Tokens de query params:', { 
+      accessToken: !!accessToken, 
+      refreshToken: !!refreshToken, 
+      type 
+    });
     
     // Se não encontrou, tenta hash fragments
     if (!accessToken && window.location.hash) {
@@ -32,6 +42,12 @@ export default function ResetPasswordPage() {
       accessToken = hashParams.get('access_token');
       refreshToken = hashParams.get('refresh_token');
       type = hashParams.get('type');
+      
+      console.log('🔍 ResetPasswordPage - Tokens de hash:', { 
+        accessToken: !!accessToken, 
+        refreshToken: !!refreshToken, 
+        type 
+      });
     }
     
     return { accessToken, refreshToken, type };

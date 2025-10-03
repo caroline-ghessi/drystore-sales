@@ -162,14 +162,15 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     // FASE 4: Gerar link de recuperação via Supabase Admin
-    // ATUALIZADO: 2025-06-03 - Forçar uso do domínio Lovable oficial
-    // Este link será usado pelo Supabase para redirecionar após verificação
+    // CORREÇÃO CRÍTICA: O link auth/v1/verify usa o domínio Supabase, redirect_to aponta para Lovable
+    const SUPABASE_PROJECT_URL = 'https://groqsnnytvjabgeaekkw.supabase.co';
     const LOVABLE_PROJECT_URL = 'https://a8d68d6e-4efd-4093-966f-bddf0a89dc45.lovableproject.com';
     const redirectUrl = `${LOVABLE_PROJECT_URL}/recovery`;
     
-    logWithTimestamp('INFO', requestId, '🔗 [v2.0] Gerando link de recuperação', { 
+    logWithTimestamp('INFO', requestId, '🔗 [v3.0 - CORREÇÃO] Gerando link de recuperação', { 
+      supabaseUrl: SUPABASE_PROJECT_URL,
       redirectUrl,
-      projectUrl: LOVABLE_PROJECT_URL 
+      explanation: 'Link auth/v1/verify usa domínio Supabase, redirect_to aponta para Lovable'
     });
     
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
@@ -194,10 +195,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     const recoveryLink = linkData.properties.action_link;
     
-    logWithTimestamp('INFO', requestId, '✅ [v2.0] Link de recuperação gerado com sucesso', { 
-      linkPreview: recoveryLink.substring(0, 100) + '...',
-      containsLovableDomain: recoveryLink.includes('lovableproject.com'),
-      redirectTarget: redirectUrl
+    logWithTimestamp('INFO', requestId, '✅ [v3.0] Link de recuperação gerado com sucesso', { 
+      linkPreview: recoveryLink.substring(0, 120) + '...',
+      containsSupabaseDomain: recoveryLink.includes('groqsnnytvjabgeaekkw.supabase.co'),
+      containsLovableRedirect: recoveryLink.includes('lovableproject.com'),
+      redirectTarget: redirectUrl,
+      expectedFormat: 'https://groqsnnytvjabgeaekkw.supabase.co/auth/v1/verify?token=...&redirect_to=https://...lovableproject.com/recovery'
     });
 
     // FASE 5: Enviar email via Resend
