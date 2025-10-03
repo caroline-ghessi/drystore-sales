@@ -162,10 +162,15 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     // FASE 4: Gerar link de recuperação via Supabase Admin
-    // Usar o domínio oficial Lovable
-    const redirectUrl = 'https://a8d68d6e-4efd-4093-966f-bddf0a89dc45.lovableproject.com/recovery';
+    // ATUALIZADO: 2025-06-03 - Forçar uso do domínio Lovable oficial
+    // Este link será usado pelo Supabase para redirecionar após verificação
+    const LOVABLE_PROJECT_URL = 'https://a8d68d6e-4efd-4093-966f-bddf0a89dc45.lovableproject.com';
+    const redirectUrl = `${LOVABLE_PROJECT_URL}/recovery`;
     
-    logWithTimestamp('DEBUG', requestId, '🔗 Gerando link com redirect para', { redirectUrl });
+    logWithTimestamp('INFO', requestId, '🔗 [v2.0] Gerando link de recuperação', { 
+      redirectUrl,
+      projectUrl: LOVABLE_PROJECT_URL 
+    });
     
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
@@ -188,8 +193,11 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const recoveryLink = linkData.properties.action_link;
-    logWithTimestamp('INFO', requestId, '✅ Link de recuperação gerado', { 
-      linkPreview: recoveryLink.substring(0, 100) + '...'
+    
+    logWithTimestamp('INFO', requestId, '✅ [v2.0] Link de recuperação gerado com sucesso', { 
+      linkPreview: recoveryLink.substring(0, 100) + '...',
+      containsLovableDomain: recoveryLink.includes('lovableproject.com'),
+      redirectTarget: redirectUrl
     });
 
     // FASE 5: Enviar email via Resend
