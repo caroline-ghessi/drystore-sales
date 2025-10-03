@@ -9,6 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "@/pages/Index";
 import SetPasswordPage from "@/pages/SetPassword";
 import ResetPasswordPage from "@/pages/ResetPassword";
+import RecoveryPage from "@/pages/RecoveryPage";
 import HomePage from "@/pages/Home";
 import PublicProposal from "@/pages/PublicProposal";
 import ClientPortal from "@/pages/client/ClientPortal";
@@ -64,6 +65,7 @@ function AppContent() {
         <Route path="/" element={<Index />} />
         <Route path="/set-password" element={<SetPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/recovery" element={<RecoveryPage />} />
         <Route path="/auth" element={<Index />} /> {/* Fallback para links de auth */}
         <Route path="/proposta/:id" element={<PublicProposal />} /> {/* Página pública de proposta */}
         <Route path="/proposta-premium/:id" element={

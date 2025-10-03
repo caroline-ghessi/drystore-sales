@@ -162,9 +162,9 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     // FASE 4: Gerar link de recuperação via Supabase Admin
-    // Usar a URL de produção do Lovable
-    const baseUrl = 'https://a8d68d6e-4efd-4093-966f-bddf0a89dc45.lovableproject.com';
-    const redirectUrl = `${baseUrl}/reset-password`;
+    // Usar o domínio customizado do projeto
+    const baseUrl = 'https://arquivos.drystore.com.br';
+    const redirectUrl = `${baseUrl}/recovery`;
     
     logWithTimestamp('DEBUG', requestId, '🔗 Gerando link com redirect para', { redirectUrl });
     

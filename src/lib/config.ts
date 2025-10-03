@@ -10,7 +10,7 @@ export const config = {
     businessAccountId: import.meta.env.VITE_WHATSAPP_BUSINESS_ACCOUNT_ID || '',
   },
   app: {
-    url: import.meta.env.VITE_APP_URL || 'http://localhost:3000',
+    url: 'https://arquivos.drystore.com.br',
     env: import.meta.env.MODE || 'development',
   }
 } as const;
