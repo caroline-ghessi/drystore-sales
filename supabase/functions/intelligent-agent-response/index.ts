@@ -10,6 +10,38 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
+// Função utilitária para obter data/hora de Brasília
+function getBrasiliaDateTime() {
+  const now = new Date();
+  const brasiliaTime = new Date(now.toLocaleString('en-US', { 
+    timeZone: 'America/Sao_Paulo' 
+  }));
+  
+  const hours = brasiliaTime.getHours();
+  const dayPeriod = hours >= 6 && hours < 12 ? 'manhã' 
+                   : hours >= 12 && hours < 18 ? 'tarde' 
+                   : 'noite';
+  
+  const formattedDate = brasiliaTime.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  
+  const formattedTime = brasiliaTime.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  
+  return {
+    dateTime: `${formattedDate} às ${formattedTime}`,
+    hours,
+    dayPeriod,
+    isoString: brasiliaTime.toISOString()
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -118,10 +150,19 @@ Deno.serve(async (req) => {
       `${ctx.context_type}: ${JSON.stringify(ctx.context_data)}`
     ).join('\n') || '';
 
-    // Construir prompt final estruturado
+    // Obter horário de Brasília
+    const brasiliaInfo = getBrasiliaDateTime();
+    console.log(`🕐 Brasília Time: ${brasiliaInfo.dateTime} (${brasiliaInfo.dayPeriod})`);
+    console.log(`🤖 Generating response for ${finalAgent.agent_name} at ${brasiliaInfo.hours}h`);
+
+    // Construir prompt final estruturado com data/hora de Brasília
     let finalPrompt = `Você é um assistente especializado da Drystore. ${finalAgent.system_prompt}
 
+DATA E HORA ATUAL (Brasília): ${brasiliaInfo.dateTime}
+PERÍODO DO DIA: ${brasiliaInfo.dayPeriod} (${brasiliaInfo.hours}h)
+
 INSTRUÇÕES CRÍTICAS:
+- Use a saudação apropriada ao horário de Brasília informado acima
 - NUNCA use mensagens pré-definidas ou templates
 - Seja natural, conversacional e útil
 - Adapte-se ao contexto da conversa
@@ -166,12 +207,12 @@ RESPOSTA: Responda de forma natural e personalizada, considerando todo o context
       .select()
       .single();
 
-    // Atualizar conversa
+    // Atualizar conversa com timestamp de Brasília
     await supabase
       .from('conversations')
       .update({
         current_agent_id: finalAgent.id,
-        last_message_at: new Date().toISOString()
+        last_message_at: brasiliaInfo.isoString
       })
       .eq('id', conversationId);
 
