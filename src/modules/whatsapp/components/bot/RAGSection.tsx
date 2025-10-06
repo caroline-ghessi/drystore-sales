@@ -8,8 +8,14 @@ import { Progress } from '@/components/ui/progress';
 import { 
   Database, Search, FileText, BarChart3, Upload, 
   Folder, File, Trash2, Download, RefreshCw,
-  Brain, Zap, Target, TrendingUp 
+  Brain, Zap, Target, TrendingUp, AlertCircle 
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { ProductCategory } from '@/types/bot.types';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { EmbeddingsManager } from './EmbeddingsManager';
 
 export function RAGSection() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -250,52 +256,7 @@ export function RAGSection() {
             </TabsContent>
             
             <TabsContent value="embeddings" className="space-y-4 mt-6">
-              <div className="grid gap-4">
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium">Gerenciamento de Embeddings</h4>
-                    <Button size="sm">
-                      <Upload className="w-4 h-4 mr-2" />
-                      Processar Arquivos
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {[
-                      { name: "manual_energia_solar.pdf", status: "processed", size: "2.3MB", vectors: "1,247" },
-                      { name: "catalogo_telhas.docx", status: "processing", size: "890KB", vectors: "..." },
-                      { name: "guia_steel_frame.pdf", status: "pending", size: "1.8MB", vectors: "-" }
-                    ].map((file, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 border rounded">
-                        <div className="flex items-center gap-3">
-                          <File className="w-4 h-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">{file.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {file.size} • {file.vectors} vetores
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant={
-                              file.status === 'processed' ? 'default' : 
-                              file.status === 'processing' ? 'secondary' : 'outline'
-                            }
-                          >
-                            {file.status === 'processed' && '✅ Processado'}
-                            {file.status === 'processing' && '⏳ Processando'}
-                            {file.status === 'pending' && '📋 Pendente'}
-                          </Badge>
-                          <Button size="sm" variant="ghost">
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <EmbeddingsManager selectedCategory={selectedCategory} />
             </TabsContent>
           </Tabs>
         </CardContent>

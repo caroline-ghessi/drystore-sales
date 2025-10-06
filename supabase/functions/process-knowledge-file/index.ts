@@ -67,13 +67,13 @@ serve(async (req) => {
       throw new Error(`Unsupported file type: ${fileRecord.file_type}`);
     }
 
-    // Update database record
+    // Update database record with processing status
     const { error: updateError } = await supabase
       .from('agent_knowledge_files')
       .update({
         extracted_content: extractedContent,
         metadata: metadata,
-        processing_status: 'completed',
+        processing_status: 'processing',
         processed_at: new Date().toISOString()
       })
       .eq('id', fileId);
@@ -84,12 +84,34 @@ serve(async (req) => {
 
     console.log(`✅ Successfully processed file: ${fileRecord.file_name}`);
 
-    // Start background task to generate embeddings (don't await to not block response)
-    supabase.functions.invoke('generate-embeddings', {
-      body: { fileId, content: extractedContent }
-    }).catch(error => {
+    // Start background task to generate embeddings
+    try {
+      const { error: embeddingError } = await supabase.functions.invoke('generate-embeddings', {
+        body: { fileId, content: extractedContent }
+      });
+      
+      if (embeddingError) {
+        console.error('⚠️ Embedding generation error:', embeddingError);
+        // Mark as completed but without embeddings
+        await supabase
+          .from('agent_knowledge_files')
+          .update({ processing_status: 'completed' })
+          .eq('id', fileId);
+      } else {
+        console.log('✅ Embeddings generated successfully');
+        // Mark as completed with embeddings
+        await supabase
+          .from('agent_knowledge_files')
+          .update({ processing_status: 'completed_with_embeddings' })
+          .eq('id', fileId);
+      }
+    } catch (error) {
       console.error('❌ Failed to generate embeddings:', error);
-    });
+      await supabase
+        .from('agent_knowledge_files')
+        .update({ processing_status: 'completed' })
+        .eq('id', fileId);
+    }
 
     return new Response(
       JSON.stringify({ 
@@ -103,6 +125,21 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('❌ Error processing file:', error);
+    
+    // Update file status to error in database
+    try {
+      const { fileId } = await req.json();
+      await supabase
+        .from('agent_knowledge_files')
+        .update({ 
+          processing_status: 'error',
+          metadata: { error: errorMessage, failed_at: new Date().toISOString() }
+        })
+        .eq('id', fileId);
+    } catch (dbError) {
+      console.error('Failed to update error status:', dbError);
+    }
+    
     return new Response(
       JSON.stringify({ 
         success: false, 
@@ -381,27 +418,63 @@ async function processPDF(buffer: ArrayBuffer, fileName: string, agentCategory?:
   }
 }
 
-// Excel Processing - Use native library + LLM cleaning
+// Excel Processing - Use XLSX library + LLM cleaning
 async function processExcel(buffer: ArrayBuffer, fileName: string, agentCategory?: string): Promise<{ content: string; metadata: any }> {
   try {
-    // For now, use a simple text extraction approach for Excel
-    // TODO: Implement proper Excel parsing with XLSX library
-    const text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
-    const cleanedContent = await cleanTextWithLLM(text, fileName, agentCategory);
+    console.log('📊 Processing Excel file with XLSX library...');
+    
+    // Import XLSX from CDN
+    const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs');
+    
+    // Read the workbook
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    
+    let allContent = '';
+    const sheetsInfo: any[] = [];
+    
+    // Process each sheet
+    for (const sheetName of workbook.SheetNames) {
+      const worksheet = workbook.Sheets[sheetName];
+      
+      // Convert to JSON to get structured data
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+      
+      // Convert to readable text format
+      let sheetContent = `\n\n=== PLANILHA: ${sheetName} ===\n\n`;
+      
+      jsonData.forEach((row: any, index: number) => {
+        if (Array.isArray(row) && row.some((cell: any) => cell !== '')) {
+          // Format as table row
+          sheetContent += row.join(' | ') + '\n';
+        }
+      });
+      
+      allContent += sheetContent;
+      sheetsInfo.push({
+        name: sheetName,
+        rows: jsonData.length,
+        columns: jsonData[0]?.length || 0
+      });
+    }
+    
+    console.log(`📊 Extracted ${allContent.length} characters from ${workbook.SheetNames.length} sheets`);
+    
+    // Clean and structure with LLM
+    const cleanedContent = await cleanTextWithLLM(allContent, fileName, agentCategory);
     
     const metadata = {
-      extractionMethod: 'Native + LLM',
+      extractionMethod: 'XLSX + LLM',
       processedAt: new Date().toISOString(),
-      contentLength: cleanedContent.length
+      contentLength: cleanedContent.length,
+      sheets: sheetsInfo,
+      totalSheets: workbook.SheetNames.length
     };
+    
     return { content: cleanedContent, metadata };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('Error processing Excel:', error);
-    return { 
-      content: 'Excel file could not be processed', 
-      metadata: { error: errorMessage } 
-    };
+    console.error('❌ Error processing Excel:', error);
+    throw new Error(`Failed to process Excel file: ${errorMessage}`);
   }
 }
 
