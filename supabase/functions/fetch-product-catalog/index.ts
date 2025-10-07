@@ -116,27 +116,98 @@ async function fetchAndParseXML(): Promise<Product[]> {
   const xmlText = await response.text();
   console.log(`📄 XML fetched successfully (${xmlText.length} bytes)`);
   
+  // Log primeiros 2000 caracteres para debug
+  console.log('📋 XML Structure Sample:', xmlText.substring(0, 2000));
+  
   // Parse XML (estrutura básica - ajustar conforme necessário)
   const products: Product[] = [];
   
-  // Usar regex para extrair produtos (alternativa ao XML parser)
-  const productMatches = xmlText.matchAll(/<produto>(.*?)<\/produto>/gs);
+  // Tentar múltiplos padrões de tags comuns
+  const patterns = [
+    /<produto[^>]*>(.*?)<\/produto>/gs,
+    /<item[^>]*>(.*?)<\/item>/gs,
+    /<product[^>]*>(.*?)<\/product>/gs,
+    /<PRODUTO[^>]*>(.*?)<\/PRODUTO>/gs,
+  ];
+  
+  let productMatches: IterableIterator<RegExpMatchArray> | null = null;
+  
+  for (const pattern of patterns) {
+    const matches = Array.from(xmlText.matchAll(pattern));
+    if (matches.length > 0) {
+      console.log(`✓ Found ${matches.length} products with pattern: ${pattern}`);
+      productMatches = xmlText.matchAll(pattern);
+      break;
+    }
+  }
+  
+  if (!productMatches) {
+    console.error('❌ No product tags found in XML. Trying alternative extraction...');
+    
+    // Tentar extrair estrutura alternativa (lista de campos)
+    const fieldPatterns = {
+      id: /<(?:id|codigo|sku)[^>]*>([^<]+)<\/(?:id|codigo|sku)>/gi,
+      name: /<(?:nome|descricao|title|name)[^>]*>([^<]+)<\/(?:nome|descricao|title|name)>/gi,
+    };
+    
+    const ids = Array.from(xmlText.matchAll(fieldPatterns.id));
+    const names = Array.from(xmlText.matchAll(fieldPatterns.name));
+    
+    console.log(`Found ${ids.length} IDs and ${names.length} names in alternative extraction`);
+    
+    if (ids.length === 0) {
+      console.error('❌ Failed to parse XML: no products found with any pattern');
+      console.log('Root tags found:', xmlText.match(/<[a-zA-Z][a-zA-Z0-9]*[\s>]/g)?.slice(0, 20));
+    }
+    
+    return products;
+  }
   
   for (const match of productMatches) {
     const productXml = match[1];
     
-    const id = extractTag(productXml, 'id') || extractTag(productXml, 'codigo') || '';
-    const name = extractTag(productXml, 'nome') || extractTag(productXml, 'descricao') || '';
-    const priceStr = extractTag(productXml, 'preco') || extractTag(productXml, 'valor') || '0';
-    const category = extractTag(productXml, 'categoria') || 'Sem Categoria';
-    const brand = extractTag(productXml, 'marca') || 'Sem Marca';
-    const sku = extractTag(productXml, 'sku') || extractTag(productXml, 'codigo') || id;
-    const stock = extractTag(productXml, 'estoque') || 'available';
-    const url = extractTag(productXml, 'url') || extractTag(productXml, 'link') || '';
-    const description = extractTag(productXml, 'descricao_completa') || '';
+    // Tentar múltiplas variações de tags para cada campo
+    const id = extractTag(productXml, 'id') || 
+               extractTag(productXml, 'codigo') || 
+               extractTag(productXml, 'sku') ||
+               extractTag(productXml, 'ID') || '';
+               
+    const name = extractTag(productXml, 'nome') || 
+                 extractTag(productXml, 'descricao') ||
+                 extractTag(productXml, 'title') ||
+                 extractTag(productXml, 'name') || '';
+                 
+    const priceStr = extractTag(productXml, 'preco') || 
+                     extractTag(productXml, 'valor') ||
+                     extractTag(productXml, 'price') || '0';
+                     
+    const category = extractTag(productXml, 'categoria') || 
+                     extractTag(productXml, 'category') || 
+                     'Sem Categoria';
+                     
+    const brand = extractTag(productXml, 'marca') || 
+                  extractTag(productXml, 'brand') || 
+                  'Sem Marca';
+                  
+    const sku = extractTag(productXml, 'sku') || 
+                extractTag(productXml, 'codigo') || 
+                id;
+                
+    const stock = extractTag(productXml, 'estoque') || 
+                  extractTag(productXml, 'stock') ||
+                  extractTag(productXml, 'disponibilidade') || 
+                  'available';
+                  
+    const url = extractTag(productXml, 'link') || 
+                extractTag(productXml, 'url') || '';
+                
+    const description = extractTag(productXml, 'descricao_completa') ||
+                       extractTag(productXml, 'descricao') ||
+                       extractTag(productXml, 'description') || '';
     
-    // Converter preço (remover vírgula e converter para número)
-    const price = parseFloat(priceStr.replace(',', '.')) || 0;
+    // Converter preço (remover vírgula, pontos e converter para número)
+    const cleanPrice = priceStr.replace(/[^\d,\.]/g, '').replace(',', '.');
+    const price = parseFloat(cleanPrice) || 0;
     
     if (id && name) {
       products.push({
@@ -154,13 +225,25 @@ async function fetchAndParseXML(): Promise<Product[]> {
   }
   
   console.log(`✅ Parsed ${products.length} products from XML`);
+  
+  // Log amostra dos primeiros produtos
+  if (products.length > 0) {
+    console.log('📦 Sample products:', JSON.stringify(products.slice(0, 3), null, 2));
+  }
+  
   return products;
 }
 
 function extractTag(xml: string, tagName: string): string {
-  const regex = new RegExp(`<${tagName}[^>]*>(.*?)</${tagName}>`, 's');
+  // Tentar case-insensitive e com ou sem atributos
+  const regex = new RegExp(`<${tagName}[^>]*>([^<]+)<\/${tagName}>`, 'is');
   const match = xml.match(regex);
-  return match ? match[1].trim() : '';
+  if (match && match[1]) {
+    // Limpar CDATA se presente
+    const cleaned = match[1].replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1').trim();
+    return cleaned;
+  }
+  return '';
 }
 
 function searchProducts(products: Product[], query: string): Product[] {
