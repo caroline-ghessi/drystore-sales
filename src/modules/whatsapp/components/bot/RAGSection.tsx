@@ -100,6 +100,7 @@ export function RAGSection() {
                     <option value="energia_solar">☀️ Energia Solar</option>
                     <option value="telhas_shingle">🏠 Telhas Shingle</option>
                     <option value="steel_frame">🏗️ Steel Frame</option>
+                    <option value="ferramentas">🔧 Ferramentas</option>
                   </select>
                   
                   <div className="flex-1 flex gap-2">
@@ -256,6 +257,20 @@ export function RAGSection() {
             </TabsContent>
             
             <TabsContent value="embeddings" className="space-y-4 mt-6">
+              <div className="flex items-center gap-3 mb-6">
+                <label className="text-sm font-medium text-foreground">Categoria:</label>
+                <select 
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="px-3 py-2 border rounded-lg bg-background text-foreground text-sm"
+                >
+                  <option value="all">Todas as Categorias</option>
+                  <option value="energia_solar">☀️ Energia Solar</option>
+                  <option value="telhas_shingle">🏠 Telhas Shingle</option>
+                  <option value="steel_frame">🏗️ Steel Frame</option>
+                  <option value="ferramentas">🔧 Ferramentas</option>
+                </select>
+              </div>
               <EmbeddingsManager selectedCategory={selectedCategory} />
             </TabsContent>
           </Tabs>
