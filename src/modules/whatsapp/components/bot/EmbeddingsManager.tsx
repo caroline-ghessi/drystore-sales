@@ -120,34 +120,79 @@ export function EmbeddingsManager({ selectedCategory }: EmbeddingsManagerProps) 
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  const getStatusBadge = (status: string) => {
+  const getAccurateStatus = (file: any) => {
+    const hasChunks = file.chunks_count > 0;
+    const metadata = file.metadata as Record<string, any> | null;
+    const failedChunks = metadata?.failed_chunks || 0;
+    const status = file.processing_status;
+    
+    // Se tem chunks que falharam ou status error
+    if (status === 'error' || failedChunks > 0) {
+      return 'error';
+    }
+    
+    // Se diz que tem embeddings mas não tem chunks
+    if (status === 'completed_with_embeddings' && !hasChunks) {
+      return 'error_no_chunks';
+    }
+    
+    // Se tem chunks e embeddings
+    if (status === 'completed_with_embeddings' && hasChunks) {
+      return 'processed';
+    }
+    
+    // Se processou mas ainda não tem embeddings
+    if (status === 'completed') {
+      return 'processed_no_embeddings';
+    }
+    
+    // Se está processando
+    if (status === 'processing') {
+      return 'processing';
+    }
+    
+    // Não processado
+    return 'not_processed';
+  };
+
+  const getStatusBadge = (file: any) => {
+    const status = getAccurateStatus(file);
+    
     switch (status) {
-      case 'completed_with_embeddings':
+      case 'processed':
         return (
-          <Badge variant="default" className="gap-1">
-            <CheckCircle className="w-3 h-3" />
-            Processado + Embeddings
-          </Badge>
-        );
-      case 'completed':
-        return (
-          <Badge variant="secondary" className="gap-1">
+          <Badge variant="default" className="gap-1 bg-green-600">
             <CheckCircle className="w-3 h-3" />
             Processado
           </Badge>
         );
-      case 'processing':
+      case 'processed_no_embeddings':
         return (
           <Badge variant="secondary" className="gap-1">
+            <CheckCircle className="w-3 h-3" />
+            Sem Embeddings
+          </Badge>
+        );
+      case 'processing':
+        return (
+          <Badge variant="secondary" className="gap-1 bg-blue-600 text-white">
             <RefreshCw className="w-3 h-3 animate-spin" />
             Processando
           </Badge>
         );
       case 'error':
+      case 'error_no_chunks':
         return (
           <Badge variant="destructive" className="gap-1">
             <AlertCircle className="w-3 h-3" />
             Erro
+          </Badge>
+        );
+      case 'not_processed':
+        return (
+          <Badge variant="outline" className="gap-1 text-gray-500">
+            <Clock className="w-3 h-3" />
+            Não Processado
           </Badge>
         );
       default:
@@ -220,28 +265,52 @@ export function EmbeddingsManager({ selectedCategory }: EmbeddingsManagerProps) 
                       })}</>
                     )}
                   </p>
+                  
+                  {/* Integridade dos chunks */}
+                  {file.chunks_count > 0 && (
+                    <p className="text-xs text-green-600 mt-1">
+                      ✓ {file.chunks_count} chunk(s) processado(s) com sucesso
+                    </p>
+                  )}
+                  
+                  {/* Failed chunks warning */}
+                  {file.metadata && typeof file.metadata === 'object' && (file.metadata as any).failed_chunks > 0 && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      ⚠️ {(file.metadata as any).failed_chunks} chunk(s) falharam no processamento
+                    </p>
+                  )}
+                  
+                  {/* Error message */}
                   {file.metadata && typeof file.metadata === 'object' && 'error' in file.metadata && (
                     <p className="text-xs text-destructive mt-1">
                       <AlertCircle className="w-3 h-3 inline mr-1" />
                       {String((file.metadata as any).error)}
                     </p>
                   )}
+                  
+                  {/* No chunks warning */}
+                  {file.processing_status === 'completed_with_embeddings' && file.chunks_count === 0 && (
+                    <p className="text-xs text-destructive mt-1">
+                      <AlertCircle className="w-3 h-3 inline mr-1" />
+                      Status indica embeddings, mas nenhum chunk foi criado
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="flex items-center gap-2 flex-shrink-0">
-                {getStatusBadge(file.processing_status)}
+                {getStatusBadge(file)}
                 
-                {file.processing_status === 'error' && (
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    onClick={() => reprocessMutation.mutate(file.id)}
-                    disabled={reprocessMutation.isPending}
-                  >
-                    <RefreshCw className={`w-3 h-3 ${reprocessMutation.isPending ? 'animate-spin' : ''}`} />
-                  </Button>
-                )}
+                {/* Botão Reprocessar - agora visível para TODOS os arquivos */}
+                <Button 
+                  size="sm" 
+                  variant="ghost"
+                  onClick={() => reprocessMutation.mutate(file.id)}
+                  disabled={reprocessMutation.isPending || file.processing_status === 'processing'}
+                  title="Reprocessar arquivo"
+                >
+                  <RefreshCw className={`w-3 h-3 ${reprocessMutation.isPending ? 'animate-spin' : ''}`} />
+                </Button>
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
