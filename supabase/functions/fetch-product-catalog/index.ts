@@ -235,27 +235,100 @@ function extractTag(xml: string, tagName: string): string {
 }
 
 function searchProducts(products: Product[], query: string): Product[] {
-  if (!query || query.trim() === '') {
-    return products.slice(0, 10); // Retornar primeiros 10 se sem query
+  if (!query || query.trim().length === 0) {
+    return products.slice(0, 10);
   }
   
-  const lowerQuery = query.toLowerCase();
-  const keywords = lowerQuery.split(/\s+/);
+  const queryLower = query.toLowerCase();
   
-  // Buscar produtos que contenham qualquer keyword
-  const results = products.filter(product => {
-    const searchText = `${product.name} ${product.category} ${product.brand} ${product.description || ''}`.toLowerCase();
-    return keywords.some(keyword => searchText.includes(keyword));
+  // Stop words brasileiras - palavras sem significado para busca
+  const stopWords = [
+    'quero', 'me', 'manda', 'os', 'as', 'uns', 'umas', 'um', 'uma', 
+    'o', 'a', 'de', 'da', 'do', 'para', 'por', 'com', 'sem', 'sobre',
+    'entre', 'até', 'desde', 'que', 'qual', 'quais', 'quando', 'onde',
+    'como', 'por que', 'porque', 'então', 'mas', 'porém', 'entao',
+    'algum', 'alguma', 'alguns', 'algumas', 'outro', 'outra', 'outros', 'outras'
+  ];
+  
+  // Extrair palavras-chave relevantes (> 2 chars e não stop words)
+  const keywords = queryLower
+    .split(/\s+/)
+    .filter(k => k.length > 2 && !stopWords.includes(k));
+  
+  console.log('🔍 Busca - Keywords extraídas:', keywords);
+  
+  // Detectar marcas conhecidas na query
+  const knownBrands = ['makita', 'bosch', 'dewalt', 'black+decker', 'skil', 'stanley', 'tramontina'];
+  const brandInQuery = knownBrands.find(brand => queryLower.includes(brand));
+  
+  // Detectar tipos de produtos na query
+  const productTypes = ['parafusadeira', 'furadeira', 'serra', 'lixadeira', 'esmerilhadeira', 
+                       'martelete', 'politriz', 'soprador', 'aspirador', 'compressor'];
+  const typeInQuery = productTypes.find(type => queryLower.includes(type));
+  
+  if (brandInQuery) console.log('🏷️ Marca detectada:', brandInQuery);
+  if (typeInQuery) console.log('🔧 Tipo detectado:', typeInQuery);
+  
+  // Sistema de pontuação
+  interface ScoredProduct extends Product {
+    score: number;
+  }
+  
+  const scoredProducts: ScoredProduct[] = products.map(product => {
+    let score = 0;
+    const nameLower = product.name.toLowerCase();
+    const brandLower = product.brand.toLowerCase();
+    const categoryLower = product.category.toLowerCase();
+    const descLower = product.description?.toLowerCase() || '';
+    
+    // +10 pontos: Marca exata match
+    if (brandInQuery && brandLower.includes(brandInQuery)) {
+      score += 10;
+    }
+    
+    // +5 pontos: Tipo de produto match
+    if (typeInQuery && (nameLower.includes(typeInQuery) || categoryLower.includes(typeInQuery))) {
+      score += 5;
+    }
+    
+    // +3 pontos por keyword no nome
+    keywords.forEach(keyword => {
+      if (nameLower.includes(keyword)) score += 3;
+    });
+    
+    // +2 pontos por keyword na marca
+    keywords.forEach(keyword => {
+      if (brandLower.includes(keyword)) score += 2;
+    });
+    
+    // +1 ponto por keyword na categoria
+    keywords.forEach(keyword => {
+      if (categoryLower.includes(keyword)) score += 1;
+    });
+    
+    // +0.5 pontos por keyword na descrição
+    keywords.forEach(keyword => {
+      if (descLower.includes(keyword)) score += 0.5;
+    });
+    
+    return { ...product, score };
   });
   
-  // Priorizar produtos com nome exato ou similar
-  results.sort((a, b) => {
-    const aNameMatch = a.name.toLowerCase().includes(lowerQuery) ? 1 : 0;
-    const bNameMatch = b.name.toLowerCase().includes(lowerQuery) ? 1 : 0;
-    return bNameMatch - aNameMatch;
+  // Filtrar produtos com score > 0
+  const matchingProducts = scoredProducts.filter(p => p.score > 0);
+  
+  // Ordenar por score (maior primeiro)
+  matchingProducts.sort((a, b) => b.score - a.score);
+  
+  // Log dos top 3 resultados
+  console.log('🎯 Top 3 produtos encontrados:');
+  matchingProducts.slice(0, 3).forEach((p, i) => {
+    console.log(`${i+1}. [${p.score} pts] ${p.brand} - ${p.name.substring(0, 60)}...`);
   });
   
-  return results.slice(0, 10); // Retornar top 10
+  // Se há marca específica, retornar mais resultados (até 15)
+  const limit = brandInQuery ? 15 : 10;
+  return matchingProducts.slice(0, limit);
 }
 
 async function loadCache(): Promise<CatalogCache | null> {
