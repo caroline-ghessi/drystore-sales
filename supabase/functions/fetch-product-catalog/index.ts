@@ -166,47 +166,26 @@ async function fetchAndParseXML(): Promise<Product[]> {
   for (const match of productMatches) {
     const productXml = match[1];
     
-    // Tentar múltiplas variações de tags para cada campo
-    const id = extractTag(productXml, 'id') || 
-               extractTag(productXml, 'codigo') || 
-               extractTag(productXml, 'sku') ||
-               extractTag(productXml, 'ID') || '';
-               
-    const name = extractTag(productXml, 'nome') || 
-                 extractTag(productXml, 'descricao') ||
-                 extractTag(productXml, 'title') ||
-                 extractTag(productXml, 'name') || '';
-                 
-    const priceStr = extractTag(productXml, 'preco') || 
-                     extractTag(productXml, 'valor') ||
-                     extractTag(productXml, 'price') || '0';
-                     
-    const category = extractTag(productXml, 'categoria') || 
-                     extractTag(productXml, 'category') || 
-                     'Sem Categoria';
-                     
-    const brand = extractTag(productXml, 'marca') || 
-                  extractTag(productXml, 'brand') || 
-                  'Sem Marca';
-                  
-    const sku = extractTag(productXml, 'sku') || 
-                extractTag(productXml, 'codigo') || 
-                id;
-                
-    const stock = extractTag(productXml, 'estoque') || 
-                  extractTag(productXml, 'stock') ||
-                  extractTag(productXml, 'disponibilidade') || 
-                  'available';
-                  
-    const url = extractTag(productXml, 'link') || 
-                extractTag(productXml, 'url') || '';
-                
-    const description = extractTag(productXml, 'descricao_completa') ||
-                       extractTag(productXml, 'descricao') ||
-                       extractTag(productXml, 'description') || '';
+    // Google Shopping RSS Feed format - usar tags corretas
+    const id = extractTag(productXml, 'g:id') || extractTag(productXml, 'id') || '';
+    const name = extractTag(productXml, 'title') || '';
+    const priceStr = extractTag(productXml, 'g:price') || '0';
+    const brand = extractTag(productXml, 'g:brand') || 'Sem Marca';
+    const categoryFull = extractTag(productXml, 'g:product_type') || 'Sem Categoria';
+    const description = extractTag(productXml, 'description') || '';
+    const url = extractTag(productXml, 'link') || '';
+    const stock = extractTag(productXml, 'g:availability') || 'unknown';
+    const sku = extractTag(productXml, 'g:mpn') || extractTag(productXml, 'g:gtin') || id;
     
-    // Converter preço (remover vírgula, pontos e converter para número)
-    const cleanPrice = priceStr.replace(/[^\d,\.]/g, '').replace(',', '.');
+    // Extrair primeira categoria de "Ferramentas > Acessórios > Lâminas"
+    const category = categoryFull.split('>')[0].trim();
+    
+    // Converter preço: "R$ 49,90" → 49.90
+    const cleanPrice = priceStr
+      .replace(/R\$/g, '')
+      .replace(/\s/g, '')
+      .replace(/[^\d,\.]/g, '')
+      .replace(',', '.');
     const price = parseFloat(cleanPrice) || 0;
     
     if (id && name) {
@@ -235,12 +214,21 @@ async function fetchAndParseXML(): Promise<Product[]> {
 }
 
 function extractTag(xml: string, tagName: string): string {
-  // Tentar case-insensitive e com ou sem atributos
-  const regex = new RegExp(`<${tagName}[^>]*>([^<]+)<\/${tagName}>`, 'is');
+  // Suportar namespaces (g:id, g:price, etc.) e tags normais
+  // Escape dos dois pontos no namespace
+  const escapedTag = tagName.replace(':', '\\:');
+  const regex = new RegExp(`<${escapedTag}[^>]*>([\\s\\S]*?)<\\/${escapedTag}>`, 'i');
   const match = xml.match(regex);
   if (match && match[1]) {
     // Limpar CDATA se presente
-    const cleaned = match[1].replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1').trim();
+    let cleaned = match[1].replace(/<!\[CDATA\[([\\s\\S]*?)\]\]>/g, '$1').trim();
+    // Decodificar entidades HTML básicas
+    cleaned = cleaned
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num)));
     return cleaned;
   }
   return '';
