@@ -105,6 +105,8 @@ export function useUploadKnowledgeFile() {
 
       // Process file in background
       try {
+        console.log('📞 Calling process-knowledge-file function for:', fileRecord.id);
+        
         const { data: processResult, error: processError } = await supabase.functions.invoke('process-knowledge-file', {
           body: {
             fileId: fileRecord.id
@@ -112,14 +114,29 @@ export function useUploadKnowledgeFile() {
         });
 
         if (processError) {
-          console.error('⚠️ Processing error:', processError);
-          // Don't throw here - file is uploaded, processing can be retried
+          console.error('⚠️ Processing function error:', processError);
+          toast({
+            title: "Atenção",
+            description: `Arquivo enviado mas processamento falhou: ${processError.message}. Tente reprocessar.`,
+            variant: "destructive"
+          });
+        } else if (processResult && !processResult.success) {
+          console.error('⚠️ Processing failed:', processResult.error);
+          toast({
+            title: "Erro no Processamento",
+            description: processResult.error || "Erro desconhecido. Tente reprocessar o arquivo.",
+            variant: "destructive"
+          });
         } else {
-          console.log('✅ File processing started:', processResult);
+          console.log('✅ File processing started successfully:', processResult);
         }
       } catch (processError) {
-        console.error('⚠️ Processing call failed:', processError);
-        // Don't throw - file is uploaded successfully
+        console.error('⚠️ Processing call exception:', processError);
+        toast({
+          title: "Erro ao Processar",
+          description: "Arquivo enviado mas não foi possível iniciar processamento. Tente reprocessar.",
+          variant: "destructive"
+        });
       }
 
       return fileRecord;

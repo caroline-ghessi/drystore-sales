@@ -1,5 +1,8 @@
 project_id = "groqsnnytvjabgeaekkw"
 
+[functions.process-knowledge-file]
+verify_jwt = false
+
 [functions.send-recovery-email]
 verify_jwt = false
 

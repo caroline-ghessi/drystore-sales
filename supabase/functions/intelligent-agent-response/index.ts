@@ -150,6 +150,57 @@ Deno.serve(async (req) => {
       `${ctx.context_type}: ${JSON.stringify(ctx.context_data)}`
     ).join('\n') || '';
 
+    // RAG: Buscar conhecimento relevante da base de dados
+    let knowledgeContext = '';
+    try {
+      console.log('🔍 Searching knowledge base for relevant content...');
+      
+      // Gerar embedding da mensagem do usuário
+      const embeddingResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-embeddings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+        },
+        body: JSON.stringify({ 
+          fileId: 'query',
+          content: message,
+          generateChunks: false 
+        })
+      });
+
+      const embeddingResult = await embeddingResponse.json();
+      
+      if (embeddingResult.success && embeddingResult.embedding) {
+        console.log('✅ Message embedding generated successfully');
+        
+        // Buscar chunks de conhecimento similares
+        const { data: knowledgeChunks, error: searchError } = await supabase.rpc('search_knowledge_chunks', {
+          query_embedding: embeddingResult.embedding,
+          target_agent_category: conversationCategory,
+          similarity_threshold: 0.75,
+          max_results: 5
+        });
+
+        if (searchError) {
+          console.error('❌ Knowledge search error:', searchError);
+        } else if (knowledgeChunks && knowledgeChunks.length > 0) {
+          console.log(`✅ Found ${knowledgeChunks.length} relevant knowledge chunks`);
+          
+          knowledgeContext = '\n\nBASE DE CONHECIMENTO:\n' + knowledgeChunks
+            .map((chunk: any) => `[${chunk.file_name}] ${chunk.content}`)
+            .join('\n\n');
+        } else {
+          console.log('ℹ️ No relevant knowledge found in database');
+        }
+      } else {
+        console.warn('⚠️ Failed to generate embedding for message');
+      }
+    } catch (error) {
+      console.error('❌ RAG search failed:', error);
+      // Continue without knowledge base if search fails
+    }
+
     // Obter horário de Brasília
     const brasiliaInfo = getBrasiliaDateTime();
     console.log(`🕐 Brasília Time: ${brasiliaInfo.dateTime} (${brasiliaInfo.dayPeriod})`);
@@ -180,6 +231,10 @@ INFORMAÇÕES DA EMPRESA:
     
     if (conversationHistory) {
       finalPrompt += `\n\nHISTÓRICO DA CONVERSA:\n${conversationHistory}`;
+    }
+    
+    if (knowledgeContext) {
+      finalPrompt += knowledgeContext;
     }
     
     finalPrompt += `\n\nMENSAGEM DO CLIENTE: "${message}"

@@ -86,19 +86,33 @@ serve(async (req) => {
 
     // Start background task to generate embeddings
     try {
-      const { error: embeddingError } = await supabase.functions.invoke('generate-embeddings', {
-        body: { fileId, content: extractedContent }
+      console.log('🔄 Calling generate-embeddings function...');
+      
+      // Call generate-embeddings using direct HTTP request (required for edge function to edge function calls)
+      const embeddingResponse = await fetch(`${supabaseUrl}/functions/v1/generate-embeddings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`
+        },
+        body: JSON.stringify({ 
+          fileId, 
+          content: extractedContent,
+          generateChunks: true 
+        })
       });
       
-      if (embeddingError) {
-        console.error('⚠️ Embedding generation error:', embeddingError);
+      const embeddingResult = await embeddingResponse.json();
+      
+      if (!embeddingResponse.ok || !embeddingResult.success) {
+        console.error('⚠️ Embedding generation error:', embeddingResult);
         // Mark as completed but without embeddings
         await supabase
           .from('agent_knowledge_files')
           .update({ processing_status: 'completed' })
           .eq('id', fileId);
       } else {
-        console.log('✅ Embeddings generated successfully');
+        console.log(`✅ Embeddings generated successfully: ${embeddingResult.chunksCreated} chunks created`);
         // Mark as completed with embeddings
         await supabase
           .from('agent_knowledge_files')
