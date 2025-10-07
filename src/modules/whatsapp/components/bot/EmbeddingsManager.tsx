@@ -250,17 +250,6 @@ export function EmbeddingsManager({ selectedCategory }: EmbeddingsManagerProps) 
     );
   }
 
-  if (!filteredFiles || filteredFiles.length === 0) {
-    return (
-      <div className="p-8 rounded-lg bg-muted/30 border-2 border-dashed text-center">
-        <File className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-        <p className="text-sm text-muted-foreground">
-          Nenhum arquivo processado ainda. Faça upload de arquivos na aba "Arquivos".
-        </p>
-      </div>
-    );
-  }
-
   // Get catalog info from latest product catalog file
   const catalogFile = files?.find(f => 
     f.agent_category === 'ferramentas' && 
@@ -338,7 +327,16 @@ export function EmbeddingsManager({ selectedCategory }: EmbeddingsManagerProps) 
           </div>
         </Card>
       )}
-      
+
+      {/* Mensagem quando não há arquivos */}
+      {(!filteredFiles || filteredFiles.length === 0) ? (
+        <div className="p-8 rounded-lg bg-muted/30 border-2 border-dashed text-center">
+          <File className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">
+            Nenhum arquivo processado ainda. Faça upload de arquivos na aba "Arquivos".
+          </p>
+        </div>
+      ) : (
       <div className="p-4 border rounded-lg">
         <div className="flex items-center justify-between mb-4">
           <h4 className="font-medium">Arquivos Processados ({filteredFiles.length})</h4>
@@ -441,6 +439,7 @@ export function EmbeddingsManager({ selectedCategory }: EmbeddingsManagerProps) 
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 }
