@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { ProductCategory } from '@/types/bot.types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { File, Trash2, RefreshCw, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { File, Trash2, RefreshCw, AlertCircle, CheckCircle, Clock, Package } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
@@ -106,6 +107,31 @@ export function EmbeddingsManager({ selectedCategory }: EmbeddingsManagerProps) 
     onError: (error: any) => {
       toast({
         title: "Erro ao Remover",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Sync catalog mutation
+  const syncCatalogMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('sync-product-catalog', {
+        body: { action: 'sync' }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-knowledge-files'] });
+      toast({
+        title: "Sincronização Iniciada",
+        description: "O catálogo de produtos está sendo atualizado.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro na Sincronização",
         description: error.message,
         variant: "destructive"
       });
@@ -235,8 +261,84 @@ export function EmbeddingsManager({ selectedCategory }: EmbeddingsManagerProps) 
     );
   }
 
+  // Get catalog info from latest product catalog file
+  const catalogFile = files?.find(f => 
+    f.agent_category === 'ferramentas' && 
+    f.file_name.includes('catalogo-produtos-drystore')
+  );
+  
+  const catalogMetadata = catalogFile?.metadata as Record<string, any> | null;
+  const catalogLastUpdate = catalogMetadata?.last_update 
+    ? new Date(catalogMetadata.last_update).toLocaleString('pt-BR')
+    : 'Não sincronizado';
+    
+  const catalogTotalProducts = catalogMetadata?.total_products || 0;
+  const catalogStatus = catalogFile?.processing_status === 'completed_with_embeddings' 
+    ? 'synced' 
+    : catalogFile?.processing_status === 'processing' 
+      ? 'syncing' 
+      : 'not_synced';
+
   return (
     <div className="grid gap-4">
+      {/* Catálogo de Produtos XML - Card de Status */}
+      {selectedCategory === 'ferramentas' && (
+        <Card className="p-4 bg-blue-50 border-blue-200">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-blue-600" />
+              <div>
+                <h4 className="font-medium text-blue-900">Catálogo de Produtos XML</h4>
+                <p className="text-sm text-blue-700">
+                  Atualização automática diária do catálogo Drystore
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Badge 
+                variant="outline" 
+                className={
+                  catalogStatus === 'synced' 
+                    ? "bg-green-100 text-green-800 border-green-300" 
+                    : catalogStatus === 'syncing'
+                      ? "bg-blue-100 text-blue-800 border-blue-300"
+                      : "bg-gray-100 text-gray-800 border-gray-300"
+                }
+              >
+                {catalogStatus === 'synced' ? '✓ Sincronizado' : 
+                 catalogStatus === 'syncing' ? '⟳ Sincronizando' : 
+                 '⚠ Não Sincronizado'}
+              </Badge>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => syncCatalogMutation.mutate()}
+                disabled={syncCatalogMutation.isPending}
+                title="Sincronizar catálogo agora"
+              >
+                <RefreshCw className={`h-4 w-4 ${syncCatalogMutation.isPending ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">Total de Produtos:</span>
+              <span className="ml-2 font-semibold">{catalogTotalProducts.toLocaleString('pt-BR')}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Última Atualização:</span>
+              <span className="ml-2 font-semibold text-xs">{catalogLastUpdate}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Fonte:</span>
+              <span className="ml-2 font-semibold">XML Drystore</span>
+            </div>
+          </div>
+        </Card>
+      )}
+      
       <div className="p-4 border rounded-lg">
         <div className="flex items-center justify-between mb-4">
           <h4 className="font-medium">Arquivos Processados ({filteredFiles.length})</h4>

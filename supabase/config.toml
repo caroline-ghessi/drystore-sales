@@ -1,5 +1,11 @@
 project_id = "groqsnnytvjabgeaekkw"
 
+[functions.fetch-product-catalog]
+verify_jwt = false
+
+[functions.sync-product-catalog]
+verify_jwt = false
+
 [functions.process-knowledge-file]
 verify_jwt = false
 

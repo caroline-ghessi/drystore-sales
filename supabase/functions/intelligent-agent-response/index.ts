@@ -201,6 +201,53 @@ Deno.serve(async (req) => {
       // Continue without knowledge base if search fails
     }
 
+    // FALLBACK XML: Para agente de ferramentas, buscar catálogo de produtos
+    let productCatalogContext = '';
+    if (conversationCategory === 'ferramentas' && isProductQuery(message)) {
+      console.log('🔍 Detected product query for ferramentas agent - checking XML catalog');
+      
+      try {
+        const catalogResponse = await fetch(
+          `${Deno.env.get('SUPABASE_URL')}/functions/v1/fetch-product-catalog`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              query: message,
+              forceRefresh: false
+            })
+          }
+        );
+        
+        if (catalogResponse.ok) {
+          const catalogData = await catalogResponse.json();
+          
+          if (catalogData.products && catalogData.products.length > 0) {
+            productCatalogContext = `\n\nPRODUTOS DISPONÍVEIS NO CATÁLOGO (atualizado em ${new Date(catalogData.lastUpdate).toLocaleString('pt-BR')}):\n`;
+            
+            catalogData.products.slice(0, 5).forEach((product: any) => {
+              productCatalogContext += `
+- ${product.name}
+  Preço: R$ ${product.price.toFixed(2)}
+  SKU: ${product.sku}
+  Marca: ${product.brand}
+  Categoria: ${product.category}
+  ${product.url ? `Link: ${product.url}` : ''}
+`;
+            });
+            
+            console.log(`✅ Found ${catalogData.products.length} products in XML catalog`);
+          }
+        }
+      } catch (error) {
+        console.error('⚠️ Product catalog fallback failed:', error);
+        // Continue sem catálogo, usar apenas RAG
+      }
+    }
+
     // Obter horário de Brasília
     const brasiliaInfo = getBrasiliaDateTime();
     console.log(`🕐 Brasília Time: ${brasiliaInfo.dateTime} (${brasiliaInfo.dayPeriod})`);
@@ -235,6 +282,10 @@ INFORMAÇÕES DA EMPRESA:
     
     if (knowledgeContext) {
       finalPrompt += knowledgeContext;
+    }
+    
+    if (productCatalogContext) {
+      finalPrompt += productCatalogContext;
     }
     
     finalPrompt += `\n\nMENSAGEM DO CLIENTE: "${message}"
@@ -401,4 +452,17 @@ async function generateResponseWithProviderRotation(
   }
 
   throw new Error('All response generation providers failed');
+}
+
+// Função auxiliar para detectar queries sobre produtos
+function isProductQuery(message: string): boolean {
+  const productKeywords = [
+    'preço', 'valor', 'quanto custa', 'disponível', 'estoque',
+    'comprar', 'parafusadeira', 'furadeira', 'serra', 'martelo',
+    'chave', 'alicate', 'trena', 'nivel', 'produto', 'ferramenta',
+    'dewalt', 'bosch', 'makita', 'stanley', 'vonder'
+  ];
+  
+  const lowerMessage = message.toLowerCase();
+  return productKeywords.some(keyword => lowerMessage.includes(keyword));
 }
