@@ -248,12 +248,30 @@ async function handleIncomingMessage(message: any, contact: any) {
 
     // Update conversation only for new messages
     if (isNewMessage) {
+      // Buscar status atual da conversa
+      const { data: currentConv } = await supabase
+        .from('conversations')
+        .select('status')
+        .eq('id', conversation.id)
+        .single();
+      
+      const updateData: any = {
+        last_message_at: new Date().toISOString()
+      };
+      
+      // Só atualizar status para 'in_bot' se não estiver com agente humano
+      if (currentConv?.status !== 'with_agent' && 
+          currentConv?.status !== 'transferred_to_human' &&
+          currentConv?.status !== 'closed') {
+        updateData.status = 'in_bot';
+        console.log(`✅ Status updated to 'in_bot' for conversation ${conversation.id}`);
+      } else {
+        console.log(`⚠️ Preserving status '${currentConv?.status}' - NOT updating to 'in_bot'`);
+      }
+      
       await supabase
         .from('conversations')
-        .update({
-          last_message_at: new Date().toISOString(),
-          status: 'in_bot'
-        })
+        .update(updateData)
         .eq('id', conversation.id);
     }
 

@@ -40,6 +40,14 @@ export function useAssumeConversation() {
         }
       });
 
+      // Log adicional no console para debugging
+      console.log('✅ [ASSUME] Conversa assumida:', {
+        conversationId,
+        agentId: user.id,
+        newStatus: 'with_agent',
+        timestamp: new Date().toISOString()
+      });
+
       return data;
     },
     onSuccess: (data) => {

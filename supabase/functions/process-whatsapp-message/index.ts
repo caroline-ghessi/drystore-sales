@@ -29,6 +29,34 @@ serve(async (req) => {
 
     console.log(`Received message for conversation ${conversationId}: ${message}`);
 
+    // ✅ VERIFICAR STATUS DA CONVERSA ANTES DE ENFILEIRAR
+    const { data: conversation, error: convError } = await supabase
+      .from('conversations')
+      .select('status')
+      .eq('id', conversationId)
+      .single();
+
+    if (convError || !conversation) {
+      throw new Error('Conversation not found');
+    }
+
+    // Não enfileirar se conversa está com agente ou fechada
+    if (conversation.status === 'with_agent' || 
+        conversation.status === 'transferred_to_human' ||
+        conversation.status === 'closed') {
+      console.log(`⚠️ Conversation ${conversationId} status is ${conversation.status} - not enqueueing for bot processing`);
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        enqueued: false,
+        reason: 'conversation_not_with_bot',
+        status: conversation.status
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
+
     // Enfileirar mensagem usando wrapper function (corrige ordem de parâmetros PGMQ)
     const { data: queueData, error: queueError } = await supabase.rpc('enqueue_whatsapp_message', {
       p_conversation_id: conversationId,

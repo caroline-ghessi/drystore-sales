@@ -112,6 +112,49 @@ Deno.serve(async (req) => {
       throw new Error('Conversation not found');
     }
 
+    // ✅ VERIFICAR STATUS DA CONVERSA ANTES DE PROCESSAR
+    if (conversation.status === 'with_agent' || 
+        conversation.status === 'transferred_to_human') {
+      console.log(`⚠️ Conversation ${conversationId} is with agent (status: ${conversation.status}) - skipping bot processing`);
+      
+      // Marcar buffer como processado sem gerar resposta
+      await supabase
+        .from('message_buffers')
+        .update({
+          processed: true,
+          processed_at: now.toISOString()
+        })
+        .eq('id', lockedBuffer.id);
+      
+      return new Response(JSON.stringify({ 
+        processed: false,
+        reason: 'conversation_with_agent',
+        status: conversation.status
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Se conversa está fechada, também não processar
+    if (conversation.status === 'closed') {
+      console.log(`⚠️ Conversation ${conversationId} is closed - skipping processing`);
+      
+      await supabase
+        .from('message_buffers')
+        .update({
+          processed: true,
+          processed_at: now.toISOString()
+        })
+        .eq('id', lockedBuffer.id);
+      
+      return new Response(JSON.stringify({ 
+        processed: false,
+        reason: 'conversation_closed'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Classificar intenção usando LLM
     const classificationResult = await supabase.functions.invoke('classify-intent-llm', {
       body: {
