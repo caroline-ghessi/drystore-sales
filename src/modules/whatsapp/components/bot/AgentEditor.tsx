@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { AgentConfig } from '@/hooks/useAgentConfigs';
 import { KnowledgeBaseManager } from './KnowledgeBaseManager';
+import { PromptVariablesCard } from './PromptVariablesCard';
 
 interface AgentEditorProps {
   agent: AgentConfig | null;
@@ -231,6 +232,9 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
                   <li>• Defina limites e restrições</li>
                 </ul>
               </div>
+
+              {/* Variáveis Disponíveis */}
+              <PromptVariablesCard productCategory={editAgent.product_category} />
             </TabsContent>
 
             <TabsContent value="behavior" className="p-6 space-y-6">

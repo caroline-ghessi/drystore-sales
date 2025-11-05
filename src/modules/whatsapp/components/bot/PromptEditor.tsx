@@ -8,6 +8,7 @@ import { ProductCategory } from '@/types/conversation.types';
 import { useAgentPrompt, useUpdateAgentPrompt } from '@/hooks/useAgentPrompts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { PromptVariablesCard } from './PromptVariablesCard';
 
 interface PromptEditorProps {
   selectedAgent: ProductCategory;
@@ -176,13 +177,10 @@ Contexto: Nome = {{customer_name}}, Lead Score = {{lead_score}}
 
 Resposta: [sua resposta aqui baseada no contexto]`}
               />
-              
-              <div className="flex justify-between items-center mt-2">
-                <p className="text-xs text-muted-foreground">
-                  Use variáveis como: {'{{customer_name}}'}, {'{{energy_bill_value}}'}, {'{{lead_score}}'}, {'{{current_date}}'}
-                </p>
-              </div>
             </div>
+
+            {/* Variáveis Disponíveis */}
+            <PromptVariablesCard compact productCategory={selectedAgent} />
           </div>
         )}
       </div>
