@@ -504,7 +504,7 @@ export type Database = {
           conversation_id: string | null
           created_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           user_agent: string | null
           user_id: string | null
         }
@@ -514,7 +514,7 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
         }
@@ -524,7 +524,7 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
         }
@@ -1502,7 +1502,7 @@ export type Database = {
           conversation_id: string | null
           created_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           message_id: string | null
           user_agent: string | null
           user_id: string | null
@@ -1513,7 +1513,7 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           message_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -1524,7 +1524,7 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           message_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -2985,7 +2985,7 @@ export type Database = {
           conversation_id: number | null
           created_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           user_agent: string | null
           user_id: string | null
           vendor_id: string | null
@@ -2996,7 +2996,7 @@ export type Database = {
           conversation_id?: number | null
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
           vendor_id?: string | null
@@ -3007,7 +3007,7 @@ export type Database = {
           conversation_id?: number | null
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
           vendor_id?: string | null
@@ -3517,18 +3517,8 @@ export type Database = {
       }
     }
     Functions: {
-      archive_queue_message: {
-        Args: { p_msg_id: number }
-        Returns: boolean
-      }
-      binary_quantize: {
-        Args: { "": string } | { "": unknown }
-        Returns: unknown
-      }
-      delete_queue_message: {
-        Args: { p_msg_id: number }
-        Returns: boolean
-      }
+      archive_queue_message: { Args: { p_msg_id: number }; Returns: boolean }
+      delete_queue_message: { Args: { p_msg_id: number }; Returns: boolean }
       enqueue_whatsapp_message: {
         Args: {
           p_conversation_id: string
@@ -3539,28 +3529,12 @@ export type Database = {
         Returns: number
       }
       get_current_user_role: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
       get_responding_agent: {
         Args: { conversation_uuid: string }
         Returns: string
-      }
-      halfvec_avg: {
-        Args: { "": number[] }
-        Returns: unknown
-      }
-      halfvec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      halfvec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      halfvec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
       }
       has_role: {
         Args: {
@@ -3569,46 +3543,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      hnsw_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_sparsevec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnswhandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      l2_norm: {
-        Args: { "": unknown } | { "": unknown }
-        Returns: number
-      }
-      l2_normalize: {
-        Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: string
-      }
-      migrate_conversations_to_crm: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      migrate_conversations_to_crm: { Args: never; Returns: undefined }
       read_whatsapp_queue: {
         Args: { p_qty?: number; p_vt?: number }
         Returns: {
@@ -3676,18 +3611,6 @@ export type Database = {
           similarity: number
         }[]
       }
-      sparsevec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      sparsevec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      sparsevec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
       update_file_confidence_score: {
         Args: {
           adjustment_factor?: number
@@ -3699,30 +3622,6 @@ export type Database = {
       update_vendor_conversation_stats: {
         Args: { conversation_id_param: number; from_me_param: boolean }
         Returns: undefined
-      }
-      vector_avg: {
-        Args: { "": number[] }
-        Returns: string
-      }
-      vector_dims: {
-        Args: { "": string } | { "": unknown }
-        Returns: number
-      }
-      vector_norm: {
-        Args: { "": string }
-        Returns: number
-      }
-      vector_out: {
-        Args: { "": string }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: { "": string }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
       }
     }
     Enums: {
