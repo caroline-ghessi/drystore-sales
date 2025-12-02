@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
     const extractionResult = await supabase.functions.invoke('extract-customer-data', {
       body: {
         conversationId,
-        newMessage: combinedMessage
+        message: combinedMessage
       }
     });
 
