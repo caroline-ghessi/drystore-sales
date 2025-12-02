@@ -17,6 +17,7 @@ export { RoofingSystemSection } from './components/sections/RoofingSystemSection
 export { BenefitsSection } from './components/sections/BenefitsSection';
 export { ComparisonSection } from './components/sections/ComparisonSection';
 export { ProductsSection } from './components/sections/ProductsSection';
+export { ColorsSection } from './components/sections/ColorsSection';
 export { AboutSection } from './components/sections/AboutSection';
 export { ContactSection } from './components/sections/ContactSection';
 export { FAQSection } from './components/sections/FAQSection';
