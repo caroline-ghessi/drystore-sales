@@ -127,3 +127,11 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Landing Page Hero Pattern */
+.hero-pattern {
+  background-image: url('/lovable-uploads/87af5c0d-f530-41ee-81fe-2a70286ac8af.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
