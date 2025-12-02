@@ -13,7 +13,6 @@ export { MasterAgentSection } from './components/bot/MasterAgentSection';
 export { MasterConfigTab } from './components/bot/MasterConfigTab';
 export { OverviewSection } from './components/bot/OverviewSection';
 export { PromptEditor } from './components/bot/PromptEditor';
-export { PromptTester } from './components/bot/PromptTester';
 export { SemanticSearchTest } from './components/bot/SemanticSearchTest';
 export { TestSection } from './components/bot/TestSection';
 export { WebScrapingTab } from './components/bot/WebScrapingTab';
@@ -23,15 +22,11 @@ export { RuleCard } from './components/bot/RuleCard';
 export { StatusCard } from './components/bot/StatusCard';
 export { ClassificationLogsSection } from './components/bot/ClassificationLogsSection';
 export { ChatSimulator } from './components/bot/ChatSimulator';
-export { SpyAgentCard } from './components/bot/SpyAgentCard';
-export { StepsEditor } from './components/bot/StepsEditor';
 export { ClassificationStats } from './components/bot/ClassificationStats';
 
 // Chat Components
 export { ChatHeader } from './components/chat/ChatHeader';
 export { CloseConversationDialog } from './components/chat/CloseConversationDialog';
-export { ConversationItem } from './components/chat/ConversationItem';
-export { ConversationList } from './components/chat/ConversationList';
 export { LeadSummaryModal } from './components/chat/LeadSummaryModal';
 export { MessageBubble } from './components/chat/MessageBubble';
 export { WhatsAppChatArea } from './components/chat/WhatsAppChatArea';
@@ -39,11 +34,8 @@ export { WhatsAppConversationItem } from './components/chat/WhatsAppConversation
 export { WhatsAppConversationList } from './components/chat/WhatsAppConversationList';
 export { WhatsAppMessageBubble } from './components/chat/WhatsAppMessageBubble';
 export { MessageList } from './components/chat/MessageList';
-export { EmptyState } from './components/chat/EmptyState';
 export { ConversationsHeader } from './components/chat/ConversationsHeader';
-export { ChatArea } from './components/chat/ChatArea';
 export { WhatsAppEmptyState } from './components/chat/WhatsAppEmptyState';
-export { MessageInput } from './components/chat/MessageInput';
 
 // Vendor Components
 export { AddVendorDialog } from './components/vendor/AddVendorDialog';
@@ -68,7 +60,3 @@ export { useVendorQualityAnalysis } from './hooks/useVendorQualityAnalysis';
 export { useVendorConversations } from './hooks/useVendorConversations';
 export { useVendorMessages } from './hooks/useVendorMessages';
 export { useVendorTokenTest } from './hooks/useVendorTokenTest';
-
-// Services
-export * from './services/whatsapp-business.service';
-export * from './services/whatsapp-integration.service';
