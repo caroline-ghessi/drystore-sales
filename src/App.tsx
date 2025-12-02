@@ -15,6 +15,9 @@ import PublicProposal from "@/pages/PublicProposal";
 import ClientPortal from "@/pages/client/ClientPortal";
 import ClientProposalDetail from "@/pages/client/ClientProposalDetail";
 const PremiumProposal = React.lazy(() => import("@/pages/PremiumProposal"));
+
+// Landing Pages Module
+import { TelhaShingleLP, ThankYouPage } from "@/modules/landing-pages";
 import { useStorageCleanup } from "@/hooks/useStorageCleanup";
 
 // Module Layouts
@@ -73,6 +76,10 @@ function AppContent() {
             <PremiumProposal />
           </Suspense>
         } /> {/* Página premium HTML para shingle */}
+        
+        {/* Landing Pages - Públicas (sem autenticação) */}
+        <Route path="/lp/telha-shingle" element={<TelhaShingleLP />} />
+        <Route path="/lp/obrigado" element={<ThankYouPage />} />
         
         {/* Client Portal */}
         <Route path="/cliente" element={
