@@ -116,44 +116,6 @@ export type Database = {
         }
         Relationships: []
       }
-      agent_prompt_history: {
-        Row: {
-          agent_prompt_id: string | null
-          change_description: string | null
-          changed_by: string | null
-          created_at: string | null
-          id: string
-          prompt_data: Json
-          version: number
-        }
-        Insert: {
-          agent_prompt_id?: string | null
-          change_description?: string | null
-          changed_by?: string | null
-          created_at?: string | null
-          id?: string
-          prompt_data: Json
-          version: number
-        }
-        Update: {
-          agent_prompt_id?: string | null
-          change_description?: string | null
-          changed_by?: string | null
-          created_at?: string | null
-          id?: string
-          prompt_data?: Json
-          version?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "agent_prompt_history_agent_prompt_id_fkey"
-            columns: ["agent_prompt_id"]
-            isOneToOne: false
-            referencedRelation: "agent_prompts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       agent_prompts: {
         Row: {
           agent_type: string | null
@@ -234,56 +196,6 @@ export type Database = {
           template_text?: string
         }
         Relationships: []
-      }
-      calculation_templates: {
-        Row: {
-          calculation_type: string
-          category: Database["public"]["Enums"]["product_category"] | null
-          created_at: string | null
-          created_by: string | null
-          formula_version: string | null
-          id: string
-          input_parameters: Json
-          is_active: boolean | null
-          name: string
-          output_template: Json
-          updated_at: string | null
-        }
-        Insert: {
-          calculation_type: string
-          category?: Database["public"]["Enums"]["product_category"] | null
-          created_at?: string | null
-          created_by?: string | null
-          formula_version?: string | null
-          id?: string
-          input_parameters?: Json
-          is_active?: boolean | null
-          name: string
-          output_template?: Json
-          updated_at?: string | null
-        }
-        Update: {
-          calculation_type?: string
-          category?: Database["public"]["Enums"]["product_category"] | null
-          created_at?: string | null
-          created_by?: string | null
-          formula_version?: string | null
-          id?: string
-          input_parameters?: Json
-          is_active?: boolean | null
-          name?: string
-          output_template?: Json
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "calculation_templates_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-        ]
       }
       classification_history: {
         Row: {
@@ -545,45 +457,6 @@ export type Database = {
           },
         ]
       }
-      conversation_analytics: {
-        Row: {
-          avg_response_time_seconds: number | null
-          by_category: Json | null
-          conversion_rate: number | null
-          date: string | null
-          hot_leads: number | null
-          id: string
-          messages_received: number | null
-          messages_sent: number | null
-          qualified_leads: number | null
-          total_conversations: number | null
-        }
-        Insert: {
-          avg_response_time_seconds?: number | null
-          by_category?: Json | null
-          conversion_rate?: number | null
-          date?: string | null
-          hot_leads?: number | null
-          id?: string
-          messages_received?: number | null
-          messages_sent?: number | null
-          qualified_leads?: number | null
-          total_conversations?: number | null
-        }
-        Update: {
-          avg_response_time_seconds?: number | null
-          by_category?: Json | null
-          conversion_rate?: number | null
-          date?: string | null
-          hot_leads?: number | null
-          id?: string
-          messages_received?: number | null
-          messages_sent?: number | null
-          qualified_leads?: number | null
-          total_conversations?: number | null
-        }
-        Relationships: []
-      }
       conversations: {
         Row: {
           assigned_agent_id: string | null
@@ -721,42 +594,6 @@ export type Database = {
           total_pages?: number | null
           updated_at?: string
           webhook_received_at?: string | null
-        }
-        Relationships: []
-      }
-      crm_customer_segments: {
-        Row: {
-          color_code: string | null
-          created_at: string
-          criteria: Json
-          description: string | null
-          id: string
-          is_active: boolean
-          name: string
-          priority: number | null
-          updated_at: string
-        }
-        Insert: {
-          color_code?: string | null
-          created_at?: string
-          criteria?: Json
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name: string
-          priority?: number | null
-          updated_at?: string
-        }
-        Update: {
-          color_code?: string | null
-          created_at?: string
-          criteria?: Json
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name?: string
-          priority?: number | null
-          updated_at?: string
         }
         Relationships: []
       }
@@ -934,136 +771,6 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customer_overview"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      crm_pipeline_stages: {
-        Row: {
-          color_code: string | null
-          conversion_probability: number | null
-          created_at: string
-          description: string | null
-          id: string
-          is_active: boolean
-          name: string
-          stage_order: number
-          updated_at: string
-        }
-        Insert: {
-          color_code?: string | null
-          conversion_probability?: number | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name: string
-          stage_order?: number
-          updated_at?: string
-        }
-        Update: {
-          color_code?: string | null
-          conversion_probability?: number | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name?: string
-          stage_order?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      crm_tasks: {
-        Row: {
-          assigned_to: string | null
-          completed_at: string | null
-          conversation_id: string | null
-          created_at: string | null
-          customer_id: string | null
-          description: string | null
-          due_date: string | null
-          id: string
-          opportunity_id: string | null
-          priority: Database["public"]["Enums"]["task_priority"] | null
-          status: Database["public"]["Enums"]["task_status"] | null
-          title: string
-          type: Database["public"]["Enums"]["task_type"] | null
-          updated_at: string | null
-        }
-        Insert: {
-          assigned_to?: string | null
-          completed_at?: string | null
-          conversation_id?: string | null
-          created_at?: string | null
-          customer_id?: string | null
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          opportunity_id?: string | null
-          priority?: Database["public"]["Enums"]["task_priority"] | null
-          status?: Database["public"]["Enums"]["task_status"] | null
-          title: string
-          type?: Database["public"]["Enums"]["task_type"] | null
-          updated_at?: string | null
-        }
-        Update: {
-          assigned_to?: string | null
-          completed_at?: string | null
-          conversation_id?: string | null
-          created_at?: string | null
-          customer_id?: string | null
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          opportunity_id?: string | null
-          priority?: Database["public"]["Enums"]["task_priority"] | null
-          status?: Database["public"]["Enums"]["task_status"] | null
-          title?: string
-          type?: Database["public"]["Enums"]["task_type"] | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tasks_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "tasks_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "vendor_conversation_overview"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "crm_customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customer_overview"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_opportunity_id_fkey"
-            columns: ["opportunity_id"]
-            isOneToOne: false
-            referencedRelation: "crm_opportunities"
             referencedColumns: ["id"]
           },
         ]
@@ -1495,57 +1202,6 @@ export type Database = {
           },
         ]
       }
-      message_access_log: {
-        Row: {
-          access_type: string
-          content_accessed: boolean | null
-          conversation_id: string | null
-          created_at: string | null
-          id: string
-          ip_address: unknown
-          message_id: string | null
-          user_agent: string | null
-          user_id: string | null
-        }
-        Insert: {
-          access_type: string
-          content_accessed?: boolean | null
-          conversation_id?: string | null
-          created_at?: string | null
-          id?: string
-          ip_address?: unknown
-          message_id?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          access_type?: string
-          content_accessed?: boolean | null
-          conversation_id?: string | null
-          created_at?: string | null
-          id?: string
-          ip_address?: unknown
-          message_id?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "message_access_log_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "message_access_log_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "vendor_conversation_overview"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       message_buffers: {
         Row: {
           buffer_started_at: string | null
@@ -1745,101 +1401,6 @@ export type Database = {
           priority?: number | null
           trigger_conditions?: Json
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      product_categories: {
-        Row: {
-          category_code: string | null
-          created_at: string
-          description: string | null
-          id: string
-          is_active: boolean
-          name: string
-          parent_category_id: string | null
-          sort_order: number | null
-          updated_at: string
-        }
-        Insert: {
-          category_code?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name: string
-          parent_category_id?: string | null
-          sort_order?: number | null
-          updated_at?: string
-        }
-        Update: {
-          category_code?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name?: string
-          parent_category_id?: string | null
-          sort_order?: number | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_categories_parent_category_id_fkey"
-            columns: ["parent_category_id"]
-            isOneToOne: false
-            referencedRelation: "product_categories"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_suppliers: {
-        Row: {
-          address: string | null
-          contact_name: string | null
-          created_at: string
-          email: string | null
-          id: string
-          is_active: boolean
-          lead_time_days: number | null
-          metadata: Json | null
-          name: string
-          payment_terms: string | null
-          phone: string | null
-          rating: number | null
-          tax_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          address?: string | null
-          contact_name?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          is_active?: boolean
-          lead_time_days?: number | null
-          metadata?: Json | null
-          name: string
-          payment_terms?: string | null
-          phone?: string | null
-          rating?: number | null
-          tax_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          address?: string | null
-          contact_name?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          is_active?: boolean
-          lead_time_days?: number | null
-          metadata?: Json | null
-          name?: string
-          payment_terms?: string | null
-          phone?: string | null
-          rating?: number | null
-          tax_id?: string | null
-          updated_at?: string
         }
         Relationships: []
       }
@@ -2292,90 +1853,6 @@ export type Database = {
         }
         Relationships: []
       }
-      proposal_templates: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          description: string | null
-          id: string
-          is_active: boolean
-          is_default: boolean | null
-          name: string
-          product_category:
-            | Database["public"]["Enums"]["product_category"]
-            | null
-          styling: Json | null
-          template_content: Json
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          is_default?: boolean | null
-          name: string
-          product_category?:
-            | Database["public"]["Enums"]["product_category"]
-            | null
-          styling?: Json | null
-          template_content?: Json
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          is_default?: boolean | null
-          name?: string
-          product_category?:
-            | Database["public"]["Enums"]["product_category"]
-            | null
-          styling?: Json | null
-          template_content?: Json
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      proposal_workflows: {
-        Row: {
-          approval_rules: Json | null
-          created_at: string
-          created_by: string | null
-          description: string | null
-          id: string
-          is_active: boolean
-          name: string
-          updated_at: string
-          workflow_steps: Json
-        }
-        Insert: {
-          approval_rules?: Json | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name: string
-          updated_at?: string
-          workflow_steps?: Json
-        }
-        Update: {
-          approval_rules?: Json | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          name?: string
-          updated_at?: string
-          workflow_steps?: Json
-        }
-        Relationships: []
-      }
       proposals: {
         Row: {
           acceptance_link: string | null
@@ -2607,56 +2084,6 @@ export type Database = {
           },
           {
             foreignKeyName: "quality_metrics_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      sales_quotas: {
-        Row: {
-          achieved_amount: number | null
-          created_at: string | null
-          id: string
-          percentage_achieved: number | null
-          period_month: number
-          period_year: number
-          quota_amount: number
-          status: string | null
-          updated_at: string | null
-          user_id: string
-          vendor_id: string | null
-        }
-        Insert: {
-          achieved_amount?: number | null
-          created_at?: string | null
-          id?: string
-          percentage_achieved?: number | null
-          period_month: number
-          period_year: number
-          quota_amount?: number
-          status?: string | null
-          updated_at?: string | null
-          user_id: string
-          vendor_id?: string | null
-        }
-        Update: {
-          achieved_amount?: number | null
-          created_at?: string | null
-          id?: string
-          percentage_achieved?: number | null
-          period_month?: number
-          period_year?: number
-          quota_amount?: number
-          status?: string | null
-          updated_at?: string | null
-          user_id?: string
-          vendor_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sales_quotas_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
@@ -2977,42 +2404,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      vendor_data_access_log: {
-        Row: {
-          accessed_data: Json | null
-          action_type: string
-          conversation_id: number | null
-          created_at: string | null
-          id: string
-          ip_address: unknown
-          user_agent: string | null
-          user_id: string | null
-          vendor_id: string | null
-        }
-        Insert: {
-          accessed_data?: Json | null
-          action_type: string
-          conversation_id?: number | null
-          created_at?: string | null
-          id?: string
-          ip_address?: unknown
-          user_agent?: string | null
-          user_id?: string | null
-          vendor_id?: string | null
-        }
-        Update: {
-          accessed_data?: Json | null
-          action_type?: string
-          conversation_id?: number | null
-          created_at?: string | null
-          id?: string
-          ip_address?: unknown
-          user_agent?: string | null
-          user_id?: string | null
-          vendor_id?: string | null
-        }
-        Relationships: []
       }
       vendor_messages: {
         Row: {
