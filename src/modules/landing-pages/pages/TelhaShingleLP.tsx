@@ -53,7 +53,7 @@ export function TelhaShingleLP() {
       <HeroSection
         headline="Descubra o Telhado dos Seus Sonhos"
         subheadline="Telhas Shingle Owens Corning: a escolha #1 nos EUA, agora no Brasil. Beleza, durabilidade e garantia de até 30 anos para sua casa."
-        heroImage="/lovable-uploads/87af5c0d-f530-41ee-81fe-2a70286ac8af.png"
+        heroImage="/images/hero-shingle-houses.png"
         ctaPrimaryText="Solicitar Orçamento"
         onCtaPrimaryClick={scrollToContact}
       />
