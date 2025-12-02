@@ -1,8 +1,10 @@
+import { NavBar } from '../components/NavBar';
 import { HeroSection } from '../components/sections/HeroSection';
 import { FeaturesSection } from '../components/sections/FeaturesSection';
 import { ComparisonSection } from '../components/sections/ComparisonSection';
 import { ProductsSection } from '../components/sections/ProductsSection';
 import { AboutSection } from '../components/sections/AboutSection';
+import { ContactSection } from '../components/sections/ContactSection';
 import { FAQSection, FAQItem } from '../components/sections/FAQSection';
 import { FooterSection } from '../components/sections/FooterSection';
 
@@ -43,38 +45,43 @@ export function TelhaShingleLP() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero com background e formulário */}
+    <main className="min-h-screen bg-background">
+      <NavBar onContactClick={scrollToContact} />
+
       <HeroSection
         headline="Descubra o Telhado dos Seus Sonhos"
-        subheadline="Telhas Shingle Owens Corning de alto desempenho em até 12 vezes sem juros. Qualidade americana com resistência de mais de 50 anos."
-        productInterest="telha_shingle"
-        landingPageId="telha-shingle-main"
-        backgroundImage="/lovable-uploads/87af5c0d-f530-41ee-81fe-2a70286ac8af.png"
+        subheadline="Telhas Shingle Owens Corning: a escolha #1 nos EUA, agora no Brasil. Beleza, durabilidade e garantia de até 30 anos para sua casa."
         heroImage="/lovable-uploads/87af5c0d-f530-41ee-81fe-2a70286ac8af.png"
+        ctaPrimaryText="Solicitar Orçamento"
+        onCtaPrimaryClick={scrollToContact}
       />
 
-      {/* Features - Por que escolher Owens Corning */}
-      <FeaturesSection />
+      <div id="caracteristicas">
+        <FeaturesSection />
+      </div>
 
-      {/* Comparação - Shingle vs Outras Telhas */}
       <ComparisonSection />
 
-      {/* Produtos - Supreme e Oakridge (sem preços) */}
-      <ProductsSection onRequestQuote={scrollToContact} />
+      <div id="produtos">
+        <ProductsSection onRequestQuote={scrollToContact} />
+      </div>
 
-      {/* Sobre a Drystore */}
-      <AboutSection />
+      <div id="sobre">
+        <AboutSection />
+      </div>
 
-      {/* FAQ */}
+      <ContactSection
+        productInterest="telha_shingle"
+        landingPageId="telha-shingle-lp"
+      />
+
       <FAQSection
         title="Dúvidas Frequentes sobre Telha Shingle"
         subtitle="Respondemos as principais perguntas sobre nossos produtos."
         faqs={FAQS}
       />
 
-      {/* Footer completo */}
       <FooterSection />
-    </div>
+    </main>
   );
 }
