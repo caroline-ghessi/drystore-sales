@@ -177,6 +177,25 @@ ${conversationHistory}
         onConflict: 'conversation_id'
       });
 
+    // CORREÇÃO: Salvar também em extracted_contexts para uso do RAG e agentes
+    const { error: extractedContextError } = await supabase
+      .from('extracted_contexts')
+      .insert({
+        conversation_id: conversationId,
+        context_type: 'customer_data',
+        context_data: extractedData,
+        source_message_id: null,
+        extractor_agent_id: extractorAgent.id,
+        confidence: 1.0,
+        is_active: true
+      });
+
+    if (extractedContextError) {
+      console.warn('Failed to save to extracted_contexts:', extractedContextError);
+    } else {
+      console.log('Successfully saved to extracted_contexts for conversation:', conversationId);
+    }
+
     // Update conversation data if available
     const conversationUpdates: any = {};
     if ((extractedData as any).nome || (extractedData as any).name) {
