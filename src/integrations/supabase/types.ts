@@ -1212,6 +1212,7 @@ export type Database = {
           processed_at: string | null
           processing_started_at: string | null
           should_process_at: string | null
+          updated_at: string | null
         }
         Insert: {
           buffer_started_at?: string | null
@@ -1222,6 +1223,7 @@ export type Database = {
           processed_at?: string | null
           processing_started_at?: string | null
           should_process_at?: string | null
+          updated_at?: string | null
         }
         Update: {
           buffer_started_at?: string | null
@@ -1232,6 +1234,7 @@ export type Database = {
           processed_at?: string | null
           processing_started_at?: string | null
           should_process_at?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
