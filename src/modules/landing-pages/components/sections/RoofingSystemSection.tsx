@@ -67,7 +67,7 @@ export function RoofingSystemSection() {
           <div className="grid md:grid-cols-2">
             <div className="aspect-video md:aspect-auto">
               <img
-                src="/lovable-uploads/87af5c0d-f530-41ee-81fe-2a70286ac8af.png"
+                src="/images/roofing-system-layers.png"
                 alt="Sistema de cobertura Shingle em camadas"
                 className="w-full h-full object-cover"
               />
