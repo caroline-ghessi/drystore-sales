@@ -3518,6 +3518,7 @@ export type Database = {
     }
     Functions: {
       archive_queue_message: { Args: { p_msg_id: number }; Returns: boolean }
+      cleanup_old_logs: { Args: never; Returns: number }
       delete_queue_message: { Args: { p_msg_id: number }; Returns: boolean }
       enqueue_whatsapp_message: {
         Args: {
