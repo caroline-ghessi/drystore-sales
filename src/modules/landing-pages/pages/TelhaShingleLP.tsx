@@ -4,6 +4,7 @@ import { FeaturesSection } from '../components/sections/FeaturesSection';
 import { RoofingSystemSection } from '../components/sections/RoofingSystemSection';
 import { ComparisonSection } from '../components/sections/ComparisonSection';
 import { ProductsSection } from '../components/sections/ProductsSection';
+import { ColorsSection } from '../components/sections/ColorsSection';
 import { AboutSection } from '../components/sections/AboutSection';
 import { ContactSection } from '../components/sections/ContactSection';
 import { FAQSection, FAQItem } from '../components/sections/FAQSection';
@@ -68,6 +69,8 @@ export function TelhaShingleLP() {
       <div id="produtos">
         <ProductsSection onRequestQuote={scrollToContact} />
       </div>
+
+      <ColorsSection />
 
       <div id="sobre">
         <AboutSection />
