@@ -209,7 +209,7 @@ export function ComparisonSection() {
             </div>
             <div className="text-center">
               <img
-                src="/lovable-uploads/f95bb0af-9693-4a4b-bc32-1bda72409167.png"
+                src="/images/shingle-house-comparison.png"
                 alt="Casa moderna com telhas shingle"
                 className="rounded-lg shadow-md mb-4"
                 loading="lazy"
