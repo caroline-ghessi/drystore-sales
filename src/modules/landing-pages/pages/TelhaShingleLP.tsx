@@ -1,6 +1,7 @@
 import { NavBar } from '../components/NavBar';
 import { HeroSection } from '../components/sections/HeroSection';
 import { FeaturesSection } from '../components/sections/FeaturesSection';
+import { RoofingSystemSection } from '../components/sections/RoofingSystemSection';
 import { ComparisonSection } from '../components/sections/ComparisonSection';
 import { ProductsSection } from '../components/sections/ProductsSection';
 import { AboutSection } from '../components/sections/AboutSection';
@@ -59,6 +60,8 @@ export function TelhaShingleLP() {
       <div id="caracteristicas">
         <FeaturesSection />
       </div>
+
+      <RoofingSystemSection />
 
       <ComparisonSection />
 
