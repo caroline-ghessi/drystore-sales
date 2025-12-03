@@ -63,7 +63,7 @@ export function ContactSection({
                     <Phone className="w-5 h-5 text-drystore-orange" />
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">Endereço</p>
+                    <p className="font-medium text-foreground">Telefone</p>
                     <p className="text-muted-foreground">
                       São Paulo, SP
                     </p>
