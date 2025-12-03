@@ -8,7 +8,7 @@ export function FooterSection() {
           <div>
             <div className="flex items-center mb-4">
               <img
-                src="/lovable-uploads/d2053e44-ae0a-47cd-8404-823da9615a61.png"
+                src="/images/drystore-logo.png"
                 alt="Drystore Logo"
                 className="h-10"
               />
