@@ -1,4 +1,4 @@
-import { Phone, Mail, MapPin, Clock } from 'lucide-react';
+import { Phone, Mail, Clock } from 'lucide-react';
 import { LeadCaptureForm } from '../forms/LeadCaptureForm';
 interface ContactSectionProps {
   productInterest: string;
@@ -60,7 +60,7 @@ export function ContactSection({
 
                 <div className="flex items-start gap-4">
                   <div className="bg-drystore-orange/10 p-3 rounded-full">
-                    <MapPin className="w-5 h-5 text-drystore-orange" />
+                    <Phone className="w-5 h-5 text-drystore-orange" />
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Endereço</p>
