@@ -1,14 +1,14 @@
 import { Phone, Mail, MapPin, Clock } from 'lucide-react';
 import { LeadCaptureForm } from '../forms/LeadCaptureForm';
-
 interface ContactSectionProps {
   productInterest: string;
   landingPageId: string;
 }
-
-export function ContactSection({ productInterest, landingPageId }: ContactSectionProps) {
-  return (
-    <section id="contato" className="py-16 md:py-24 bg-muted/30">
+export function ContactSection({
+  productInterest,
+  landingPageId
+}: ContactSectionProps) {
+  return <section id="contato" className="py-16 md:py-24 bg-muted/30">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
@@ -23,11 +23,7 @@ export function ContactSection({ productInterest, landingPageId }: ContactSectio
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
           {/* Form */}
           <div className="bg-card rounded-2xl shadow-xl p-6 md:p-8 border border-border">
-            <LeadCaptureForm
-              productInterest={productInterest}
-              landingPageId={landingPageId}
-              buttonText="Solicitar Orçamento Grátis"
-            />
+            <LeadCaptureForm productInterest={productInterest} landingPageId={landingPageId} buttonText="Solicitar Orçamento Grátis" />
           </div>
 
           {/* Contact Info */}
@@ -44,13 +40,8 @@ export function ContactSection({ productInterest, landingPageId }: ContactSectio
                   </div>
                   <div>
                     <p className="font-medium text-foreground">WhatsApp</p>
-                    <a 
-                      href="https://wa.me/5511999999999" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-drystore-orange transition-colors"
-                    >
-                      (11) 99999-9999
+                    <a target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-drystore-orange transition-colors" href="https://wa.me/5551991422784">
+                      (51) 99142-2784
                     </a>
                   </div>
                 </div>
@@ -61,10 +52,7 @@ export function ContactSection({ productInterest, landingPageId }: ContactSectio
                   </div>
                   <div>
                     <p className="font-medium text-foreground">E-mail</p>
-                    <a 
-                      href="mailto:contato@drystore.com.br"
-                      className="text-muted-foreground hover:text-drystore-orange transition-colors"
-                    >
+                    <a href="mailto:contato@drystore.com.br" className="text-muted-foreground hover:text-drystore-orange transition-colors">
                       contato@drystore.com.br
                     </a>
                   </div>
@@ -111,6 +99,5 @@ export function ContactSection({ productInterest, landingPageId }: ContactSectio
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>;
 }
