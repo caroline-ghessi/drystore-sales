@@ -64,9 +64,7 @@ export function ContactSection({
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Telefone</p>
-                    <p className="text-muted-foreground">
-                      São Paulo, SP
-                    </p>
+                    <p className="text-muted-foreground">(51) 3061-4300</p>
                   </div>
                 </div>
 
