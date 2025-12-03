@@ -77,7 +77,7 @@ export function ContactSection({
                   <div>
                     <p className="font-medium text-foreground">Horário de Atendimento</p>
                     <p className="text-muted-foreground">
-                      Segunda a Sexta: 8h às 18h
+                      Porto Alegre - RS 
                     </p>
                   </div>
                 </div>
