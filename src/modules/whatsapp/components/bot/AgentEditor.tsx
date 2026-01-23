@@ -291,7 +291,7 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
               </div>
             </TabsContent>
 
-            <TabsContent value="knowledge" className="p-6">
+            <TabsContent value="knowledge" className="p-6 pb-8 overflow-y-auto">
               {editAgent.product_category ? (
                 <KnowledgeBaseManager agentCategory={editAgent.product_category} />
               ) : (

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { 
   Upload, FileText, Trash2, CheckCircle, Clock, AlertCircle,
-  File, FileSpreadsheet, FileImage, Download, Search, Globe
+  File, FileSpreadsheet, FileImage, Download, Search, Globe, RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,9 @@ import { ProductCategory } from '@/types/conversation.types';
 import { formatFileSize } from '@/lib/utils';
 import { SemanticSearchTest } from './SemanticSearchTest';
 import { WebScrapingTab } from './WebScrapingTab';
+import { supabase } from '@/integrations/supabase/client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 interface KnowledgeBaseManagerProps {
   agentCategory: ProductCategory;
@@ -32,10 +35,27 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 export function KnowledgeBaseManager({ agentCategory }: KnowledgeBaseManagerProps) {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
   
   const { data: files, isLoading } = useKnowledgeFiles(agentCategory);
   const uploadMutation = useUploadKnowledgeFile();
   const deleteMutation = useDeleteKnowledgeFile();
+
+  const reprocessMutation = useMutation({
+    mutationFn: async (fileId: string) => {
+      const { error } = await supabase.functions.invoke('generate-embeddings', {
+        body: { fileId }
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-files'] });
+      toast.success('Arquivo enviado para reprocessamento!');
+    },
+    onError: (error) => {
+      toast.error(`Erro ao reprocessar: ${error.message}`);
+    }
+  });
 
   const handleFileSelect = (selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
@@ -202,13 +222,26 @@ export function KnowledgeBaseManager({ agentCategory }: KnowledgeBaseManagerProp
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {getStatusBadge(file.processing_status)}
+                      <span className="text-xs text-muted-foreground">
+                        {file.chunks_count ?? 0} chunks
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => reprocessMutation.mutate(file.id)}
+                        disabled={reprocessMutation.isPending}
+                        title="Reprocessar arquivo"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${reprocessMutation.isPending ? 'animate-spin' : ''}`} />
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => deleteMutation.mutate(file)}
                         disabled={deleteMutation.isPending}
+                        title="Excluir arquivo"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
