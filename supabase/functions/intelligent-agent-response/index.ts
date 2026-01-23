@@ -151,59 +151,67 @@ Deno.serve(async (req) => {
     ).join('\n') || '';
 
     // RAG: Buscar conhecimento relevante da base de dados
+    // SKIP para agente de triagem (general) - usa apenas o prompt
     let knowledgeContext = '';
-    try {
-      console.log('🔍 Searching knowledge base for relevant content...');
-      
-      // Gerar embedding da mensagem do usuário
-      const embeddingResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-embeddings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
-        },
-        body: JSON.stringify({ 
-          fileId: 'query',
-          content: message,
-          generateChunks: false 
-        })
-      });
-
-      const embeddingResult = await embeddingResponse.json();
-      
-      if (embeddingResult.success && embeddingResult.embedding) {
-        console.log('✅ Message embedding generated successfully');
+    
+    if (finalAgent.agent_type !== 'general') {
+      try {
+        console.log('🔍 Searching knowledge base for relevant content...');
         
-        // Buscar chunks de conhecimento similares
-        const { data: knowledgeChunks, error: searchError } = await supabase.rpc('search_knowledge_chunks', {
-          query_embedding: embeddingResult.embedding,
-          target_agent_category: conversationCategory,
-          similarity_threshold: 0.75,
-          max_results: 5
+        // Gerar embedding da mensagem do usuário
+        const embeddingResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-embeddings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+          },
+          body: JSON.stringify({ 
+            fileId: 'query',
+            content: message,
+            generateChunks: false 
+          })
         });
 
-        if (searchError) {
-          console.error('❌ Knowledge search error:', searchError);
-        } else if (knowledgeChunks && knowledgeChunks.length > 0) {
-          console.log(`✅ Found ${knowledgeChunks.length} relevant knowledge chunks`);
+        const embeddingResult = await embeddingResponse.json();
+        
+        if (embeddingResult.success && embeddingResult.embedding) {
+          console.log('✅ Message embedding generated successfully');
           
-          knowledgeContext = '\n\nBASE DE CONHECIMENTO:\n' + knowledgeChunks
-            .map((chunk: any) => `[${chunk.file_name}] ${chunk.content}`)
-            .join('\n\n');
+          // Buscar chunks de conhecimento similares
+          const { data: knowledgeChunks, error: searchError } = await supabase.rpc('search_knowledge_chunks', {
+            query_embedding: embeddingResult.embedding,
+            target_agent_category: conversationCategory,
+            similarity_threshold: 0.75,
+            max_results: 5
+          });
+
+          if (searchError) {
+            console.error('❌ Knowledge search error:', searchError);
+          } else if (knowledgeChunks && knowledgeChunks.length > 0) {
+            console.log(`✅ Found ${knowledgeChunks.length} relevant knowledge chunks`);
+            
+            knowledgeContext = '\n\nBASE DE CONHECIMENTO:\n' + knowledgeChunks
+              .map((chunk: any) => `[${chunk.file_name}] ${chunk.content}`)
+              .join('\n\n');
+          } else {
+            console.log('ℹ️ No relevant knowledge found in database');
+          }
         } else {
-          console.log('ℹ️ No relevant knowledge found in database');
+          console.warn('⚠️ Failed to generate embedding for message');
         }
-      } else {
-        console.warn('⚠️ Failed to generate embedding for message');
+      } catch (error) {
+        console.error('❌ RAG search failed:', error);
+        // Continue without knowledge base if search fails
       }
-    } catch (error) {
-      console.error('❌ RAG search failed:', error);
-      // Continue without knowledge base if search fails
+    } else {
+      console.log('📞 TRIAGE MODE: Skipping RAG for general agent - using prompt only');
     }
 
     // FALLBACK XML: Para agente de ferramentas, buscar catálogo de produtos
+    // SKIP para agente de triagem (general) - não deve consultar catálogo
     let productCatalogContext = '';
-    if (conversationCategory === 'ferramentas' && isProductQuery(message)) {
+    
+    if (finalAgent.agent_type !== 'general' && conversationCategory === 'ferramentas' && isProductQuery(message)) {
       console.log('🔍 Detected product query for ferramentas agent - checking XML catalog');
       
       try {
@@ -246,6 +254,8 @@ Deno.serve(async (req) => {
         console.error('⚠️ Product catalog fallback failed:', error);
         // Continue sem catálogo, usar apenas RAG
       }
+    } else if (finalAgent.agent_type === 'general') {
+      console.log('📞 TRIAGE MODE: Skipping XML catalog for general agent - using prompt only');
     }
 
     // Obter horário de Brasília
