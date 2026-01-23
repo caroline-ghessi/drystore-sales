@@ -369,84 +369,133 @@ async function generateEmbeddingWithRetry(text: string, maxRetries = 3): Promise
   throw new Error(`Failed after ${maxRetries} attempts: ${lastErrorMessage}`);
 }
 
-// ✅ Função melhorada de chunking com overlap
-function createChunks(content: string, maxChunkSize = 6000, overlap = 200): string[] {
+// ✅ Função melhorada de chunking para arquivos grandes (XLSX de produtos)
+function createChunks(content: string, maxChunkSize = 4000, overlap = 100): string[] {
   if (!content || content.trim().length === 0) {
     return [];
   }
 
-  // Limpar o conteúdo primeiro
   const cleanContent = content.trim();
+  console.log(`📊 Creating chunks from content: ${cleanContent.length} characters`);
   
   // Se o conteúdo é pequeno, retornar como chunk único
   if (cleanContent.length <= maxChunkSize) {
+    console.log(`📝 Content small enough for single chunk`);
     return [cleanContent];
   }
 
-  const chunks = [];
+  const chunks: string[] = [];
   
-  // Split by paragraphs first
-  const paragraphs = cleanContent.split(/\n\s*\n/);
-  let currentChunk = '';
-
-  for (const paragraph of paragraphs) {
-    const trimmedParagraph = paragraph.trim();
-    if (!trimmedParagraph) continue;
-
-    // If adding this paragraph would make chunk too large
-    if (currentChunk.length + trimmedParagraph.length > maxChunkSize && currentChunk.length > 0) {
-      chunks.push(currentChunk.trim());
+  // ✅ Detectar se é conteúdo de produto (XLSX de catálogo)
+  const isProductCatalog = cleanContent.includes('SKU') || 
+                           cleanContent.includes('Preço') || 
+                           cleanContent.includes('PLANILHA:') ||
+                           cleanContent.includes(' | ');
+  
+  if (isProductCatalog) {
+    console.log(`🛒 Detected product catalog - using product-based chunking`);
+    
+    // Split por linhas (cada linha pode ser um produto)
+    const lines = cleanContent.split('\n');
+    let currentChunk = '';
+    let productCount = 0;
+    const productsPerChunk = 20; // 20 produtos por chunk
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
       
-      // ✅ Add overlap from previous chunk
-      if (overlap > 0 && currentChunk.length > overlap) {
-        const overlapText = currentChunk.slice(-overlap).trim();
-        currentChunk = overlapText + '\n\n' + trimmedParagraph;
-      } else {
-        currentChunk = trimmedParagraph;
+      // Detectar início de produto (geralmente tem | separando colunas)
+      const isProductLine = trimmedLine.includes(' | ') && !trimmedLine.startsWith('===');
+      
+      if (isProductLine) {
+        productCount++;
       }
-    } else {
-      currentChunk += (currentChunk ? '\n\n' : '') + trimmedParagraph;
+      
+      // Criar novo chunk a cada N produtos ou se exceder tamanho
+      if ((productCount >= productsPerChunk || currentChunk.length + trimmedLine.length > maxChunkSize) && currentChunk.length > 0) {
+        chunks.push(currentChunk.trim());
+        
+        // Pequeno overlap (cabeçalho se existir)
+        const headerMatch = currentChunk.match(/^(.*?\n)/);
+        currentChunk = headerMatch ? headerMatch[1] + trimmedLine : trimmedLine;
+        productCount = isProductLine ? 1 : 0;
+      } else {
+        currentChunk += (currentChunk ? '\n' : '') + trimmedLine;
+      }
     }
-  }
-
-  // Add the last chunk
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim());
-  }
-
-  // If no chunks were created (single very long paragraph), split by sentences
-  if (chunks.length === 0) {
-    const sentences = cleanContent.split(/\.\s+/);
+    
+    if (currentChunk.trim()) {
+      chunks.push(currentChunk.trim());
+    }
+    
+    console.log(`✅ Created ${chunks.length} product-based chunks`);
+  } else {
+    // Chunking padrão por parágrafos
+    console.log(`📄 Using paragraph-based chunking`);
+    
+    const paragraphs = cleanContent.split(/\n\s*\n/);
     let currentChunk = '';
 
-    for (const sentence of sentences) {
-      const trimmedSentence = sentence.trim();
-      if (!trimmedSentence) continue;
+    for (const paragraph of paragraphs) {
+      const trimmedParagraph = paragraph.trim();
+      if (!trimmedParagraph) continue;
 
-      if (currentChunk.length + trimmedSentence.length > maxChunkSize && currentChunk.length > 0) {
-        chunks.push(currentChunk.trim() + '.');
+      if (currentChunk.length + trimmedParagraph.length > maxChunkSize && currentChunk.length > 0) {
+        chunks.push(currentChunk.trim());
         
-        // Add overlap
         if (overlap > 0 && currentChunk.length > overlap) {
           const overlapText = currentChunk.slice(-overlap).trim();
-          currentChunk = overlapText + '. ' + trimmedSentence;
+          currentChunk = overlapText + '\n\n' + trimmedParagraph;
         } else {
-          currentChunk = trimmedSentence;
+          currentChunk = trimmedParagraph;
         }
       } else {
-        currentChunk += (currentChunk ? '. ' : '') + trimmedSentence;
+        currentChunk += (currentChunk ? '\n\n' : '') + trimmedParagraph;
       }
     }
 
     if (currentChunk.trim()) {
       chunks.push(currentChunk.trim());
     }
+
+    // Fallback: split por sentenças se não criou chunks
+    if (chunks.length === 0) {
+      const sentences = cleanContent.split(/\.\s+/);
+      currentChunk = '';
+
+      for (const sentence of sentences) {
+        const trimmedSentence = sentence.trim();
+        if (!trimmedSentence) continue;
+
+        if (currentChunk.length + trimmedSentence.length > maxChunkSize && currentChunk.length > 0) {
+          chunks.push(currentChunk.trim() + '.');
+          currentChunk = trimmedSentence;
+        } else {
+          currentChunk += (currentChunk ? '. ' : '') + trimmedSentence;
+        }
+      }
+
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim());
+      }
+    }
   }
 
-  // ✅ Filtrar chunks muito pequenos
-  const validChunks = chunks.filter(chunk => chunk.trim().length >= 50);
+  // ✅ Filtrar chunks muito pequenos e limitar tamanho máximo
+  const validChunks = chunks
+    .filter(chunk => chunk.trim().length >= 50)
+    .map(chunk => chunk.length > maxChunkSize ? chunk.substring(0, maxChunkSize) : chunk);
   
-  return validChunks.length > 0 ? validChunks : [cleanContent];
+  console.log(`📊 Final chunks: ${validChunks.length} (filtered from ${chunks.length})`);
+  
+  // Limite de segurança: máximo 500 chunks para evitar timeout
+  if (validChunks.length > 500) {
+    console.warn(`⚠️ Too many chunks (${validChunks.length}), limiting to 500`);
+    return validChunks.slice(0, 500);
+  }
+  
+  return validChunks.length > 0 ? validChunks : [cleanContent.substring(0, maxChunkSize)];
 }
 
 // ✅ Função melhorada de estimativa de tokens
