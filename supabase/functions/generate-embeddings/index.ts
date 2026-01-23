@@ -25,7 +25,7 @@ serve(async (req) => {
   }
 
   try {
-    const { fileId, content, generateChunks = true } = await req.json();
+    const { fileId, content, generateChunks = true, force = false } = await req.json();
 
     // ✅ CORREÇÃO: Buscar conteúdo automaticamente se não fornecido
     let processContent = content;
@@ -93,12 +93,12 @@ serve(async (req) => {
       throw new Error(`Failed to get file details: ${fileError.message}`);
     }
 
-    // ✅ Verificar se o arquivo já está sendo processado
-    if (fileData.processing_status === 'embedding_in_progress') {
-      console.log(`⚠️ File ${fileId} is already being processed, skipping...`);
+    // ✅ Verificar se o arquivo já está sendo processado (com suporte a force)
+    if (fileData.processing_status === 'embedding_in_progress' && !force) {
+      console.log(`⚠️ File ${fileId} is already being processed, skipping... (use force=true to override)`);
       return new Response(JSON.stringify({
         success: true,
-        message: 'File is already being processed',
+        message: 'File is already being processed. Use force=true to override.',
         fileId: fileId
       }), {
         headers: {
@@ -106,6 +106,10 @@ serve(async (req) => {
           'Content-Type': 'application/json'
         }
       });
+    }
+    
+    if (force && fileData.processing_status === 'embedding_in_progress') {
+      console.log(`🔄 Force reprocessing file ${fileId} that was stuck in embedding_in_progress`);
     }
 
     // ✅ Marcar arquivo como "em processamento" para evitar duplicação
