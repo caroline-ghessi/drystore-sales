@@ -34,6 +34,11 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export function KnowledgeBaseManager({ agentCategory }: KnowledgeBaseManagerProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState<{
+    fileId: string;
+    current: number;
+    total: number;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   
@@ -43,16 +48,48 @@ export function KnowledgeBaseManager({ agentCategory }: KnowledgeBaseManagerProp
 
   const reprocessMutation = useMutation({
     mutationFn: async (fileId: string) => {
-      const { error } = await supabase.functions.invoke('generate-embeddings', {
-        body: { fileId, force: true }
-      });
-      if (error) throw error;
+      let completed = false;
+      let attempts = 0;
+      const maxAttempts = 30; // Máximo de 30 chamadas (aprox 25 min de processamento total)
+      let continueFrom = 0;
+      
+      while (!completed && attempts < maxAttempts) {
+        attempts++;
+        
+        const { data, error } = await supabase.functions.invoke('generate-embeddings', {
+          body: { fileId, force: true, continueFrom }
+        });
+        
+        if (error) throw error;
+        
+        // Verificar se precisa continuar (resposta parcial)
+        if (data?.partial) {
+          continueFrom = data.continueFrom;
+          setProcessingProgress({
+            fileId,
+            current: continueFrom,
+            total: data.totalChunks
+          });
+          toast.info(`Processando... ${continueFrom}/${data.totalChunks} chunks`, { id: `progress-${fileId}` });
+          
+          // Delay curto entre chamadas para não sobrecarregar
+          await new Promise(r => setTimeout(r, 500));
+        } else {
+          completed = true;
+          setProcessingProgress(null);
+        }
+      }
+      
+      if (!completed) {
+        throw new Error('Limite de tentativas atingido. Tente novamente.');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-files'] });
-      toast.success('Arquivo enviado para reprocessamento!');
+      toast.success('Arquivo processado com sucesso!');
     },
     onError: (error) => {
+      setProcessingProgress(null);
       toast.error(`Erro ao reprocessar: ${error.message}`);
     }
   });
@@ -227,6 +264,20 @@ export function KnowledgeBaseManager({ agentCategory }: KnowledgeBaseManagerProp
                       <span className="text-xs text-muted-foreground">
                         {file.chunks_count ?? 0} chunks
                       </span>
+                      
+                      {/* Barra de progresso durante processamento */}
+                      {processingProgress?.fileId === file.id && (
+                        <div className="flex items-center gap-2 min-w-32">
+                          <Progress 
+                            value={(processingProgress.current / processingProgress.total) * 100} 
+                            className="h-2 flex-1"
+                          />
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {Math.round((processingProgress.current / processingProgress.total) * 100)}%
+                          </span>
+                        </div>
+                      )}
+                      
                       <Button
                         variant="outline"
                         size="sm"
