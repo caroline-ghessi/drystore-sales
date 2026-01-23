@@ -44,7 +44,7 @@ export function KnowledgeBaseManager({ agentCategory }: KnowledgeBaseManagerProp
   const reprocessMutation = useMutation({
     mutationFn: async (fileId: string) => {
       const { error } = await supabase.functions.invoke('generate-embeddings', {
-        body: { fileId }
+        body: { fileId, force: true }
       });
       if (error) throw error;
     },
