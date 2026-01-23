@@ -25,7 +25,11 @@ serve(async (req) => {
   }
 
   try {
-    const { fileId, content, generateChunks = true, force = false } = await req.json();
+    const { fileId, content, generateChunks = true, force = false, continueFrom = 0 } = await req.json();
+    
+    // ✅ Limite de tempo para evitar timeout (50 segundos)
+    const MAX_PROCESSING_TIME_MS = 50000;
+    const startTime = Date.now();
 
     // ✅ CORREÇÃO: Buscar conteúdo automaticamente se não fornecido
     let processContent = content;
@@ -145,21 +149,74 @@ serve(async (req) => {
       const chunks = createChunks(processContent);
       console.log(`📝 Created ${chunks.length} chunks for file: ${fileId}`);
 
+      // ✅ Se continuando de um processamento anterior, não deletar chunks existentes
+      const startIndex = continueFrom > 0 ? continueFrom : 0;
+      if (startIndex > 0) {
+        console.log(`🔄 Continuing from chunk ${startIndex}/${chunks.length}`);
+      }
+
       // Generate embeddings for each chunk with error handling
       const chunkData = [];
       let processedChunks = 0;
       let failedChunks = 0;
+      let lastProcessedIndex = startIndex;
 
-      for (let i = 0; i < chunks.length; i++) {
+      for (let i = startIndex; i < chunks.length; i++) {
+        // ✅ Verificar limite de tempo
+        const elapsedTime = Date.now() - startTime;
+        if (elapsedTime > MAX_PROCESSING_TIME_MS) {
+          console.log(`⏱️ Time limit reached at chunk ${i}/${chunks.length} (${elapsedTime}ms elapsed)`);
+          
+          // Inserir chunks processados até agora
+          if (chunkData.length > 0) {
+            const batchSize = 50;
+            for (let j = 0; j < chunkData.length; j += batchSize) {
+              const batch = chunkData.slice(j, j + batchSize);
+              await supabase.from('knowledge_chunks').insert(batch);
+            }
+            console.log(`✅ Saved ${chunkData.length} chunks before timeout`);
+          }
+          
+          // Salvar progresso para continuar depois
+          await supabase
+            .from('agent_knowledge_files')
+            .update({ 
+              processing_status: 'partial',
+              metadata: {
+                ...fileData.metadata || {},
+                last_processed_chunk: i,
+                total_chunks: chunks.length,
+                partial_completion: true,
+                partial_saved_at: new Date().toISOString()
+              }
+            })
+            .eq('id', fileId);
+          
+          return new Response(JSON.stringify({
+            success: true,
+            partial: true,
+            processedChunks: processedChunks,
+            totalChunks: chunks.length,
+            continueFrom: i,
+            message: `Processed ${processedChunks} chunks. ${chunks.length - i} remaining. Call again to continue.`
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
         const chunk = chunks[i];
         const estimatedTokens = estimateTokens(chunk);
         
-        console.log(`⚡ Processing chunk ${i + 1}/${chunks.length} (${chunk.length} chars, ~${estimatedTokens} tokens)`);
+        // Log a cada 20 chunks para reduzir spam
+        if (i % 20 === 0 || i === startIndex) {
+          console.log(`⚡ Processing chunk ${i + 1}/${chunks.length} (${chunk.length} chars, ~${estimatedTokens} tokens)`);
+        }
 
         // Skip chunks that are too large for the model
         if (estimatedTokens > 8000) {
           console.warn(`⚠️ Skipping chunk ${i + 1}: too large (${estimatedTokens} tokens)`);
           failedChunks++;
+          lastProcessedIndex = i + 1;
           continue;
         }
 
@@ -167,6 +224,7 @@ serve(async (req) => {
         if (chunk.trim().length < 50) {
           console.warn(`⚠️ Skipping chunk ${i + 1}: too small (${chunk.length} characters)`);
           failedChunks++;
+          lastProcessedIndex = i + 1;
           continue;
         }
 
@@ -188,16 +246,18 @@ serve(async (req) => {
           });
           
           processedChunks++;
+          lastProcessedIndex = i + 1;
           
-          // ✅ Progress feedback a cada 10 chunks
-          if (processedChunks % 10 === 0) {
-            console.log(`📊 Progress: ${processedChunks}/${chunks.length} chunks processed`);
+          // ✅ Progress feedback a cada 20 chunks
+          if (processedChunks % 20 === 0) {
+            console.log(`📊 Progress: ${i + 1}/${chunks.length} chunks (${processedChunks} successful, ${failedChunks} failed)`);
           }
           
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           console.error(`❌ Failed to process chunk ${i + 1}:`, errorMessage);
           failedChunks++;
+          lastProcessedIndex = i + 1;
           continue;
         }
       }
