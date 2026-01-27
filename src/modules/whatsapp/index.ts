@@ -60,3 +60,12 @@ export { useVendorQualityAnalysis } from './hooks/useVendorQualityAnalysis';
 export { useVendorConversations } from './hooks/useVendorConversations';
 export { useVendorMessages } from './hooks/useVendorMessages';
 export { useVendorTokenTest } from './hooks/useVendorTokenTest';
+
+// Services - NOVO
+export * from './services';
+
+// Types - NOVO
+export * from './types';
+
+// Utils - NOVO
+export * from './utils';

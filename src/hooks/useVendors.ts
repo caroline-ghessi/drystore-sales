@@ -1,3 +1,4 @@
+// Re-export para compatibilidade - Hook mantido em src/hooks devido a uso em múltiplos módulos
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
