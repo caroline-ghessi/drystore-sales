@@ -155,11 +155,30 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Detectar re-engajamento ANTES da classificação
+    const isReengagement = await detectReengagement(conversation);
+    
+    if (isReengagement) {
+      console.log(`🔄 Re-engagement detected for conversation ${conversationId}`);
+      
+      // Atualizar flags de re-engajamento
+      await supabase
+        .from('conversations')
+        .update({
+          is_returning_customer: true,
+          previous_product_groups: [
+            ...(conversation.previous_product_groups || []),
+            conversation.product_group
+          ].filter(Boolean)
+        })
+        .eq('id', conversationId);
+    }
+
     // Classificar intenção usando LLM
     const classificationResult = await supabase.functions.invoke('classify-intent-llm', {
       body: {
         message: combinedMessage,
-        currentProductGroup: conversation.product_group,
+        currentProductGroup: isReengagement ? null : conversation.product_group, // Permitir reclassificação se re-engajamento
         conversationId
       }
     });
@@ -176,10 +195,11 @@ Deno.serve(async (req) => {
     
     if (classificationResult.data?.productGroup) {
       // APLICAR LOCK DE CATEGORIA NO PROCESSAMENTO EM LOTE
+      // Se for re-engajamento, permitir mudança de categoria
       const SPECIFIC_CATEGORIES = ['ferramentas', 'telha_shingle', 'energia_solar', 'steel_frame', 'drywall_divisorias', 'pisos', 'acabamentos', 'forros'];
       
-      // Verificar se categoria atual é específica (bloqueada)
-      if (conversation.product_group && SPECIFIC_CATEGORIES.includes(conversation.product_group)) {
+      // Verificar se categoria atual é específica (bloqueada) - MAS permitir se for re-engajamento
+      if (!isReengagement && conversation.product_group && SPECIFIC_CATEGORIES.includes(conversation.product_group)) {
         console.log(`🔒 Buffer processing category update blocked: ${conversation.product_group} is locked`);
         newProductGroup = conversation.product_group; // Manter categoria atual
         
@@ -201,6 +221,8 @@ Deno.serve(async (req) => {
         
         // Atualizar product_group na conversa se mudou
         if (newProductGroup !== conversation.product_group) {
+          console.log(`📝 Updating product_group: ${conversation.product_group} → ${newProductGroup}${isReengagement ? ' (re-engagement)' : ''}`);
+          
           await supabase
             .from('conversations')
             .update({ product_group: newProductGroup })
@@ -329,6 +351,27 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+// Função para detectar re-engajamento
+async function detectReengagement(conversation: any): Promise<boolean> {
+  // Se não tem lead enviado, não é re-engajamento
+  if (!conversation.last_lead_sent_at) {
+    return false;
+  }
+  
+  // Se última interação foi há menos de 24h, não é re-engajamento
+  const lastInteraction = new Date(conversation.last_message_at || conversation.updated_at);
+  const lastLead = new Date(conversation.last_lead_sent_at);
+  const hoursAgo = (Date.now() - lastInteraction.getTime()) / (1000 * 60 * 60);
+  
+  // Re-engajamento: cliente volta após 24h de um lead já enviado
+  if (hoursAgo >= 24 && lastLead < lastInteraction) {
+    console.log(`🔄 Re-engagement criteria met: ${hoursAgo.toFixed(1)}h since last interaction, lead was sent at ${lastLead.toISOString()}`);
+    return true;
+  }
+  
+  return false;
+}
 
 // TODAS AS MENSAGENS HARDCODED FORAM REMOVIDAS
 // APENAS o intelligent-agent-response é usado para gerar respostas dinâmicas
