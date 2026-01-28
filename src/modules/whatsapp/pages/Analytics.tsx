@@ -1,22 +1,19 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
-  BarChart3, 
   MessageCircle, 
-  Users, 
-  TrendingUp, 
   Clock, 
   Target,
   Download,
   Flame,
-  Bot,
-  ArrowLeft
+  Bot
 } from 'lucide-react';
+import { useConversationAnalytics } from '@/hooks/useConversationAnalytics';
+import { useLeadAnalytics } from '@/hooks/useLeadAnalytics';
+import { useVendorPerformance } from '@/modules/whatsapp/hooks/useVendorPerformance';
 import { AnalyticsOverview } from '@/modules/whatsapp/components/analytics/AnalyticsOverview';
 import { ConversationMetrics } from '@/modules/whatsapp/components/analytics/ConversationMetrics';
 import { VendorPerformance } from '@/modules/whatsapp/components/analytics/VendorPerformance';
@@ -35,6 +32,19 @@ const PERIOD_OPTIONS = [
 export default function Analytics() {
   const [selectedPeriod, setSelectedPeriod] = useState('7d');
   const [selectedTab, setSelectedTab] = useState('overview');
+
+  const { data: conversationData, isLoading: conversationLoading } = useConversationAnalytics(selectedPeriod);
+  const { data: leadData, isLoading: leadLoading } = useLeadAnalytics(selectedPeriod);
+  const { data: vendorData, isLoading: vendorLoading } = useVendorPerformance(selectedPeriod);
+
+  const isLoading = conversationLoading || leadLoading || vendorLoading;
+
+  // Formatação do tempo médio de resposta
+  const formatResponseTime = (minutes: number) => {
+    if (minutes < 1) return '<1m';
+    if (minutes < 60) return `${Math.round(minutes)}m`;
+    return `${(minutes / 60).toFixed(1)}h`;
+  };
 
   return (
     <div className="p-6 space-y-8 bg-background">
@@ -82,10 +92,18 @@ export default function Analytics() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground mb-1">1,247</div>
-            <p className="text-sm text-muted-foreground">
-              <span className="text-drystore-orange font-medium">+12%</span> vs. período anterior
-            </p>
+            {isLoading ? (
+              <div className="h-10 bg-muted rounded animate-pulse" />
+            ) : (
+              <>
+                <div className="text-3xl font-bold text-foreground mb-1">
+                  {conversationData?.totalConversations?.toLocaleString() || 0}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {conversationData?.activeConversations || 0} ativas
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -99,10 +117,18 @@ export default function Analytics() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-drystore-orange mb-1">89</div>
-            <p className="text-sm text-muted-foreground">
-              <span className="text-drystore-orange font-medium">+8%</span> vs. período anterior
-            </p>
+            {isLoading ? (
+              <div className="h-10 bg-muted rounded animate-pulse" />
+            ) : (
+              <>
+                <div className="text-3xl font-bold text-drystore-orange mb-1">
+                  {leadData?.hotLeads || 0}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {leadData?.warmLeads || 0} mornos, {leadData?.coldLeads || 0} frios
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -116,10 +142,18 @@ export default function Analytics() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground mb-1">2.3m</div>
-            <p className="text-sm text-muted-foreground">
-              <span className="text-red-600 font-medium">+15s</span> vs. período anterior
-            </p>
+            {isLoading ? (
+              <div className="h-10 bg-muted rounded animate-pulse" />
+            ) : (
+              <>
+                <div className="text-3xl font-bold text-foreground mb-1">
+                  {formatResponseTime(vendorData?.avgResponseTime || conversationData?.averageResponseTime || 0)}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Tempo médio vendedores
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -133,10 +167,18 @@ export default function Analytics() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground mb-1">7.2%</div>
-            <p className="text-sm text-muted-foreground">
-              <span className="text-drystore-orange font-medium">+0.5%</span> vs. período anterior
-            </p>
+            {isLoading ? (
+              <div className="h-10 bg-muted rounded animate-pulse" />
+            ) : (
+              <>
+                <div className="text-3xl font-bold text-foreground mb-1">
+                  {leadData?.overallConversionRate || 0}%
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Leads → Enviados
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

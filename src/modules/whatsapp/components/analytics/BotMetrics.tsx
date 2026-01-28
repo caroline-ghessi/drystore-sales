@@ -281,7 +281,7 @@ export function BotMetrics({ period }: BotMetricsProps) {
             </div>
             <div className="flex gap-6">
               <div className="text-center">
-                <p className="text-2xl font-bold text-primary">&lt;1s</p>
+                <p className="text-2xl font-bold text-primary">{data.avgBotResponseTime}s</p>
                 <p className="text-xs text-muted-foreground">Tempo resposta</p>
               </div>
               <div className="text-center">

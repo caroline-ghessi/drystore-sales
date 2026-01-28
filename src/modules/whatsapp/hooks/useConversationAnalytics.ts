@@ -12,6 +12,9 @@ export function useConversationAnalytics(period: string) {
         const startDate = new Date();
         
         switch (period) {
+          case 'today':
+            startDate.setHours(0, 0, 0, 0);
+            break;
           case '7d':
             startDate.setDate(endDate.getDate() - 7);
             break;
@@ -55,15 +58,71 @@ export function useConversationAnalytics(period: string) {
         }
 
         const conversations = data || [];
+        const conversationIds = conversations.map(c => c.id);
         
         // Processar métricas básicas
         const totalConversations = conversations.length;
-        const activeConversations = conversations.filter(c => c.status === 'active').length;
+        const activeConversations = conversations.filter(c => c.status === 'active' || c.status === 'in_bot' || c.status === 'waiting').length;
         const completedConversations = conversations.filter(c => c.status === 'closed').length;
         const conversionRate = totalConversations > 0 ? (completedConversations / totalConversations) * 100 : 0;
 
-        // Simular tempo médio de resposta (em horas)
-        const averageResponseTime = 2.5;
+        // Buscar tempo médio de resposta da tabela quality_metrics
+        let averageResponseTime = 0;
+        const { data: qualityData } = await supabase
+          .from('quality_metrics')
+          .select('response_time_avg_minutes')
+          .gte('metric_date', startDate.toISOString().split('T')[0]);
+
+        if (qualityData && qualityData.length > 0) {
+          const validTimes = qualityData.filter(q => q.response_time_avg_minutes != null);
+          if (validTimes.length > 0) {
+            averageResponseTime = Math.round(
+              (validTimes.reduce((sum, q) => sum + (q.response_time_avg_minutes || 0), 0) / validTimes.length) * 10
+            ) / 10;
+          }
+        }
+
+        // Calcular média de mensagens por conversa (real)
+        let avgMessagesPerConversation = 0;
+        if (conversationIds.length > 0) {
+          const { count: messageCount } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .in('conversation_id', conversationIds);
+
+          avgMessagesPerConversation = totalConversations > 0 
+            ? Math.round((messageCount || 0) / totalConversations) 
+            : 0;
+        }
+
+        // Calcular distribuição de tempo de resposta real
+        const { data: responseData } = await supabase
+          .from('quality_metrics')
+          .select('response_time_avg_minutes')
+          .gte('metric_date', startDate.toISOString().split('T')[0]);
+
+        const responseBuckets: Record<string, number[]> = { 
+          '0-2h': [], 
+          '2-4h': [], 
+          '4-8h': [], 
+          '8h+': [] 
+        };
+
+        responseData?.forEach(r => {
+          const mins = r.response_time_avg_minutes || 0;
+          if (mins <= 120) responseBuckets['0-2h'].push(mins);
+          else if (mins <= 240) responseBuckets['2-4h'].push(mins);
+          else if (mins <= 480) responseBuckets['4-8h'].push(mins);
+          else responseBuckets['8h+'].push(mins);
+        });
+
+        const responseTimeData = Object.entries(responseBuckets).map(([hour, values]) => ({
+          hour,
+          count: values.length,
+          avgMinutes: values.length > 0 
+            ? Math.round(values.reduce((a, b) => a + b, 0) / values.length)
+            : 0
+        }));
 
         // Distribuição por status
         const statusDistribution = [
@@ -80,17 +139,6 @@ export function useConversationAnalytics(period: string) {
           { name: 'Steel Frame', value: conversations.filter(c => c.product_group === 'steel_frame').length, color: 'hsl(var(--accent))', status: 'steel_frame', count: conversations.filter(c => c.product_group === 'steel_frame').length, percentage: totalConversations > 0 ? (conversations.filter(c => c.product_group === 'steel_frame').length / totalConversations) * 100 : 0 },
           { name: 'Pisos', value: conversations.filter(c => c.product_group === 'pisos').length, color: 'hsl(var(--muted))', status: 'pisos', count: conversations.filter(c => c.product_group === 'pisos').length, percentage: totalConversations > 0 ? (conversations.filter(c => c.product_group === 'pisos').length / totalConversations) * 100 : 0 },
           { name: 'Indefinido', value: conversations.filter(c => c.product_group === 'indefinido').length, color: 'hsl(var(--muted-foreground))', status: 'indefinido', count: conversations.filter(c => c.product_group === 'indefinido').length, percentage: totalConversations > 0 ? (conversations.filter(c => c.product_group === 'indefinido').length / totalConversations) * 100 : 0 }
-        ];
-
-        // Média de mensagens por conversa
-        const avgMessagesPerConversation = 12; // Simulado
-
-        // Dados de tempo de resposta
-        const responseTimeData = [
-          { hour: '0-2h', count: Math.floor(totalConversations * 0.4), avgMinutes: 45 },
-          { hour: '2-4h', count: Math.floor(totalConversations * 0.3), avgMinutes: 180 },
-          { hour: '4-8h', count: Math.floor(totalConversations * 0.2), avgMinutes: 360 },
-          { hour: '8h+', count: Math.floor(totalConversations * 0.1), avgMinutes: 600 }
         ];
 
         // Preparar dados de tendência diária

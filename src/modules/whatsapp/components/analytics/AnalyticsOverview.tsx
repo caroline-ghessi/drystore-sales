@@ -102,7 +102,7 @@ export function AnalyticsOverview({ period }: AnalyticsOverviewProps) {
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Tempo Resposta</p>
-                <p className="text-2xl font-bold text-primary">&lt;1s</p>
+                <p className="text-2xl font-bold text-primary">{botData?.avgBotResponseTime || 0}s</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Taxa Handoff</p>
