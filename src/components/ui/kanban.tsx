@@ -7,6 +7,9 @@ import {
   rectIntersection,
   useDraggable,
   useDroppable,
+  PointerSensor,
+  useSensor,
+  useSensors,
 } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import type { ReactNode } from 'react';
@@ -122,10 +125,24 @@ export const KanbanProvider = ({
   children,
   onDragEnd,
   className,
-}: KanbanProviderProps) => (
-  <DndContext onDragEnd={onDragEnd} collisionDetection={rectIntersection}>
-    <div className={cn('flex gap-4', className)}>{children}</div>
-  </DndContext>
-);
+}: KanbanProviderProps) => {
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Drag só inicia após mover 8px, permitindo cliques
+      },
+    })
+  );
+
+  return (
+    <DndContext 
+      sensors={sensors} 
+      onDragEnd={onDragEnd} 
+      collisionDetection={rectIntersection}
+    >
+      <div className={cn('flex gap-4', className)}>{children}</div>
+    </DndContext>
+  );
+};
 
 export type { DragEndEvent };
