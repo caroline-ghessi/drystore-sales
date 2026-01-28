@@ -1,330 +1,268 @@
 
+# Plano: Melhorar Interface do CRM - NeuroCRM Design
 
-# Plano Corrigido: CRM Invisivel - Arquitetura Simplificada
+## 1. Resumo
 
-## 1. Analise Critica Aceita
-
-Voce tem razao em todos os pontos levantados. O plano original tinha problemas de:
-
-| Problema | Correcao |
-|----------|----------|
-| Duplicacao de dados | Usar tabelas existentes |
-| Tabela intermediaria desnecessaria | Escrever direto em `crm_opportunities` |
-| Tipo incorreto (BIGINT vs INTEGER) | Usar `INTEGER` para `vendor_conversations.id` |
-| Fluxo de validacao indefinido | Definir claramente o que acontece |
-| Ignora estruturas existentes | Aproveitar `crm_customers`, `crm_opportunities` |
+Implementar o novo design visual do CRM baseado no template HTML fornecido (NeuroCRM), aplicando as cores da marca Drystore e usando os estágios de negociação corretos do enum existente.
 
 ---
 
-## 2. Arquitetura Corrigida
+## 2. Estágios do Pipeline (Corretos)
 
-### Fluxo de Dados Simplificado
+Baseado no enum `opportunity_stage` já existente no sistema:
 
-```text
-vendor_conversations ──────────────────────────────────────────────────────────►
-         │                                                                      
-         │  PIPELINE DIARIO (21h)                                              
-         │                                                                      
-         ├──► FERRAMENTAS ──► vendor_sales_metrics (NOVA, unica tabela nova)   
-         │                    • Metricas simples de conversao                  
-         │                    • Nao cria opportunity                           
-         │                                                                      
-         └──► SOLAR/BUILD ──► crm_opportunities (EXISTENTE, adaptada)          
-                              + vendor_conversation_id (FK nova)               
-                              + ai_confidence (DECIMAL)                        
-                              + validation_status (ENUM)                       
-                              + temperature (TEXT)                             
-                              + objections (TEXT[])                            
-                              + next_step (TEXT)                               
-                              │                                                
-                              └──► crm_customers (EXISTENTE)                   
-                                   Vincula ou cria cliente                     
-```
+| Ordem | Stage (DB) | Label (PT-BR) | Cor |
+|-------|-----------|---------------|-----|
+| 1 | `prospecting` | Prospecção | Azul |
+| 2 | `qualification` | Qualificação | Amarelo |
+| 3 | `proposal` | Proposta | Laranja |
+| 4 | `negotiation` | Negociação | Verde-claro |
+| 5 | `closed_won` | Fechado (Ganho) | Verde |
+| 6 | `closed_lost` | Fechado (Perdido) | Vermelho |
 
 ---
 
-## 3. Mudancas no Banco de Dados
+## 3. Mudanças Visuais Principais
 
-### 3.1 NOVA Tabela: `vendor_sales_metrics` (apenas para Ferramentas)
+### 3.1 Paleta de Cores (Drystore)
 
-Esta e a UNICA tabela nova necessaria. Ferramentas tem ciclo curto e nao justifica pipeline completo.
-
-```sql
-CREATE TABLE vendor_sales_metrics (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  vendor_id UUID NOT NULL REFERENCES vendors(id),
-  vendor_conversation_id INTEGER NOT NULL REFERENCES vendor_conversations(id),
-  
-  -- Resultado da conversa
-  converted BOOLEAN NOT NULL,
-  sale_value NUMERIC,
-  loss_reason TEXT, -- 'price', 'stock', 'competitor', 'gave_up', 'other'
-  product_sold TEXT,
-  
-  -- Metricas de tempo
-  cycle_time_hours INTEGER,
-  messages_analyzed INTEGER,
-  
-  -- IA
-  ai_model TEXT DEFAULT 'claude-sonnet',
-  ai_confidence DECIMAL(3,2),
-  
-  -- Controle
-  extraction_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  
-  UNIQUE(vendor_conversation_id, extraction_date)
-);
+```
+primary: #ef7d04 (Laranja Drystore)
+secondary: #3c3c3b (Cinza Escuro)
+gray-medium: #868787
+gray-light: #dadada
+gray-bg: #f6f6f6
 ```
 
-### 3.2 ALTERAR Tabela: `crm_opportunities` (adicionar campos)
+### 3.2 Sidebar (Nova Estrutura)
 
-Adicionar colunas para suportar extracao automatica e validacao:
+| Antes | Depois |
+|-------|--------|
+| CRM azul genérico | "NeuroCRM" com ícone AI |
+| Itens simples | Agrupados por seção: Menu Principal + Gestão |
+| Sem indicador IA | Badge de notificação IA (novas oportunidades) |
 
-```sql
-ALTER TABLE crm_opportunities
-  ADD COLUMN vendor_id UUID REFERENCES vendors(id),
-  ADD COLUMN vendor_conversation_id INTEGER REFERENCES vendor_conversations(id),
-  ADD COLUMN validation_status TEXT DEFAULT 'ai_generated' 
-    CHECK (validation_status IN ('ai_generated', 'pending', 'validated', 'edited', 'rejected')),
-  ADD COLUMN temperature TEXT CHECK (temperature IN ('hot', 'warm', 'cold')),
-  ADD COLUMN objections TEXT[] DEFAULT '{}',
-  ADD COLUMN next_step TEXT,
-  ADD COLUMN ai_confidence DECIMAL(3,2),
-  ADD COLUMN ai_model TEXT,
-  ADD COLUMN ai_extracted_at TIMESTAMPTZ,
-  ADD COLUMN validated_at TIMESTAMPTZ,
-  ADD COLUMN validated_by UUID REFERENCES profiles(user_id);
-```
+### 3.3 Header (Novo Layout)
 
-### 3.3 ALTERAR Tabela: `vendor_conversations` (adicionar classificacao)
+| Antes | Depois |
+|-------|--------|
+| Breadcrumb simples | Breadcrumb + Usuário com avatar + Status IA |
+| - | Indicador "IA Monitorando" com contagem de novidades |
 
-Para saber qual categoria de produto cada conversa trata:
+### 3.4 Dashboard (Redesign Completo)
 
-```sql
-ALTER TABLE vendor_conversations
-  ADD COLUMN product_category product_category,
-  ADD COLUMN has_opportunity BOOLEAN DEFAULT false,
-  ADD COLUMN last_processed_at TIMESTAMPTZ;
-```
+**Cards de Estatísticas:**
+- Total Pipeline
+- Taxa de Conversão
+- Tempo Médio Ciclo
+- Leads Ativos
 
-### 3.4 NOVO Enum: `validation_status`
-
-```sql
-CREATE TYPE validation_status AS ENUM (
-  'ai_generated',  -- Recem extraido pela IA
-  'pending',       -- Aguardando revisao do vendedor
-  'validated',     -- Vendedor confirmou dados corretos
-  'edited',        -- Vendedor editou os dados
-  'rejected'       -- Vendedor rejeitou (conversa nao era negociacao)
-);
-```
+**Novo Kanban Visual:**
+- Colunas por estágio com cores distintas
+- Cards de oportunidade com:
+  - Nome do cliente + tempo (10 min, 2h, 1d)
+  - Título do projeto
+  - Descrição resumida
+  - Valor + Indicador de temperatura
+  - Badges de ação (Validar para leads IA)
+- Total por coluna no rodapé
+- Drag & Drop entre colunas
 
 ---
 
-## 4. Fluxo de Validacao (Clarificado)
+## 4. Arquivos a Criar/Modificar
 
-### O que acontece quando vendedor valida:
+### 4.1 Componentes Novos
 
-| Acao | O que acontece |
-|------|----------------|
-| **Validar** | `validation_status = 'validated'`, `validated_at = now()`, `validated_by = user_id` |
-| **Editar** | Abre modal de edicao, salva campos alterados, `validation_status = 'edited'` |
-| **Rejeitar** | `validation_status = 'rejected'`, opportunity permanece mas nao aparece em metricas |
+| Arquivo | Descrição |
+|---------|-----------|
+| `src/modules/crm/components/pipeline/PipelineKanban.tsx` | Componente Kanban principal |
+| `src/modules/crm/components/pipeline/KanbanColumn.tsx` | Coluna individual do Kanban |
+| `src/modules/crm/components/pipeline/OpportunityCard.tsx` | Card de oportunidade |
+| `src/modules/crm/components/pipeline/KanbanStats.tsx` | Estatísticas do pipeline |
+| `src/modules/crm/components/layout/AIStatusIndicator.tsx` | Indicador "IA Monitorando" |
 
-### Onde ficam os dados:
+### 4.2 Arquivos a Modificar
 
-- **Dados do cliente**: `crm_customers` (vinculado via `customer_id`)
-- **Dados da negociacao**: `crm_opportunities` (campos existentes + novos)
-- **Historico de edicoes**: Campo `metadata` JSONB ja existe, pode armazenar versoes anteriores
+| Arquivo | Mudança |
+|---------|---------|
+| `src/modules/crm/components/layout/CRMSidebar.tsx` | Novo design com seções + ícone NeuroCRM |
+| `src/modules/crm/components/layout/CRMHeader.tsx` | Adicionar avatar + indicador IA |
+| `src/modules/crm/pages/Dashboard.tsx` | Integrar novo layout com Kanban |
+| `src/modules/crm/pages/Pipeline.tsx` | Substituir placeholder pelo Kanban funcional |
+
+### 4.3 Hooks a Criar
+
+| Arquivo | Descrição |
+|---------|-----------|
+| `src/modules/crm/hooks/useOpportunities.ts` | Buscar oportunidades agrupadas por estágio |
+| `src/modules/crm/hooks/usePipelineStats.ts` | Calcular métricas do pipeline |
 
 ---
 
-## 5. Fases de Implementacao
+## 5. Detalhes de Implementação
 
-### FASE 1: Schema e Pipeline Basico (3-4 dias)
+### 5.1 Estrutura do Kanban
 
-**Banco de Dados:**
-- Criar tabela `vendor_sales_metrics`
-- Alterar `crm_opportunities` com novos campos
-- Alterar `vendor_conversations` com classificacao
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    KANBAN DO PIPELINE DE VENDAS                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
+│  │ PROSPECÇÃO  │  │ QUALIFICAÇÃO│  │  PROPOSTA   │  │ NEGOCIAÇÃO  │    │
+│  │    (4)      │  │    (2)      │  │    (3)      │  │    (2)      │    │
+│  ├─────────────┤  ├─────────────┤  ├─────────────┤  ├─────────────┤    │
+│  │ ┌─────────┐ │  │ ┌─────────┐ │  │ ┌─────────┐ │  │ ┌─────────┐ │    │
+│  │ │ Card 1  │ │  │ │ Card 1  │ │  │ │ Card 1  │ │  │ │ Card 1  │ │    │
+│  │ │         │ │  │ │         │ │  │ │         │ │  │ │         │ │    │
+│  │ └─────────┘ │  │ └─────────┘ │  │ └─────────┘ │  │ └─────────┘ │    │
+│  │ ┌─────────┐ │  │             │  │ ┌─────────┐ │  │             │    │
+│  │ │ Card 2  │ │  │             │  │ │ Card 2  │ │  │             │    │
+│  │ │         │ │  │             │  │ │         │ │  │             │    │
+│  │ └─────────┘ │  │             │  │ └─────────┘ │  │             │    │
+│  ├─────────────┤  ├─────────────┤  ├─────────────┤  ├─────────────┤    │
+│  │ R$ 72.000   │  │ R$ 105.000  │  │ R$ 280.000  │  │ R$ 265.000  │    │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘    │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-**Edge Functions:**
-- `daily-crm-pipeline` - Orquestrador (cron 21h)
-- `classify-vendor-conversation` - Classifica por produto
-- `analyze-vendor-sales` - Extrai metricas de Ferramentas
-- `extract-opportunity-data` - Extrai dados para Solar/Build
+### 5.2 Estrutura do Card de Oportunidade
 
-**Logica do Pipeline:**
-```typescript
-async function dailyCRMPipeline() {
-  // 1. Buscar conversas com atividade hoje
-  const conversations = await getConversationsWithActivityToday();
-  
-  for (const conv of conversations) {
-    // 2. Classificar (se ainda nao classificada)
-    if (!conv.product_category) {
-      await classifyConversation(conv);
-    }
-    
-    // 3. Processar baseado na categoria
-    if (conv.product_category === 'ferramentas') {
-      // Apenas metricas - nao cria opportunity
-      await upsertSalesMetric(conv);
-    } else if (['energia_solar', 'telha_shingle', 'steel_frame'].includes(conv.product_category)) {
-      // Pipeline completo
-      const customer = await findOrCreateCustomer(conv);
-      await upsertOpportunity(conv, customer);
-    }
-  }
+```tsx
+interface OpportunityCardProps {
+  id: string;
+  customerName: string;
+  title: string;
+  description?: string;
+  value: number;
+  temperature: 'hot' | 'warm' | 'cold';
+  validationStatus: 'ai_generated' | 'pending' | 'validated' | 'edited' | 'rejected';
+  timeAgo: string; // "10 min", "2h", "1d"
+  productCategory: string;
+  actionBadge?: string; // "Validar", "Agendar Call", etc.
 }
 ```
 
-### FASE 2: Interface de Validacao (2-3 dias)
+### 5.3 Cores por Estágio
 
-**Nova Pagina:** `/crm/validar`
+```tsx
+const STAGE_COLORS = {
+  prospecting: { bg: 'bg-blue-50', border: 'border-blue-200', header: 'bg-blue-500' },
+  qualification: { bg: 'bg-yellow-50', border: 'border-yellow-200', header: 'bg-yellow-500' },
+  proposal: { bg: 'bg-orange-50', border: 'border-orange-200', header: 'bg-orange-500' },
+  negotiation: { bg: 'bg-emerald-50', border: 'border-emerald-200', header: 'bg-emerald-500' },
+  closed_won: { bg: 'bg-green-50', border: 'border-green-200', header: 'bg-green-600' },
+  closed_lost: { bg: 'bg-red-50', border: 'border-red-200', header: 'bg-red-500' },
+};
+```
 
-- Lista de cards pendentes (validation_status = 'pending')
-- Filtro por vendedor
-- Cards mostram: cliente, produto, valor estimado, temperatura
-- Botoes: Validar | Editar | Rejeitar
-- Modal de edicao com campos editaveis
+### 5.4 Indicador de Temperatura
 
-**Componentes:**
-- `ValidationCardList.tsx`
-- `ValidationCard.tsx`
-- `EditOpportunityModal.tsx`
-
-### FASE 3: Pipeline Kanban Funcional (2-3 dias)
-
-**Atualizar:** `/crm/pipeline`
-
-- Kanban com dados reais de `crm_opportunities`
-- Drag & drop para mudar estagio
-- Filtros por categoria, vendedor, valor
-- Estagios existentes: `prospecting` -> `qualification` -> `proposal` -> `negotiation` -> `closed_won`/`closed_lost`
-
-### FASE 4: Dashboard de Metricas (1-2 dias)
-
-**Atualizar:** `/crm/dashboard`
-
-- Metricas reais de conversao (Ferramentas)
-- Valor do pipeline (Solar/Build)
-- Tempo medio de ciclo
-- Taxa de resposta por vendedor
-
----
-
-## 6. Relacionamentos Corretos
-
-```text
-vendors
-├── id (UUID)
-└── phone_number
-
-vendor_conversations
-├── id (INTEGER) ◄── CHAVE CORRETA
-├── vendor_id (UUID) → vendors.id
-├── customer_phone
-├── product_category (NOVO)
-└── has_opportunity (NOVO)
-
-crm_customers
-├── id (UUID)
-├── phone → normalizado para comparar com customer_phone
-└── conversation_id → conversations.id (BOT)
-
-crm_opportunities
-├── id (UUID)
-├── customer_id (UUID) → crm_customers.id
-├── conversation_id (UUID) → conversations.id (BOT, opcional)
-├── vendor_id (UUID, NOVO) → vendors.id
-├── vendor_conversation_id (INTEGER, NOVO) → vendor_conversations.id
-├── validation_status (TEXT, NOVO)
-├── temperature (TEXT, NOVO)
-├── objections (TEXT[], NOVO)
-├── next_step (TEXT, NOVO)
-└── stage (ENUM existente)
-
-vendor_sales_metrics (NOVA - apenas Ferramentas)
-├── vendor_id (UUID) → vendors.id
-└── vendor_conversation_id (INTEGER) → vendor_conversations.id
+```tsx
+const TEMPERATURE_INDICATORS = {
+  hot: { icon: '🔥', color: 'text-red-500' },
+  warm: { icon: '🟠', color: 'text-orange-500' },
+  cold: { icon: '❄️', color: 'text-blue-500' },
+};
 ```
 
 ---
 
-## 7. Prompt de Extracao para Oportunidades
+## 6. Sidebar Redesenhada
 
-```typescript
-const extractOpportunityPrompt = `
-Analise a conversa de WhatsApp abaixo e extraia informacoes de negociacao.
+### Estrutura Nova
 
-CONVERSA:
-{messages}
-
-CATEGORIA DO PRODUTO: {product_category}
-
-Extraia as seguintes informacoes (retorne JSON):
-{
-  "customer_name": "nome do cliente se mencionado",
-  "customer_city": "cidade se mencionada",
-  "customer_state": "estado se mencionado (sigla)",
-  "customer_type": "residencial | comercial | instalador",
-  "stage": "prospecting | qualification | proposal | negotiation | closed_won | closed_lost",
-  "estimated_value": numero ou null,
-  "temperature": "hot | warm | cold",
-  "probability": numero 0-100,
-  "objections": ["lista de objecoes mencionadas"],
-  "next_step": "proximo passo acordado ou null",
-  "summary": "resumo em 2-3 frases"
-}
-
-Regras:
-- Se nao conseguir determinar, use null
-- temperature: hot = cliente quer fechar, warm = interessado mas com duvidas, cold = apenas consultando
-- probability: baseado no estagio e sinais do cliente
-`;
+```
+┌────────────────────────────────┐
+│   🧠 NeuroCRM                  │
+├────────────────────────────────┤
+│   [IA Monitorando]             │
+│   3 novas oportunidades        │
+├────────────────────────────────┤
+│   MENU PRINCIPAL               │
+│   • Dashboard                  │
+│   • Pipeline (Kanban)          │
+│   • Insights IA [3]            │
+│   • Agenda                     │
+│   • Contatos                   │
+├────────────────────────────────┤
+│   GESTÃO                       │
+│   • Relatórios                 │
+│   • Configurações              │
+├────────────────────────────────┤
+│   👤 Carlos Mendes             │
+│   Executivo de Vendas          │
+└────────────────────────────────┘
 ```
 
 ---
 
-## 8. Respostas as Perguntas
+## 7. Funcionalidades do Kanban
 
-**1. Refazer o plano usando tabelas existentes?**
-Sim, este plano corrigido faz exatamente isso.
-
-**2. `product_category` em `vendor_conversations` - preenchido automaticamente?**
-Sim, o pipeline classifica usando IA e salva em `vendor_conversations.product_category`.
-
-**3. Estagios do funil estao corretos?**
-Usaremos o enum existente `opportunity_stage`:
-- `prospecting` -> `qualification` -> `proposal` -> `negotiation` -> `closed_won`/`closed_lost`
-
-**4. Horario do pipeline?**
-21h esta OK? Ou prefere outro horario?
-
-**5. Interface mobile?**
-A interface de validacao sera responsiva (funciona em mobile e desktop).
+| Funcionalidade | Prioridade | Descrição |
+|----------------|------------|-----------|
+| Visualização | Alta | Cards organizados por estágio |
+| Drag & Drop | Média | Mover cards entre colunas (atualiza `stage` no DB) |
+| Filtros | Média | Por vendedor, categoria, valor, temperatura |
+| Toggle View | Baixa | Alternar entre Kanban e Lista |
+| Busca | Baixa | Filtrar cards por nome/título |
 
 ---
 
-## 9. Resumo das Mudancas
+## 8. Dados - Conexão com crm_opportunities
 
-| O que | Acao |
-|-------|------|
-| Tabela nova | Apenas `vendor_sales_metrics` (Ferramentas) |
-| Alteracoes | `crm_opportunities` + 9 campos, `vendor_conversations` + 3 campos |
-| Aproveitado | `crm_customers`, `crm_opportunities`, enum `opportunity_stage` |
-| Evitado | Tabela intermediaria, duplicacao de dados |
-| Total tabelas | 1 nova vs 3 do plano original |
+```tsx
+// Hook para buscar oportunidades
+const useOpportunities = () => {
+  return useQuery({
+    queryKey: ['crm-opportunities'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('crm_opportunities')
+        .select(`
+          *,
+          customer:crm_customers(name, phone, city),
+          vendor:vendors(name)
+        `)
+        .not('validation_status', 'eq', 'rejected')
+        .order('updated_at', { ascending: false });
+      
+      // Agrupar por estágio
+      return groupByStage(data);
+    }
+  });
+};
+```
 
 ---
 
-## 10. Proximos Passos
+## 9. Próximos Passos (Ordem de Implementação)
 
-1. **Aprovar este plano corrigido**
-2. **Confirmar horario do cron** (21h ou outro?)
-3. **Implementar FASE 1** - Schema + Pipeline basico
-4. **Testar com dados reais** - 5-10 conversas existentes
-5. **Implementar FASE 2** - Interface de validacao
+| Fase | Descrição | Tempo |
+|------|-----------|-------|
+| 1 | Criar hooks `useOpportunities` e `usePipelineStats` | 1h |
+| 2 | Criar componentes do Kanban (Column, Card, Stats) | 2-3h |
+| 3 | Redesenhar CRMSidebar com novo layout | 1h |
+| 4 | Redesenhar CRMHeader com indicador IA | 30min |
+| 5 | Atualizar Pipeline.tsx com Kanban funcional | 1h |
+| 6 | Atualizar Dashboard.tsx com novo layout | 1h |
+| 7 | Implementar Drag & Drop | 1-2h |
+| 8 | Adicionar filtros e busca | 1h |
+
+**Total estimado:** 8-10 horas de desenvolvimento
+
+---
+
+## 10. Resumo Visual
+
+**Mudanças Principais:**
+1. **Sidebar** → NeuroCRM com seções agrupadas e indicador IA
+2. **Header** → Avatar do usuário + Status IA monitorando
+3. **Pipeline** → Kanban visual completo com cards coloridos
+4. **Dashboard** → Métricas reais + Conversas recentes + Mini Kanban
+
+**Cores:** Manter identidade Drystore (laranja #ef7d04 como primary)
+
+**Estágios corretos:**
+- Prospecção → Qualificação → Proposta → Negociação → Fechado (Ganho/Perdido)
 
