@@ -2,8 +2,13 @@ import React from 'react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { KanbanColumn } from './KanbanColumn';
-import { useOpportunities, STAGE_CONFIG, Opportunity } from '../../hooks/useOpportunities';
+import { useOpportunities, useUpdateOpportunityStage, STAGE_CONFIG, Opportunity } from '../../hooks/useOpportunities';
 import { useNavigate } from 'react-router-dom';
+import { KanbanProvider, type DragEndEvent } from '@/components/ui/kanban';
+import { Database } from '@/integrations/supabase/types';
+import { toast } from 'sonner';
+
+type OpportunityStage = Database['public']['Enums']['opportunity_stage'];
 
 interface PipelineKanbanProps {
   onValidate?: (opportunity: Opportunity) => void;
@@ -14,11 +19,35 @@ const VISIBLE_STAGES = ['prospecting', 'qualification', 'proposal', 'negotiation
 
 export function PipelineKanban({ onValidate }: PipelineKanbanProps) {
   const { data, isLoading, error } = useOpportunities();
+  const updateStage = useUpdateOpportunityStage();
   const navigate = useNavigate();
 
   const handleOpportunityClick = (opportunity: Opportunity) => {
-    // Navigate to opportunity detail or open modal
     navigate(`/crm/opportunities/${opportunity.id}`);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over) return;
+
+    const opportunityId = active.id as string;
+    const newStage = over.id as OpportunityStage;
+    const currentStage = active.data.current?.parent as OpportunityStage;
+
+    if (currentStage !== newStage) {
+      updateStage.mutate(
+        { opportunityId, newStage },
+        {
+          onSuccess: () => {
+            toast.success('Oportunidade movida com sucesso');
+          },
+          onError: () => {
+            toast.error('Erro ao mover oportunidade');
+          },
+        }
+      );
+    }
   };
 
   if (isLoading) {
@@ -51,7 +80,7 @@ export function PipelineKanban({ onValidate }: PipelineKanbanProps) {
 
   return (
     <ScrollArea className="w-full">
-      <div className="flex gap-4 pb-4 min-w-max">
+      <KanbanProvider onDragEnd={handleDragEnd} className="pb-4 min-w-max">
         {VISIBLE_STAGES.map((stage) => (
           <KanbanColumn
             key={stage}
@@ -61,7 +90,7 @@ export function PipelineKanban({ onValidate }: PipelineKanbanProps) {
             onValidate={onValidate}
           />
         ))}
-      </div>
+      </KanbanProvider>
       <ScrollBar orientation="horizontal" />
     </ScrollArea>
   );
