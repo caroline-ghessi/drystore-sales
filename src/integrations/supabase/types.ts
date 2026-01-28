@@ -691,6 +691,9 @@ export type Database = {
       crm_opportunities: {
         Row: {
           actual_close_date: string | null
+          ai_confidence: number | null
+          ai_extracted_at: string | null
+          ai_model: string | null
           assigned_to: string | null
           conversation_id: string | null
           created_at: string | null
@@ -698,18 +701,29 @@ export type Database = {
           description: string | null
           expected_close_date: string | null
           id: string
+          next_step: string | null
+          objections: string[] | null
           probability: number | null
           product_category:
             | Database["public"]["Enums"]["product_category"]
             | null
           source: string | null
           stage: Database["public"]["Enums"]["opportunity_stage"] | null
+          temperature: string | null
           title: string
           updated_at: string | null
+          validated_at: string | null
+          validated_by: string | null
+          validation_status: string | null
           value: number
+          vendor_conversation_id: number | null
+          vendor_id: string | null
         }
         Insert: {
           actual_close_date?: string | null
+          ai_confidence?: number | null
+          ai_extracted_at?: string | null
+          ai_model?: string | null
           assigned_to?: string | null
           conversation_id?: string | null
           created_at?: string | null
@@ -717,18 +731,29 @@ export type Database = {
           description?: string | null
           expected_close_date?: string | null
           id?: string
+          next_step?: string | null
+          objections?: string[] | null
           probability?: number | null
           product_category?:
             | Database["public"]["Enums"]["product_category"]
             | null
           source?: string | null
           stage?: Database["public"]["Enums"]["opportunity_stage"] | null
+          temperature?: string | null
           title: string
           updated_at?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_status?: string | null
           value?: number
+          vendor_conversation_id?: number | null
+          vendor_id?: string | null
         }
         Update: {
           actual_close_date?: string | null
+          ai_confidence?: number | null
+          ai_extracted_at?: string | null
+          ai_model?: string | null
           assigned_to?: string | null
           conversation_id?: string | null
           created_at?: string | null
@@ -736,17 +761,46 @@ export type Database = {
           description?: string | null
           expected_close_date?: string | null
           id?: string
+          next_step?: string | null
+          objections?: string[] | null
           probability?: number | null
           product_category?:
             | Database["public"]["Enums"]["product_category"]
             | null
           source?: string | null
           stage?: Database["public"]["Enums"]["opportunity_stage"] | null
+          temperature?: string | null
           title?: string
           updated_at?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_status?: string | null
           value?: number
+          vendor_conversation_id?: number | null
+          vendor_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_opportunities_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "crm_opportunities_vendor_conversation_id_fkey"
+            columns: ["vendor_conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_opportunities_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "opportunities_assigned_to_fkey"
             columns: ["assigned_to"]
@@ -2409,9 +2463,14 @@ export type Database = {
           customer_name: string | null
           customer_phone: string
           customer_profile_pic: string | null
+          has_opportunity: boolean | null
           id: number
           last_message_at: string | null
+          last_processed_at: string | null
           metadata: Json | null
+          product_category:
+            | Database["public"]["Enums"]["product_category"]
+            | null
           total_messages: number | null
           updated_at: string | null
           vendor_id: string
@@ -2425,9 +2484,14 @@ export type Database = {
           customer_name?: string | null
           customer_phone: string
           customer_profile_pic?: string | null
+          has_opportunity?: boolean | null
           id?: number
           last_message_at?: string | null
+          last_processed_at?: string | null
           metadata?: Json | null
+          product_category?:
+            | Database["public"]["Enums"]["product_category"]
+            | null
           total_messages?: number | null
           updated_at?: string | null
           vendor_id: string
@@ -2441,9 +2505,14 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string
           customer_profile_pic?: string | null
+          has_opportunity?: boolean | null
           id?: number
           last_message_at?: string | null
+          last_processed_at?: string | null
           metadata?: Json | null
+          product_category?:
+            | Database["public"]["Enums"]["product_category"]
+            | null
           total_messages?: number | null
           updated_at?: string | null
           vendor_id?: string
@@ -2637,6 +2706,69 @@ export type Database = {
           vendor_id?: string
         }
         Relationships: []
+      }
+      vendor_sales_metrics: {
+        Row: {
+          ai_confidence: number | null
+          ai_model: string | null
+          converted: boolean
+          created_at: string | null
+          cycle_time_hours: number | null
+          extraction_date: string
+          id: string
+          loss_reason: string | null
+          messages_analyzed: number | null
+          product_sold: string | null
+          sale_value: number | null
+          vendor_conversation_id: number
+          vendor_id: string
+        }
+        Insert: {
+          ai_confidence?: number | null
+          ai_model?: string | null
+          converted: boolean
+          created_at?: string | null
+          cycle_time_hours?: number | null
+          extraction_date?: string
+          id?: string
+          loss_reason?: string | null
+          messages_analyzed?: number | null
+          product_sold?: string | null
+          sale_value?: number | null
+          vendor_conversation_id: number
+          vendor_id: string
+        }
+        Update: {
+          ai_confidence?: number | null
+          ai_model?: string | null
+          converted?: boolean
+          created_at?: string | null
+          cycle_time_hours?: number | null
+          extraction_date?: string
+          id?: string
+          loss_reason?: string | null
+          messages_analyzed?: number | null
+          product_sold?: string | null
+          sale_value?: number | null
+          vendor_conversation_id?: number
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_sales_metrics_vendor_conversation_id_fkey"
+            columns: ["vendor_conversation_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_sales_metrics_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vendor_user_mapping: {
         Row: {
