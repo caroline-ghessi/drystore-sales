@@ -308,6 +308,21 @@ Deno.serve(async (req) => {
             knowledgeContext = '\n\nBASE DE CONHECIMENTO:\n' + knowledgeChunks
               .map((chunk: any) => `[${chunk.file_name}] ${chunk.content}`)
               .join('\n\n');
+
+            // Registrar uso do conhecimento (async, não bloqueia resposta)
+            supabase.from('knowledge_usage_log').insert({
+              knowledge_ids: knowledgeChunks.map((chunk: any) => chunk.id),
+              query: message.substring(0, 500),
+              agent_type: conversationCategory,
+              conversation_id: conversationId,
+              confidence_score: knowledgeChunks[0]?.similarity || 0
+            }).then(({ error }) => {
+              if (error) {
+                console.warn('⚠️ Failed to log knowledge usage:', error.message);
+              } else {
+                console.log('📊 Knowledge usage logged successfully');
+              }
+            });
           } else {
             console.log('ℹ️ No relevant knowledge found in database');
           }
