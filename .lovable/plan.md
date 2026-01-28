@@ -1,237 +1,257 @@
 
-# Plano: Melhorar Página de Pipeline (Kanban)
+# Plano: Implementar Página de Agenda do CRM
 
-## 1. Resumo das Mudanças
+## 1. Resumo
 
-Atualizar a página de Pipeline para corresponder ao novo design NeuroCRM, com foco em:
-- Remover cards de estatísticas do topo (KanbanStats)
-- Melhorar visual das colunas do Kanban
-- Refinar os cards de oportunidade com novos estilos
-- Ajustar as cores e labels dos estágios
+Criar uma nova página de Agenda completa para o CRM, substituindo a página de Tasks atual. A página terá um layout dividido com calendários/eventos à esquerda e visualização de timeline à direita.
 
 ---
 
-## 2. Comparativo: Atual vs Novo Design
-
-### 2.1 Página Pipeline.tsx
-
-| Elemento | Atual | Novo |
-|----------|-------|------|
-| Header | Título + descrição + toggle view | Título "Pipeline de Vendas" + toggle view lado a lado |
-| Barra de ações | Busca à esquerda, botões à direita | Mesmo layout, manter |
-| KanbanStats | 4 cards de estatísticas no topo | **REMOVER** - não aparece no design |
-| Container Kanban | bg-muted/30 com padding | Fundo mais clean (bg-gray-bg/50) |
-
-### 2.2 Estágios do Kanban
-
-O HTML mostra estágios diferentes dos atuais. Precisamos mapear:
-
-| HTML (Design) | Enum (DB) | Mapeamento |
-|---------------|-----------|------------|
-| Leads (IA) | prospecting | Usar para leads com `validation_status = 'ai_generated'` |
-| Primeiro Contato | qualification | Primeiro estágio manual |
-| Proposta | proposal | Proposta enviada |
-| Negociação | negotiation | Em negociação |
-| Fechado | closed_won | Ganho |
-
-**Nota**: O design agrupa "Leads (IA)" separadamente. No banco usamos o enum existente, mas podemos filtrar por `validation_status` para diferenciar.
-
-### 2.3 KanbanColumn
-
-| Elemento | Atual | Novo |
-|----------|-------|------|
-| Header | Apenas cor sólida | Gradiente sutil ou borda colorida no topo |
-| Badges | bg-white/20 | Mais visível |
-| Footer Total | Centralizado | Alinhado à esquerda com "Total:" |
-| Largura | min-w-[280px] max-w-[320px] | Manter similar |
-
-### 2.4 OpportunityCard
-
-| Elemento | Atual | Novo Design |
-|----------|-------|-------------|
-| Badge "Novo" | No topo | Badge verde "Novo" no canto superior esquerdo |
-| Tempo | Clock icon + texto | Apenas texto cinza à direita do nome |
-| Nome cliente | Truncado | Nome em destaque com tempo ao lado |
-| Título projeto | Texto muted | Texto normal, mais visível |
-| Descrição | line-clamp-2 | Texto menor, 2 linhas |
-| Next step | Badge outline | Badge arredondado com ícone play |
-| Status "Aprovado" | CheckCircle verde | Ícone check com texto |
-| Valor | Font bold | Valor com "k" (15k, 45k) |
-| Temperatura | Emoji | Avatar pequeno do vendedor |
-| Botão Validar | Outline primary | Botão sólido primary menor |
-
----
-
-## 3. Estrutura Visual Final
+## 2. Estrutura Visual do Design
 
 ```text
 +-----------------------------------------------------------------------+
-|  Pipeline de Vendas                               [Kanban] [Lista]    |
+|  Agenda                                        [Dia] [Semana] [Mês]   |
 +-----------------------------------------------------------------------+
-|  [🔍 Buscar oportunidades...]        [Filtros] [+ Novo Deal]          |
+|  [<] [15 Janeiro 2024] [>]              [Hoje] [+ Novo Evento]        |
 +-----------------------------------------------------------------------+
 |                                                                       |
-|  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐  |
-|  │ ▌Prospecção │ │ ▌Qualificação│ │ ▌Proposta    │ │ ▌Negociação  │  |
-|  │      4      │ │      2       │ │      3       │ │      2       │  |
-|  ├──────────────┤ ├──────────────┤ ├──────────────┤ ├──────────────┤  |
-|  │ ┌──────────┐ │ │ ┌──────────┐ │ │ ┌──────────┐ │ │ ┌──────────┐ │  |
-|  │ │ 🟢 Novo  │ │ │ │Logística │ │ │ │Banco     │ │ │ │Indústria │ │  |
-|  │ │ Tech Sol │ │ │ │Frota Int │ │ │ │Segurança │ │ │ │ERP Custom│ │  |
-|  │ │ R$ 15k   │ │ │ │R$ 80k    │ │ │ │R$ 150k   │ │ │ │R$ 200k   │ │  |
-|  │ │ [Validar]│ │ │ └──────────┘ │ │ │✓ Aprovado│ │ │ │Aguardando│ │  |
-|  │ └──────────┘ │ │              │ │ └──────────┘ │ │ └──────────┘ │  |
-|  │ ┌──────────┐ │ │              │ │ ┌──────────┐ │ │              │  |
-|  │ │Grupo Alph│ │ │              │ │ │Startup   │ │ │              │  |
-|  │ └──────────┘ │ │              │ │ └──────────┘ │ │              │  |
-|  ├──────────────┤ ├──────────────┤ ├──────────────┤ ├──────────────┤  |
-|  │ Total: R$72k │ │ Total: R$105k│ │ Total: R$280k│ │ Total: R$265k│  |
-|  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘  |
+|  +--------------------+  +------------------------------------------+ |
+|  | CALENDÁRIOS        |  | Segunda-feira, 15 de Janeiro    GMT-3   | |
+|  | ☑ Minhas Atividades|  +------------------------------------------+ |
+|  | ☑ Reuniões         |  |        |                                 | |
+|  | ☑ Follow-ups       |  | 06:00  |                                 | |
+|  | ☑ Equipe           |  | 07:00  |                                 | |
+|  +--------------------+  | 08:00  |                                 | |
+|  |                    |  | 09:00  | [Follow-up Health Corp]         | |
+|  | PRÓXIMOS EVENTOS   |  | 10:00  |                                 | |
+|  +--------------------+  | 11:00  | [Validar lead IA] 🤖            | |
+|  | Hoje               |  | 12:00  |                                 | |
+|  | ├ Ligar Banco Fut. |  | 13:00  |                                 | |
+|  | │  14:00 • Atrasado|  | 14:00  | [Ligar Banco Futuro] ⚠️ Atrasado|
+|  | ├ Enviar proposta  |  | 15:00  |                                 | |
+|  | │  16:00           |  | 16:00  | [Enviar proposta]               | |
+|  | └ Reunião XYZ      |  | 17:00  | [Reunião Indústria XYZ]         | |
+|  |   17:00 - 18:00    |  | 18:00  |                                 | |
+|  +--------------------+  | 19:00  |                                 | |
+|  | Amanhã   16 Jan    |  | 20:00  |                                 | |
+|  | ├ Follow-up Health |  +------------------------------------------+ |
+|  | └ Validar lead IA  |  |              ▲ 14:30 (indicador hora)    | |
+|  +--------------------+  +------------------------------------------+ |
 |                                                                       |
 +-----------------------------------------------------------------------+
 ```
 
 ---
 
-## 4. Arquivos a Modificar
+## 3. Componentes a Criar
+
+### 3.1 Estrutura de Diretórios
+
+```
+src/modules/crm/
+├── pages/
+│   └── Agenda.tsx                    # Nova página principal
+├── components/
+│   └── agenda/
+│       ├── index.ts                  # Barrel export
+│       ├── AgendaHeader.tsx          # Cabeçalho com título e toggle view
+│       ├── AgendaDateNavigation.tsx  # Navegação de data + botões ação
+│       ├── CalendarFilters.tsx       # Filtros de calendários (checkbox)
+│       ├── UpcomingEvents.tsx        # Lista de próximos eventos
+│       ├── EventItem.tsx             # Item individual de evento
+│       ├── DayTimeline.tsx           # Visualização timeline do dia
+│       └── TimelineEvent.tsx         # Evento na timeline
+```
+
+### 3.2 Arquivos a Modificar
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/modules/crm/pages/Pipeline.tsx` | Remover KanbanStats, ajustar layout do header |
-| `src/modules/crm/components/pipeline/PipelineKanban.tsx` | Ajustar container e espaçamento |
-| `src/modules/crm/components/pipeline/KanbanColumn.tsx` | Novo estilo de header com barra colorida lateral |
-| `src/modules/crm/components/pipeline/OpportunityCard.tsx` | Redesign completo do card |
-| `src/modules/crm/hooks/useOpportunities.ts` | Atualizar STAGE_CONFIG com novos labels |
+| `src/modules/crm/components/layout/CRMLayout.tsx` | Adicionar rota `/agenda` para a nova página |
+| `src/modules/crm/components/layout/CRMSidebar.tsx` | Atualizar link "Agenda" para nova rota |
 
 ---
 
-## 5. Detalhes de Implementação
+## 4. Detalhes de Implementação
 
-### 5.1 Pipeline.tsx - Mudanças
+### 4.1 Agenda.tsx - Página Principal
 
-**Remover:**
-- Import e uso de `KanbanStats`
-- Descrição abaixo do título
-
-**Ajustar:**
-- Header mais compacto
-- Toggle view ao lado do título
-
-### 5.2 KanbanColumn.tsx - Novo Estilo
+Layout responsivo com 3 seções:
+- **Header**: Título + toggle de visualização (Dia/Semana/Mês)
+- **Barra de Navegação**: Data atual + navegação + botões de ação
+- **Conteúdo Principal**: 
+  - Coluna esquerda (30%): Filtros + Próximos Eventos
+  - Coluna direita (70%): Timeline do dia
 
 ```tsx
-// Header com barra lateral colorida ao invés de fundo todo colorido
-<div className="flex items-center gap-2 p-3 border-b bg-white rounded-t-lg">
-  <div className={cn('w-1 h-6 rounded-full', config.color)} />
-  <h3 className="font-semibold text-sm text-foreground">{config.label}</h3>
-  <Badge className="ml-auto bg-gray-100 text-foreground">{count}</Badge>
-</div>
+// Estado principal
+const [currentDate, setCurrentDate] = useState(new Date());
+const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day');
+const [selectedCalendars, setSelectedCalendars] = useState({
+  activities: true,
+  meetings: true,
+  followups: true,
+  team: true
+});
 ```
 
-### 5.3 OpportunityCard.tsx - Redesign
+### 4.2 AgendaHeader.tsx
 
-**Nova estrutura:**
-```tsx
-<Card className="p-3 bg-white border border-gray-200 hover:shadow-md">
-  {/* Linha 1: Badge novo (opcional) + Nome cliente + Tempo */}
-  <div className="flex items-center gap-2">
-    {isNew && <Badge className="bg-green-500 text-white text-xs">Novo</Badge>}
-    <span className="font-semibold text-sm flex-1 truncate">{customerName}</span>
-    <span className="text-xs text-muted-foreground">{timeAgo}</span>
-  </div>
-  
-  {/* Linha 2: Título do projeto */}
-  <p className="text-sm text-foreground mt-1">{title}</p>
-  
-  {/* Linha 3: Descrição (opcional) */}
-  {description && (
-    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{description}</p>
-  )}
-  
-  {/* Linha 4: Next step ou status aprovado */}
-  {nextStep && (
-    <Badge variant="outline" className="mt-2 text-xs bg-primary/10 text-primary border-primary/20">
-      <Play className="w-3 h-3 mr-1" />
-      {nextStep}
-    </Badge>
-  )}
-  {isValidated && (
-    <div className="flex items-center gap-1 mt-2 text-xs text-green-600">
-      <CheckCircle className="h-3 w-3" />
-      Aprovado pelo técnico
-    </div>
-  )}
-  
-  {/* Linha 5: Valor + Avatar vendedor + Botão validar */}
-  <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
-    <span className="font-bold text-sm text-foreground">R$ {value/1000}k</span>
-    
-    <div className="flex items-center gap-2">
-      {needsValidation ? (
-        <Button size="sm" className="h-6 text-xs bg-primary hover:bg-primary/90">
-          Validar
-        </Button>
-      ) : (
-        <div className="flex items-center gap-1">
-          <Avatar className="w-5 h-5">
-            <AvatarFallback className="text-xs bg-gray-200">
-              {vendorInitial}
-            </AvatarFallback>
-          </Avatar>
-        </div>
-      )}
-    </div>
-  </div>
-</Card>
-```
+- Título "Agenda"
+- Toggle buttons: Dia | Semana | Mês (estilo do HTML fornecido)
 
-### 5.4 STAGE_CONFIG - Atualizar Labels
+### 4.3 AgendaDateNavigation.tsx
+
+- Setas de navegação < >
+- Data formatada (ex: "15 Janeiro 2024")
+- Botão "Hoje" para voltar à data atual
+- Botão "+ Novo Evento" (primary color)
+
+### 4.4 CalendarFilters.tsx
+
+Lista de checkboxes para filtrar eventos:
+- Minhas Atividades (ícone azul)
+- Reuniões (ícone verde)
+- Follow-ups (ícone amarelo)
+- Equipe (ícone roxo)
+
+### 4.5 UpcomingEvents.tsx
+
+Agrupa eventos por dia:
+- **Hoje**: Lista de eventos do dia atual
+- **Amanhã**: Lista de eventos do dia seguinte
+- Cada evento mostra:
+  - Cor indicadora (borda esquerda)
+  - Título
+  - Horário
+  - Status (Atrasado, badge "Gerado por IA")
+  - Descrição curta
+
+### 4.6 DayTimeline.tsx
+
+Visualização de timeline vertical:
+- Cabeçalho com dia da semana + data + timezone
+- Horas de 06:00 a 20:00
+- Eventos posicionados por horário
+- Indicador de hora atual (linha vermelha)
+- Scroll suave
+
+### 4.7 EventItem e TimelineEvent
+
+Componentes reutilizáveis para exibir eventos:
+- Cor baseada no tipo (urgente, reunião, follow-up, IA)
+- Badges para status especiais
+- Hover effects
+
+---
+
+## 5. Tipos de Eventos (Interface)
 
 ```tsx
-export const STAGE_CONFIG = {
-  prospecting: {
-    label: 'Prospecção',  // Mantém
-    color: 'bg-blue-500',
-    // ... resto igual
-  },
-  qualification: {
-    label: 'Qualificação',  // Era "Primeiro Contato" no HTML mas mantemos
-    color: 'bg-yellow-500',
-  },
-  // ... outros estágios mantém igual
-};
+interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  startTime: Date;
+  endTime: Date;
+  type: 'call' | 'meeting' | 'followup' | 'proposal' | 'ai_task';
+  status: 'pending' | 'overdue' | 'completed';
+  isAIGenerated?: boolean;
+  relatedOpportunity?: {
+    id: string;
+    name: string;
+  };
+}
 ```
 
 ---
 
-## 6. Cores Finais (Drystore)
+## 6. Cores e Estilos (Drystore)
 
 | Elemento | Cor |
 |----------|-----|
-| Card background | Branco (#ffffff) |
-| Card border | #e5e7eb (gray-200) |
-| Badge "Novo" | Verde (#22c55e) |
-| Botão Validar | Primary (#ef7d04) |
-| Barra lateral stages | Cor do estágio |
-| Footer total | Fundo sutil gray-50 |
+| Primary | #ef7d04 (Laranja) |
+| Evento Atrasado | bg-red-50, border-red-400 |
+| Evento Reunião | bg-green-50, border-green-400 |
+| Evento Follow-up | bg-yellow-50, border-yellow-400 |
+| Evento IA | bg-purple-50, border-purple-400, badge "Gerado por IA" |
+| Linha hora atual | bg-red-500 |
+| Background timeline | bg-gray-50 |
 
 ---
 
-## 7. Ordem de Implementação
+## 7. Dados dos Eventos
 
-| Passo | Ação |
-|-------|------|
-| 1 | Modificar `Pipeline.tsx` - remover KanbanStats e ajustar header |
-| 2 | Modificar `KanbanColumn.tsx` - novo estilo de header e footer |
-| 3 | Redesenhar `OpportunityCard.tsx` - layout conforme design |
-| 4 | Ajustar `PipelineKanban.tsx` - espaçamento e container |
-| 5 | Testar responsividade em mobile |
+### Fase Inicial (Placeholder)
+Como não existe tabela de eventos/tarefas no banco, usar dados simulados baseados em:
+1. `next_step` das oportunidades (crm_opportunities)
+2. Tarefas derivadas de leads AI que precisam validação
+
+### Hook useAgendaEvents
+
+```tsx
+function useAgendaEvents(date: Date) {
+  // Buscar de crm_opportunities onde next_step não é vazio
+  // Transformar em eventos de calendário
+  // Adicionar eventos de leads IA para validar
+  return { events, isLoading };
+}
+```
 
 ---
 
-## 8. Dados Usados (Sem Hardcode)
+## 8. Responsividade
 
-Todos os dados continuam vindo do banco de dados via hooks existentes:
-- `useOpportunities()` - lista de oportunidades
-- Customer name, title, value, stage, next_step, validation_status - todos do DB
-- Nenhum dado de oportunidade será hardcoded
+| Viewport | Layout |
+|----------|--------|
+| Desktop (lg+) | 2 colunas: Sidebar (30%) + Timeline (70%) |
+| Tablet (md) | 2 colunas menores |
+| Mobile (sm) | 1 coluna empilhada, sidebar colapsada |
+
+---
+
+## 9. Ordem de Implementação
+
+| Passo | Ação | Tempo Est. |
+|-------|------|------------|
+| 1 | Criar estrutura base `Agenda.tsx` com layout | 20 min |
+| 2 | Implementar `AgendaHeader.tsx` | 10 min |
+| 3 | Implementar `AgendaDateNavigation.tsx` | 15 min |
+| 4 | Implementar `CalendarFilters.tsx` | 10 min |
+| 5 | Implementar `UpcomingEvents.tsx` + `EventItem.tsx` | 30 min |
+| 6 | Implementar `DayTimeline.tsx` + `TimelineEvent.tsx` | 40 min |
+| 7 | Criar barrel export `index.ts` | 5 min |
+| 8 | Atualizar `CRMLayout.tsx` com nova rota | 5 min |
+| 9 | Atualizar `CRMSidebar.tsx` com link correto | 5 min |
+| 10 | Implementar hook `useAgendaEvents` | 20 min |
+
+**Total estimado**: ~2.5-3 horas
+
+---
+
+## 10. Features Implementadas
+
+| Feature | Incluída? |
+|---------|-----------|
+| Toggle Dia/Semana/Mês | ✅ (UI pronta, lógica futura) |
+| Navegação de data | ✅ |
+| Filtros de calendário | ✅ |
+| Lista próximos eventos | ✅ |
+| Timeline visual do dia | ✅ |
+| Indicador hora atual | ✅ |
+| Badge "Gerado por IA" | ✅ |
+| Indicador "Atrasado" | ✅ |
+| Botão "Novo Evento" | ✅ (UI, funcionalidade futura) |
+
+---
+
+## 11. Notas Importantes
+
+1. **Dados Placeholder**: A página usará dados simulados inicialmente, mas a estrutura estará pronta para integração com backend quando tabela de eventos for criada.
+
+2. **Integração com Oportunidades**: Eventos serão derivados do campo `next_step` das oportunidades existentes.
+
+3. **Leads IA**: Oportunidades com `validation_status = 'ai_generated'` aparecerão como tarefas pendentes com badge especial.
+
+4. **Sem Hardcode de Produtos**: Conforme solicitado, não haverá dados de produtos hardcoded. Eventos são derivados de dados do CRM.
