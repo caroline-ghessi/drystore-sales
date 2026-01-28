@@ -1,189 +1,125 @@
 
-
-# Plano: Separação de Métricas Bot vs Vendedores no Analytics WhatsApp
+# Plano: Implementar Logging de Uso do RAG
 
 ## Contexto do Problema
 
-Atualmente, o módulo de Analytics do WhatsApp não distingue claramente entre:
-- **Atendimento do Bot (IA)**: Conversas gerenciadas pelos agentes de IA via WhatsApp da empresa
-- **Atendimento dos Vendedores**: Conversas nos WhatsApps individuais dos vendedores
+A tabela `knowledge_usage_log` está vazia porque a edge function `intelligent-agent-response` realiza a busca semântica (RAG) com sucesso, mas não registra o uso após encontrar chunks relevantes.
 
-As métricas estão misturadas ou focam apenas em um dos dois, dificultando a análise de performance de cada camada do funil de atendimento.
+**Ponto exato do problema** (linhas 305-310):
+```typescript
+if (knowledgeChunks && knowledgeChunks.length > 0) {
+  console.log(`✅ Found ${knowledgeChunks.length} relevant knowledge chunks`);
+  
+  knowledgeContext = '\n\nBASE DE CONHECIMENTO:\n' + knowledgeChunks
+    .map((chunk: any) => `[${chunk.file_name}] ${chunk.content}`)
+    .join('\n\n');
+  // <-- FALTA: INSERT na tabela knowledge_usage_log
+}
+```
 
-## Arquitetura de Dados Atual
-
-| Camada | Tabela Conversas | Tabela Mensagens | Identificador |
-|--------|------------------|------------------|---------------|
-| **Bot** | `conversations` | `messages` | `sender_type = 'bot'` |
-| **Atendente Humano** | `conversations` | `messages` | `sender_type = 'agent'` |
-| **Vendedores** | `vendor_conversations` | `vendor_messages` | `from_me = true` |
-
-**Volume atual (últimos 30 dias):**
-- Bot: ~17.000 mensagens em ~2.100 conversas
-- Atendentes humanos: ~168 mensagens
-- Vendedores: ~3.200 mensagens em ~314 conversas
+---
 
 ## Solução Proposta
 
-### Fase 1: Criar Hooks Separados para Métricas
+Adicionar um bloco de INSERT imediatamente após a busca bem-sucedida de chunks, de forma assíncrona e não-bloqueante para não impactar a latência da resposta.
 
-#### 1.1 Hook `useBotAnalytics.ts`
-Métricas específicas do atendimento por IA:
-- Total de conversas atendidas pelo bot
-- Mensagens enviadas pelo bot por dia
-- Tempo médio de resposta do bot (instantâneo)
-- Taxa de classificação correta (por categoria de produto)
-- Taxa de handoff (bot → vendedor)
-- Distribuição por agent_type (specialist, general)
-- Conversas ainda em atendimento bot vs encerradas
+---
 
-#### 1.2 Hook `useVendorAnalytics.ts` (refatorar existente)
-Métricas específicas do atendimento humano dos vendedores:
-- Total de conversas por vendedor
-- Mensagens enviadas vs recebidas
-- Tempo médio de resposta dos vendedores
-- Score de qualidade por vendedor
-- Taxa de conversão (proposta enviada)
-- Tempo até primeira resposta
+## Mudanças Específicas
 
-### Fase 2: Criar Componentes de Visualização Separados
+### Arquivo: `supabase/functions/intelligent-agent-response/index.ts`
 
-#### 2.1 Novo Componente `BotMetrics.tsx`
-Dashboard específico para performance do bot:
-- Cards: Conversas Ativas, Taxa Handoff, Tempo Resposta, Classificações
-- Gráfico: Conversas por dia (bot)
-- Gráfico: Distribuição por categoria de produto
-- Gráfico: Taxa de sucesso por agent_type
-- Tabela: Conversas recentes com status
+**Localização:** Após linha 310 (dentro do bloco `if (knowledgeChunks && knowledgeChunks.length > 0)`)
 
-#### 2.2 Refatorar `VendorPerformance.tsx`
-Manter foco exclusivo em vendedores, usando dados de `vendor_conversations`:
-- Cards: Vendedores Ativos, Tempo Médio, Score Qualidade
-- Gráfico: Performance por vendedor
-- Ranking de vendedores
-- Alertas de qualidade
-
-### Fase 3: Atualizar Página Analytics
-
-#### 3.1 Modificar `Analytics.tsx`
-Adicionar nova aba "Bot" ou reorganizar tabs:
-
-```
-Tabs atuais:
-- Visão Geral
-- Conversas
-- Vendedores
-- Leads
-- Qualidade
-
-Tabs propostas:
-- Visão Geral (mantém KPIs consolidados)
-- Atendimento Bot (nova - métricas do bot)
-- Atendimento Vendedores (renomear "Vendedores")
-- Leads
-- Qualidade (separar por bot vs vendedor)
+**Código a adicionar:**
+```typescript
+// Registrar uso do conhecimento (async, não bloqueia resposta)
+supabase.from('knowledge_usage_log').insert({
+  knowledge_ids: knowledgeChunks.map((chunk: any) => chunk.id),
+  query: message.substring(0, 500), // limitar tamanho
+  agent_type: conversationCategory,
+  conversation_id: conversationId,
+  confidence_score: knowledgeChunks[0]?.similarity || 0
+}).then(({ error }) => {
+  if (error) {
+    console.warn('⚠️ Failed to log knowledge usage:', error.message);
+  } else {
+    console.log('📊 Knowledge usage logged successfully');
+  }
+});
 ```
 
-#### 3.2 Atualizar `AnalyticsOverview.tsx`
-Mostrar métricas lado a lado:
-- Seção "Atendimento Bot": conversas, tempo, taxa handoff
-- Seção "Atendimento Vendedores": conversas, tempo, qualidade
+---
 
-## Arquivos a Criar
+## Justificativa Técnica
 
-| Arquivo | Descrição |
-|---------|-----------|
-| `src/modules/whatsapp/hooks/useBotAnalytics.ts` | Hook para métricas do bot |
-| `src/modules/whatsapp/components/analytics/BotMetrics.tsx` | Componente de métricas do bot |
+| Aspecto | Decisão | Motivo |
+|---------|---------|--------|
+| **Assíncrono** | `.then()` sem `await` | Não bloqueia a geração da resposta |
+| **Tratamento de erro** | `console.warn` | Log de falha não impede funcionamento |
+| **Campos obrigatórios** | Todos preenchidos | `knowledge_ids`, `query`, `agent_type` são NOT NULL |
+| **Compatibilidade** | `conversationCategory` | Já usa ENUM `product_category` correto |
 
-## Arquivos a Modificar
+---
 
-| Arquivo | Modificação |
-|---------|-------------|
-| `src/modules/whatsapp/pages/Analytics.tsx` | Adicionar tab "Atendimento Bot" |
-| `src/modules/whatsapp/components/analytics/AnalyticsOverview.tsx` | Separar seções bot vs vendedor |
-| `src/modules/whatsapp/components/analytics/VendorPerformance.tsx` | Garantir foco em vendedores |
-| `src/modules/whatsapp/hooks/useVendorPerformance.ts` | Ajustar para usar apenas vendor_conversations |
+## Impacto no Sistema
 
-## Métricas Específicas por Camada
+| Componente | Impactado? | Detalhes |
+|------------|------------|----------|
+| Fluxo de resposta | Não | Insert é assíncrono |
+| Latência | Mínimo | ~5-10ms adicional (paralelo) |
+| Tabelas existentes | Não | Apenas insere dados |
+| Outras edge functions | Não | Mudança isolada |
+| Frontend | Não | Nenhuma mudança necessária |
 
-### Métricas do Bot (IA)
-- **Conversas Atendidas**: Total de conversas onde o bot respondeu
-- **Taxa de Handoff**: % de conversas transferidas para vendedor
-- **Tempo Médio Resposta**: Tempo entre mensagem cliente e resposta bot
-- **Taxa de Classificação**: % de conversas classificadas corretamente por categoria
-- **Conversas por Categoria**: Distribuição por produto (solar, telhas, etc.)
-- **Conversas Pendentes**: Ainda em atendimento bot
+---
 
-### Métricas dos Vendedores
-- **Conversas por Vendedor**: Total de conversas individuais
-- **Tempo Primeira Resposta**: Tempo até vendedor responder lead
-- **Score de Qualidade**: Baseado em análise de IA (SPIN, vocabulário)
-- **Taxa de Conversão**: Leads que viraram propostas
-- **Mensagens por Conversa**: Volume de interação
+## Benefícios Imediatos
 
-## Visualização Proposta
+1. **Visibilidade**: Saber quais chunks são mais consultados
+2. **Qualidade**: Identificar gaps na base de conhecimento
+3. **Otimização**: Dados para melhorar prompts e conteúdo
+4. **Auditoria**: Histórico de uso por conversa/agente
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    ANALYTICS WHATSAPP                            │
-├─────────────────────────────────────────────────────────────────┤
-│  [Visão Geral] [Bot] [Vendedores] [Leads] [Qualidade]           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────────────┐  ┌──────────────────────┐             │
-│  │   ATENDIMENTO BOT    │  │ ATENDIMENTO VENDEDOR │             │
-│  ├──────────────────────┤  ├──────────────────────┤             │
-│  │ Conversas: 2.139     │  │ Conversas: 314       │             │
-│  │ Msgs Bot: 17.042     │  │ Msgs Vendedor: 3.199 │             │
-│  │ Tempo Resp: <1s      │  │ Tempo Resp: 4.2min   │             │
-│  │ Handoff: 14.7%       │  │ Qualidade: 7.2/10    │             │
-│  └──────────────────────┘  └──────────────────────┘             │
-│                                                                  │
-│  [Gráficos comparativos e tendências]                           │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+---
 
-## Queries SQL de Suporte
+## Validação Pós-Implementação
 
-### Métricas do Bot
 ```sql
--- Conversas atendidas pelo bot
-SELECT COUNT(DISTINCT conversation_id) as bot_conversations
-FROM messages 
-WHERE sender_type = 'bot' 
-  AND created_at >= NOW() - INTERVAL '30 days';
-
--- Taxa de handoff (bot → vendedor)
+-- Verificar se logs estão sendo criados
 SELECT 
-  COUNT(CASE WHEN status = 'with_agent' THEN 1 END)::float / COUNT(*) * 100 as handoff_rate
-FROM conversations 
-WHERE created_at >= NOW() - INTERVAL '30 days';
+  agent_type,
+  COUNT(*) as usos,
+  AVG(confidence_score) as confianca_media
+FROM knowledge_usage_log 
+WHERE created_at > NOW() - INTERVAL '1 hour'
+GROUP BY agent_type;
 ```
 
-### Métricas dos Vendedores
-```sql
--- Performance por vendedor
-SELECT 
-  v.name,
-  COUNT(vc.id) as total_conversations,
-  SUM(vc.vendor_messages) as messages_sent,
-  AVG(qm.response_time_avg_minutes) as avg_response_time,
-  AVG(qm.automated_quality_score) as quality_score
-FROM vendors v
-LEFT JOIN vendor_conversations vc ON v.id = vc.vendor_id
-LEFT JOIN quality_metrics qm ON v.id = qm.vendor_id
-WHERE v.is_active = true
-GROUP BY v.id, v.name;
-```
+---
 
-## Resultado Esperado
+## Detalhes Técnicos
 
-Após implementação:
-1. Gestores poderão ver performance do bot separadamente
-2. Métricas de vendedores não serão "poluídas" com dados do bot
-3. Comparação clara entre as duas camadas de atendimento
-4. Identificação de gargalos específicos (bot lento? handoff alto? vendedor demorado?)
-5. KPIs mais precisos para cada etapa do funil
+### Estrutura da Tabela (confirmada)
 
+| Campo | Tipo | Nullable | Default |
+|-------|------|----------|---------|
+| id | uuid | NO | gen_random_uuid() |
+| knowledge_ids | uuid[] | NO | - |
+| query | text | NO | - |
+| agent_type | product_category | NO | - |
+| conversation_id | uuid | YES | - |
+| response_generated | text | YES | - |
+| confidence_score | double precision | YES | - |
+| user_id | uuid | YES | - |
+| created_at | timestamptz | YES | now() |
+
+### Compatibilidade com ENUM
+
+O campo `agent_type` aceita os valores do ENUM `product_category`, que inclui todas as categorias ativas: `energia_solar`, `ferramentas`, `telha_shingle`, `drywall_divisorias`, `steel_frame`, `pisos`, `forros`, etc.
+
+---
+
+## Resumo
+
+Uma única alteração de ~12 linhas na edge function `intelligent-agent-response` para registrar o uso do RAG de forma assíncrona, sem impactar latência ou funcionalidades existentes.
