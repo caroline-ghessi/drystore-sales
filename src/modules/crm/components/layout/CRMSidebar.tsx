@@ -33,7 +33,7 @@ const mainMenuItems = [
   { title: 'Dashboard', url: '/crm', icon: LayoutDashboard, end: true },
   { title: 'Pipeline (Kanban)', url: '/crm/pipeline', icon: Kanban },
   { title: 'Insights IA', url: '/crm/leads-quentes', icon: Lightbulb, badge: true },
-  { title: 'Agenda', url: '/crm/tasks', icon: Calendar },
+  { title: 'Agenda', url: '/crm/agenda', icon: Calendar },
   { title: 'Contatos', url: '/crm/customers', icon: Users },
 ];
 
