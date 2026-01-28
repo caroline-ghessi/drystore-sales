@@ -1,272 +1,275 @@
 
+# Plano: Vincular Oportunidades ao Vendedor Correto + RLS por Vendedor
 
-# Plano: Implementar Fluxo de Leads para CRM
+## Resumo
 
-## Resumo do Problema
-
-Atualmente, o sistema **não cria automaticamente leads no CRM**. Os dados existentes em `crm_opportunities` e `crm_customers` são dados de seed. O fluxo desejado precisa ser implementado:
-
----
-
-## Estado Atual
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              SITUACAO ATUAL                                 │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  BOT OFICIAL (conversations)          WHATSAPP VENDEDORES                   │
-│  ┌────────────────────────┐           ┌────────────────────────┐            │
-│  │ 961 leads enviados     │           │ 2.574 conversas        │            │
-│  │ via lead_distributions │           │ 32 contatos internos   │            │
-│  │                        │           │ 0 com has_opportunity  │            │
-│  └──────────┬─────────────┘           └──────────┬─────────────┘            │
-│             │                                    │                          │
-│             ▼                                    ▼                          │
-│      ┌──────────────┐                     ┌──────────────┐                  │
-│      │ NAO CRIA     │                     │ NAO CRIA     │                  │
-│      │ crm_customers│                     │ crm_customers│                  │
-│      │ crm_opportun.│                     │ crm_opportun.│                  │
-│      └──────────────┘                     └──────────────┘                  │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+Garantir que cada oportunidade seja vinculada ao vendedor que recebeu o resumo do lead, e implementar RLS para que vendedores vejam apenas suas negociações enquanto admins vejam todas.
 
 ---
 
-## Fluxo Desejado
+## Problemas Identificados
 
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                               FLUXO DESEJADO                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  FLUXO 1: CLIENTE VIA BOT                                                   │
-│  ──────────────────────────                                                 │
-│                                                                             │
-│  Cliente envia mensagem                                                     │
-│         │                                                                   │
-│         ▼                                                                   │
-│  ┌─────────────────┐                                                        │
-│  │  Bot qualifica  │                                                        │
-│  │  e classifica   │                                                        │
-│  └────────┬────────┘                                                        │
-│           │                                                                 │
-│           ▼                                                                 │
-│  ┌─────────────────┐    NAO      ┌──────────────────┐                       │
-│  │ Resumo enviado? ├────────────►│ NAO vira lead    │                       │
-│  │ para vendedor?  │             │ no CRM           │                       │
-│  └────────┬────────┘             └──────────────────┘                       │
-│           │ SIM                                                             │
-│           ▼                                                                 │
-│  ┌─────────────────┐                                                        │
-│  │ Criar/atualizar │                                                        │
-│  │ crm_customers   │                                                        │
-│  └────────┬────────┘                                                        │
-│           │                                                                 │
-│           ▼                                                                 │
-│  ┌─────────────────┐                                                        │
-│  │ Criar           │                                                        │
-│  │ crm_opportunities│                                                       │
-│  │ (source=bot)    │                                                        │
-│  └─────────────────┘                                                        │
-│                                                                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  FLUXO 2: CONVERSA WHATSAPP VENDEDOR                                        │
-│  ───────────────────────────────────                                        │
-│                                                                             │
-│  Nova conversa no WhatsApp vendedor                                         │
-│         │                                                                   │
-│         ▼                                                                   │
-│  ┌─────────────────┐                                                        │
-│  │ Telefone esta   │    SIM     ┌──────────────────┐                        │
-│  │ na lista de     ├───────────►│ NAO vira lead    │                        │
-│  │ exclusao?       │            │ (contato interno)│                        │
-│  └────────┬────────┘            └──────────────────┘                        │
-│           │ NAO                                                             │
-│           ▼                                                                 │
-│  ┌─────────────────┐                                                        │
-│  │ Pipeline diario │                                                        │
-│  │ (21:00)         │                                                        │
-│  └────────┬────────┘                                                        │
-│           │                                                                 │
-│           ▼                                                                 │
-│  ┌─────────────────┐                                                        │
-│  │ Criar/atualizar │                                                        │
-│  │ crm_customers   │                                                        │
-│  │ crm_opportunities│                                                       │
-│  │ (source=vendor) │                                                        │
-│  └─────────────────┘                                                        │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+### 1. Oportunidade sem vendor_id (send-lead-to-vendor)
 
----
-
-## Implementacao Necessaria
-
-### Parte 1: Criar Lead quando Resumo e Enviado (Bot)
-
-**Arquivo a modificar:** `supabase/functions/send-lead-to-vendor/index.ts`
-
-Adicionar logica apos enviar o resumo para o vendedor:
+No fluxo do bot, quando o resumo é enviado para um vendedor, a oportunidade é criada **sem o `vendor_id`**:
 
 ```typescript
-// Apos registrar em lead_distributions:
+// Linha 142-157 de send-lead-to-vendor/index.ts (ATUAL)
+.insert({
+  customer_id: customerId,
+  conversation_id: conversationId,
+  title: `Oportunidade - ${conversation?.product_group || 'Nova'}`,
+  // vendor_id NÃO ESTÁ SENDO PREENCHIDO!
+  ...
+})
+```
 
-// 1. Criar/atualizar crm_customers
-const { data: customer } = await supabase
-  .from('crm_customers')
-  .upsert({
-    phone: normalizePhone(conversation.whatsapp_number),
-    name: conversation.customer_name,
-    city: conversation.customer_city,
-    state: conversation.customer_state,
-    email: conversation.customer_email,
-    source: 'whatsapp',
-    conversation_id: conversationId,
-    last_interaction_at: new Date().toISOString(),
-  }, { onConflict: 'phone' })
-  .select('id')
-  .single();
+**Correção:** Adicionar `vendor_id: vendorId` ao insert.
 
-// 2. Criar crm_opportunities
-await supabase
+### 2. RLS Permissiva Demais
+
+Políticas atuais em `crm_opportunities` e `crm_customers`:
+
+```sql
+-- Atual: QUALQUER usuário autenticado pode ver TUDO
+Policy: "Enable all for authenticated users on opportunities"
+Command: ALL, qual: true
+```
+
+**Correção:** Criar políticas específicas por role.
+
+---
+
+## Arquitetura de Acesso Proposta
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          MODELO DE ACESSO CRM                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ADMIN/SUPERVISOR                        VENDEDOR                           │
+│  ┌─────────────────────────────┐         ┌─────────────────────────────┐   │
+│  │ Vê TODAS as negociações     │         │ Vê apenas SUAS negociações  │   │
+│  │ Vê TODOS os clientes        │         │ Vê apenas SEUS clientes     │   │
+│  │ Pode editar/deletar tudo    │         │ Pode editar suas negocia-   │   │
+│  │                             │         │ ções (mudar stage, valor)   │   │
+│  └─────────────────────────────┘         └─────────────────────────────┘   │
+│                                                                             │
+│  Como vincular usuário a vendor?                                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ vendor_user_mapping                                                  │   │
+│  │ ┌────────────┬────────────┬───────────┐                              │   │
+│  │ │ vendor_id  │ user_id    │ is_active │                              │   │
+│  │ ├────────────┼────────────┼───────────┤                              │   │
+│  │ │ uuid-antonio│ auth.uid()│ true      │                              │   │
+│  │ └────────────┴────────────┴───────────┘                              │   │
+│  │                                                                      │   │
+│  │ Quando vendedor loga, buscamos seu vendor_id via mapping             │   │
+│  │ e filtramos oportunidades onde vendor_id = seu_vendor_id             │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Implementação
+
+### Parte 1: Corrigir send-lead-to-vendor para incluir vendor_id
+
+**Arquivo:** `supabase/functions/send-lead-to-vendor/index.ts`
+
+Adicionar `vendor_id` ao criar a oportunidade:
+
+```typescript
+// Modificar o insert (linha 142-157)
+const { data: opportunity, error: oppError } = await supabase
   .from('crm_opportunities')
   .insert({
-    customer_id: customer.id,
+    customer_id: customerId,
     conversation_id: conversationId,
-    title: `Oportunidade - ${conversation.product_group || 'Nova'}`,
+    vendor_id: vendorId,           // NOVO: Associar ao vendedor que recebeu
+    title: `Oportunidade - ${conversation?.product_group || 'Nova'}`,
     source: 'whatsapp',
-    product_category: conversation.product_group,
+    product_category: conversation?.product_group,
     stage: 'prospecting',
     probability: 20,
-    value: 0, // Sera atualizado depois
+    value: 0,
     validation_status: 'ai_generated',
-    temperature: conversation.lead_temperature,
-  });
-
-// 3. Atualizar conversations.last_lead_sent_at
-await supabase
-  .from('conversations')
-  .update({ last_lead_sent_at: new Date().toISOString() })
-  .eq('id', conversationId);
+    temperature: conversation?.lead_temperature || 'cold',
+  })
+  .select('id')
+  .single();
 ```
 
 ---
 
-### Parte 2: Pipeline Diario para Conversas de Vendedores
+### Parte 2: Criar Função Helper para Buscar vendor_id do Usuário
 
-**Novo arquivo:** `supabase/functions/process-vendor-opportunities/index.ts`
+**Migração SQL:**
 
-Este pipeline roda diariamente as 21:00 e:
-
-1. Busca `vendor_conversations` onde `has_opportunity = false` e `is_internal_contact != true`
-2. Para cada conversa:
-   - Cria/atualiza `crm_customers` baseado no telefone
-   - Cria `crm_opportunities` com `vendor_conversation_id`
-   - Atualiza `vendor_conversations.has_opportunity = true`
-
-```typescript
-// Buscar conversas nao processadas (excluindo internas)
-const { data: conversations } = await supabase
-  .from('vendor_conversations')
-  .select('*')
-  .eq('has_opportunity', false)
-  .not('metadata->is_internal_contact', 'eq', true);
-
-for (const conv of conversations) {
-  // Criar cliente
-  const { data: customer } = await supabase
-    .from('crm_customers')
-    .upsert({
-      phone: normalizePhone(conv.customer_phone),
-      name: conv.customer_name,
-      source: 'vendor_whatsapp',
-    }, { onConflict: 'phone' })
-    .select('id')
-    .single();
-  
-  // Criar oportunidade
-  await supabase
-    .from('crm_opportunities')
-    .insert({
-      customer_id: customer.id,
-      vendor_conversation_id: conv.id,
-      vendor_id: conv.vendor_id,
-      title: `Oportunidade - ${conv.product_category || 'Nova'}`,
-      source: 'vendor_whatsapp',
-      product_category: conv.product_category,
-      stage: 'prospecting',
-      validation_status: 'ai_generated',
-    });
-  
-  // Marcar como processado
-  await supabase
-    .from('vendor_conversations')
-    .update({ has_opportunity: true })
-    .eq('id', conv.id);
-}
+```sql
+-- Função para buscar vendor_id associado ao user_id atual
+CREATE OR REPLACE FUNCTION public.get_user_vendor_id(_user_id uuid)
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT vendor_id 
+  FROM vendor_user_mapping 
+  WHERE user_id = _user_id 
+    AND is_active = true 
+  LIMIT 1
+$$;
 ```
 
 ---
 
-### Parte 3: Agendar Pipeline Diario
+### Parte 3: Atualizar RLS de crm_opportunities
 
-**Arquivo a modificar:** `supabase/config.toml`
+**Migração SQL:**
 
-Adicionar schedule para o novo pipeline:
+```sql
+-- Remover política permissiva atual
+DROP POLICY IF EXISTS "Enable all for authenticated users on opportunities" 
+  ON crm_opportunities;
 
-```toml
-[functions.process-vendor-opportunities]
-verify_jwt = false
-schedule = "0 0 21 * * *"  # Diariamente as 21:00 UTC
+-- Admins e supervisores podem gerenciar todas as oportunidades
+CREATE POLICY "Admins and supervisors can manage all opportunities"
+  ON crm_opportunities FOR ALL
+  TO authenticated
+  USING (
+    has_role(auth.uid(), 'admin') OR 
+    has_role(auth.uid(), 'supervisor')
+  )
+  WITH CHECK (
+    has_role(auth.uid(), 'admin') OR 
+    has_role(auth.uid(), 'supervisor')
+  );
+
+-- Vendedores podem ver apenas suas próprias oportunidades
+CREATE POLICY "Vendors can view own opportunities"
+  ON crm_opportunities FOR SELECT
+  TO authenticated
+  USING (
+    has_role(auth.uid(), 'vendedor') AND
+    vendor_id = get_user_vendor_id(auth.uid())
+  );
+
+-- Vendedores podem atualizar apenas suas próprias oportunidades
+CREATE POLICY "Vendors can update own opportunities"
+  ON crm_opportunities FOR UPDATE
+  TO authenticated
+  USING (
+    has_role(auth.uid(), 'vendedor') AND
+    vendor_id = get_user_vendor_id(auth.uid())
+  )
+  WITH CHECK (
+    has_role(auth.uid(), 'vendedor') AND
+    vendor_id = get_user_vendor_id(auth.uid())
+  );
 ```
 
 ---
 
-## Arquivos a Criar
+### Parte 4: Atualizar RLS de crm_customers
 
-| Arquivo | Descricao |
-|---------|-----------|
-| `supabase/functions/process-vendor-opportunities/index.ts` | Pipeline diario para processar conversas de vendedores |
+**Migração SQL:**
+
+```sql
+-- Remover política permissiva atual
+DROP POLICY IF EXISTS "Enable all for authenticated users on customers" 
+  ON crm_customers;
+
+-- Admins e supervisores podem gerenciar todos os clientes
+CREATE POLICY "Admins and supervisors can manage all customers"
+  ON crm_customers FOR ALL
+  TO authenticated
+  USING (
+    has_role(auth.uid(), 'admin') OR 
+    has_role(auth.uid(), 'supervisor')
+  )
+  WITH CHECK (
+    has_role(auth.uid(), 'admin') OR 
+    has_role(auth.uid(), 'supervisor')
+  );
+
+-- Vendedores podem ver clientes de suas oportunidades
+CREATE POLICY "Vendors can view customers from own opportunities"
+  ON crm_customers FOR SELECT
+  TO authenticated
+  USING (
+    has_role(auth.uid(), 'vendedor') AND
+    id IN (
+      SELECT customer_id FROM crm_opportunities 
+      WHERE vendor_id = get_user_vendor_id(auth.uid())
+    )
+  );
+```
+
+---
+
+### Parte 5: Atualizar Frontend para Considerar vendor_id
+
+**Arquivo:** `src/modules/crm/hooks/useOpportunities.ts` (ou similar)
+
+Não precisa de mudanças! As queries já buscam do Supabase e as RLS policies farão o filtro automaticamente. O vendedor verá apenas seus dados.
 
 ---
 
 ## Arquivos a Modificar
 
-| Arquivo | Mudanca |
+| Arquivo | Mudança |
 |---------|---------|
-| `supabase/functions/send-lead-to-vendor/index.ts` | Criar crm_customers e crm_opportunities quando lead e enviado |
-| `supabase/config.toml` | Adicionar schedule para process-vendor-opportunities |
+| `supabase/functions/send-lead-to-vendor/index.ts` | Adicionar `vendor_id: vendorId` ao criar oportunidade |
 
 ---
 
-## Resumo das Regras de Negocio
+## Migração de Banco de Dados
 
-| Origem | Quando vira Lead no CRM |
-|--------|-------------------------|
-| Bot Oficial | Apenas quando resumo e enviado para vendedor |
-| WhatsApp Vendedor | Todas as conversas, EXCETO contatos na lista de exclusao |
+Uma migração SQL para:
 
----
-
-## Dados da Lista de Exclusao
-
-A tabela `excluded_contacts` ja esta funcionando:
-- 32 contatos marcados como internos em `vendor_conversations`
-- Tipos: `employee`, `vendor`, `test`, `supplier`, `partner`, `spam`
+1. Criar função `get_user_vendor_id(uuid)`
+2. Substituir RLS de `crm_opportunities` 
+3. Substituir RLS de `crm_customers`
 
 ---
 
-## Consideracoes Tecnicas
+## Requisito: Vincular Vendedores a Contas
 
-1. **Normalizacao de Telefone**: Usar funcao `normalizePhone` do `_shared/phone-utils.ts` para garantir formato 55XXXXXXXXXXX
+Para o RLS funcionar, cada vendedor precisa ter uma conta de usuário vinculada via `vendor_user_mapping`:
 
-2. **Upsert por Telefone**: Usar `onConflict: 'phone'` para evitar duplicatas em `crm_customers`
+| vendor_id | user_id | is_active |
+|-----------|---------|-----------|
+| uuid-antonio | auth.uid() do Antonio | true |
 
-3. **Idempotencia**: Verificar `has_opportunity` antes de criar para evitar duplicatas
+**Sugestão:** Usar o fluxo existente em `useCreateVendorAccount` para criar contas para os vendedores.
 
-4. **Retroativo**: Apos implementar, rodar uma vez manualmente para processar os 2.542 conversas existentes (excluindo as 32 internas)
+---
 
+## Fluxo Completo
+
+```text
+1. Lead recebe resumo → send-lead-to-vendor
+2. Cria crm_opportunity com vendor_id = vendorId do vendedor que recebeu
+3. Vendedor faz login (tem mapping em vendor_user_mapping)
+4. Ao acessar /crm/pipeline, RLS filtra:
+   - get_user_vendor_id(auth.uid()) retorna seu vendor_id
+   - Só retorna oportunidades onde vendor_id = seu_vendor_id
+5. Admin acessa /crm/pipeline
+   - has_role retorna true para 'admin'
+   - Retorna TODAS as oportunidades
+```
+
+---
+
+## Resumo das Mudanças
+
+| Componente | Estado Atual | Estado Final |
+|------------|--------------|--------------|
+| send-lead-to-vendor | Não preenche vendor_id | Preenche vendor_id |
+| crm_opportunities RLS | Todos veem tudo | Admin: tudo, Vendedor: só suas |
+| crm_customers RLS | Todos veem tudo | Admin: tudo, Vendedor: só de suas opp |
+| get_user_vendor_id() | Não existe | Criada como helper para RLS |
