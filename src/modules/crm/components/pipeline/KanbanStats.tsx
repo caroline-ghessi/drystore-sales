@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, Percent, Clock, Users } from 'lucide-react';
 import { usePipelineStats, formatCurrency } from '../../hooks/usePipelineStats';
-import { cn } from '@/lib/utils';
 
 const stats = [
   {
@@ -11,27 +10,18 @@ const stats = [
     title: 'Total Pipeline',
     icon: TrendingUp,
     format: (value: number) => formatCurrency(value),
-    suffix: '',
-    trend: '+12%',
-    trendPositive: true,
   },
   {
     key: 'conversionRate',
     title: 'Taxa de Conversão',
     icon: Percent,
     format: (value: number) => `${value}%`,
-    suffix: '',
-    trend: '+2.1%',
-    trendPositive: true,
   },
   {
     key: 'avgCycleTime',
     title: 'Tempo Médio Ciclo',
     icon: Clock,
     format: (value: number) => `${value} dias`,
-    suffix: '',
-    trend: '-3 dias',
-    trendPositive: true,
   },
   {
     key: 'activeLeads',
@@ -39,8 +29,6 @@ const stats = [
     icon: Users,
     format: (value: number) => value.toString(),
     suffix: (data: any) => data?.newOpportunitiesToday > 0 ? `+${data.newOpportunitiesToday} novos hoje` : '',
-    trend: '',
-    trendPositive: true,
   },
 ] as const;
 
@@ -70,7 +58,7 @@ export function KanbanStats() {
       {stats.map((stat) => {
         const Icon = stat.icon;
         const value = data?.[stat.key as keyof typeof data] ?? 0;
-        const suffix = typeof stat.suffix === 'function' ? stat.suffix(data) : stat.suffix;
+        const suffix = 'suffix' in stat && typeof stat.suffix === 'function' ? stat.suffix(data) : '';
         
         return (
           <Card key={stat.key} className="hover:shadow-md transition-shadow">
@@ -84,17 +72,9 @@ export function KanbanStats() {
               <div className="text-2xl font-bold text-foreground">
                 {stat.format(value as number)}
               </div>
-              {(stat.trend || suffix) && (
+              {suffix && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {stat.trend && (
-                    <span className={cn(
-                      stat.trendPositive ? 'text-primary' : 'text-destructive'
-                    )}>
-                      {stat.trend}
-                    </span>
-                  )}
-                  {stat.trend && suffix && ' '}
-                  {suffix && <span>{suffix}</span>}
+                  <span className="text-primary">{suffix}</span>
                 </p>
               )}
             </CardContent>

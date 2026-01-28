@@ -59,15 +59,6 @@ export function AIInsights({ opportunity }: AIInsightsProps) {
       });
     }
 
-    // Timing insight
-    insights.push({
-      type: 'timing',
-      title: 'Timing',
-      description: 'Melhor horário para contato: 14h-16h (baseado no histórico).',
-      icon: Clock,
-      className: 'bg-blue-50 border-blue-100',
-    });
-
     // AI Confidence insight
     if (opportunity.ai_confidence && opportunity.ai_confidence > 0.8) {
       insights.push({

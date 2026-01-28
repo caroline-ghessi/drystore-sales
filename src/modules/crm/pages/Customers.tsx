@@ -2,9 +2,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Plus, Filter, Users, Phone, Mail, MapPin } from 'lucide-react';
+import { useCustomerStats } from '../hooks/useCustomerStats';
+
+function formatCurrency(value: number): string {
+  if (value >= 1000) {
+    return `R$ ${Math.round(value / 1000)}k`;
+  }
+  return `R$ ${value}`;
+}
 
 export default function Customers() {
+  const { data: stats, isLoading } = useCustomerStats();
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -37,10 +48,11 @@ export default function Customers() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">1,247</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-primary">+12%</span> vs. mês anterior
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-2xl font-bold text-foreground">{stats?.total || 0}</div>
+            )}
           </CardContent>
         </Card>
 
@@ -51,10 +63,11 @@ export default function Customers() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">892</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-primary">+8%</span> vs. mês anterior
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-2xl font-bold text-foreground">{stats?.active || 0}</div>
+            )}
           </CardContent>
         </Card>
 
@@ -65,10 +78,11 @@ export default function Customers() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">89</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-primary">+5</span> hoje
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-2xl font-bold text-foreground">{stats?.newThisMonth || 0}</div>
+            )}
           </CardContent>
         </Card>
 
@@ -79,10 +93,13 @@ export default function Customers() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">R$ 25k</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-primary">+2.5k</span> vs. mês anterior
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-2xl font-bold text-foreground">
+                {formatCurrency(stats?.avgValue || 0)}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -92,6 +92,16 @@ export function useLeadAnalytics(period: string = '7d') {
 
       if (distributionsError) throw distributionsError;
 
+      // Buscar oportunidades fechadas para calcular conversões reais
+      const { data: closedWonOpportunities, error: closedWonError } = await supabase
+        .from('crm_opportunities')
+        .select('id, conversation_id, temperature')
+        .eq('stage', 'closed_won')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+
+      if (closedWonError) throw closedWonError;
+
       const totalLeads = conversations?.length || 0;
       const hotLeads = conversations?.filter(c => c.lead_temperature === 'hot').length || 0;
       const warmLeads = conversations?.filter(c => c.lead_temperature === 'warm').length || 0;
@@ -104,25 +114,41 @@ export function useLeadAnalytics(period: string = '7d') {
         ? conversations.reduce((sum, c) => sum + (c.lead_score || 0), 0) / conversations.length
         : 0;
 
-      // Distribuição por temperatura
+      // Calcular taxas de conversão reais por temperatura
+      const hotConversions = closedWonOpportunities?.filter(o => {
+        const conv = conversations?.find(c => c.id === o.conversation_id);
+        return conv?.lead_temperature === 'hot';
+      }).length || 0;
+
+      const warmConversions = closedWonOpportunities?.filter(o => {
+        const conv = conversations?.find(c => c.id === o.conversation_id);
+        return conv?.lead_temperature === 'warm';
+      }).length || 0;
+
+      const coldConversions = closedWonOpportunities?.filter(o => {
+        const conv = conversations?.find(c => c.id === o.conversation_id);
+        return conv?.lead_temperature === 'cold';
+      }).length || 0;
+
+      // Distribuição por temperatura com taxas de conversão reais
       const temperatureDistribution: LeadTemperatureData[] = [
         {
           temperature: 'hot',
           count: hotLeads,
           percentage: totalLeads > 0 ? Math.round((hotLeads / totalLeads) * 100) : 0,
-          conversionRate: hotLeads > 0 ? 85 : 0 // Simulado
+          conversionRate: hotLeads > 0 ? Math.round((hotConversions / hotLeads) * 100) : 0
         },
         {
           temperature: 'warm',
           count: warmLeads,
           percentage: totalLeads > 0 ? Math.round((warmLeads / totalLeads) * 100) : 0,
-          conversionRate: warmLeads > 0 ? 45 : 0 // Simulado
+          conversionRate: warmLeads > 0 ? Math.round((warmConversions / warmLeads) * 100) : 0
         },
         {
           temperature: 'cold',
           count: coldLeads,
           percentage: totalLeads > 0 ? Math.round((coldLeads / totalLeads) * 100) : 0,
-          conversionRate: coldLeads > 0 ? 15 : 0 // Simulado
+          conversionRate: coldLeads > 0 ? Math.round((coldConversions / coldLeads) * 100) : 0
         }
       ];
 
@@ -184,7 +210,9 @@ export function useLeadAnalytics(period: string = '7d') {
         percentage: totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0
       }));
 
-      // Funil de conversão
+      // Funil de conversão com dados reais
+      const totalClosedWon = closedWonOpportunities?.length || 0;
+      
       const conversionFunnel = [
         {
           stage: 'Leads Captados',
@@ -203,8 +231,8 @@ export function useLeadAnalytics(period: string = '7d') {
         },
         {
           stage: 'Leads Convertidos',
-          count: Math.floor(convertedLeads * 0.3), // Simulado - 30% dos enviados
-          conversionRate: totalLeads > 0 ? Math.round((convertedLeads * 0.3 / totalLeads) * 100) : 0
+          count: totalClosedWon,
+          conversionRate: totalLeads > 0 ? Math.round((totalClosedWon / totalLeads) * 100) : 0
         }
       ];
 

@@ -1,47 +1,15 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import { TimelineItem, TimelineEventType } from './TimelineItem';
+import { Plus, History } from 'lucide-react';
 
 interface NegotiationTimelineProps {
   opportunityId: string | undefined;
 }
 
-// Placeholder events - in the future this will come from a crm_activities table
-const PLACEHOLDER_EVENTS: Array<{
-  type: TimelineEventType;
-  title: string;
-  timestamp: Date;
-  author: string;
-  description?: string;
-}> = [
-  {
-    type: 'ai_detected',
-    title: 'Cliente mencionou cancelamento',
-    timestamp: new Date(),
-    author: 'IA Detectou',
-    description: 'Estamos repensando o investimento devido ao cenário econômico atual...',
-  },
-  {
-    type: 'proposal',
-    title: 'Proposta enviada',
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // Yesterday
-    author: 'Carlos',
-    description: 'Proposta comercial detalhada com ROI de 18 meses',
-  },
-  {
-    type: 'meeting',
-    title: 'Reunião realizada',
-    timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-    author: 'Reunião',
-    description: 'Apresentação da solução para equipe técnica',
-  },
-];
-
 export function NegotiationTimeline({ opportunityId }: NegotiationTimelineProps) {
-  // In the future, this will fetch from a crm_activities table
-  const events = PLACEHOLDER_EVENTS;
+  // TODO: No futuro, buscar de uma tabela crm_activities
+  // Por ora, mostrar estado vazio indicando que atividades serão registradas
 
   return (
     <Card>
@@ -55,24 +23,14 @@ export function NegotiationTimeline({ opportunityId }: NegotiationTimelineProps)
         </div>
       </CardHeader>
       <CardContent>
-        {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Nenhuma atividade registrada.
+        <div className="text-center py-8 text-muted-foreground">
+          <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm font-medium">Histórico de atividades</p>
+          <p className="text-xs mt-1">
+            Atividades serão registradas automaticamente<br />
+            conforme a negociação progride.
           </p>
-        ) : (
-          <div className="relative">
-            {events.map((event, index) => (
-              <TimelineItem
-                key={index}
-                type={event.type}
-                title={event.title}
-                timestamp={event.timestamp}
-                author={event.author}
-                description={event.description}
-              />
-            ))}
-          </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );
