@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Users, TrendingUp, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Plus, Users, TrendingUp, Clock, AlertCircle, Shield } from 'lucide-react';
 import { VendorList } from '@/modules/whatsapp/components/vendor/VendorList';
 import { VendorConversations } from '@/modules/whatsapp/components/vendor/VendorConversations';
 import { VendorQuality } from '@/modules/whatsapp/components/vendor/VendorQuality';
@@ -33,10 +33,19 @@ export function VendedoresPage() {
             </div>
           </div>
           
-          <Button onClick={() => setShowAddDialog(true)} className="shadow-sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Adicionar Vendedor
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link to="/whatsapp/vendedores/contatos-excluidos">
+              <Button variant="outline">
+                <Shield className="h-4 w-4 mr-2" />
+                Contatos Excluídos
+              </Button>
+            </Link>
+            
+            <Button onClick={() => setShowAddDialog(true)} className="shadow-sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Vendedor
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
