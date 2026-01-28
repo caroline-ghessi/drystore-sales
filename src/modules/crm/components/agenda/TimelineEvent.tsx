@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 interface TimelineEventProps {
   event: CalendarEvent;
   onClick?: () => void;
+  compact?: boolean;
 }
 
 const typeStyles = {
@@ -37,11 +38,37 @@ const typeStyles = {
   },
 };
 
-export function TimelineEvent({ event, onClick }: TimelineEventProps) {
+export function TimelineEvent({ event, onClick, compact = false }: TimelineEventProps) {
   const style = typeStyles[event.type];
   const startTime = format(event.startTime, 'HH:mm');
   const endTime = format(event.endTime, 'HH:mm');
   const isOverdue = event.status === 'overdue';
+
+  if (compact) {
+    return (
+      <div
+        onClick={onClick}
+        className={cn(
+          'h-full p-1 rounded border cursor-pointer transition-all text-xs overflow-hidden',
+          style.bg,
+          style.border
+        )}
+      >
+        <div className="flex items-center gap-1">
+          {event.isAIGenerated && (
+            <Bot className={cn('h-3 w-3 shrink-0', style.accent)} />
+          )}
+          <span className="font-medium truncate text-foreground">{event.title}</span>
+        </div>
+        <p className={cn(
+          'text-[10px]',
+          isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'
+        )}>
+          {startTime}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -68,7 +95,7 @@ export function TimelineEvent({ event, onClick }: TimelineEventProps) {
           <div className="flex items-center gap-1 mt-0.5">
             <p className={cn(
               'text-xs',
-              isOverdue ? 'text-red-600 font-medium' : 'text-muted-foreground'
+              isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'
             )}>
               {startTime} - {endTime}
             </p>
@@ -76,7 +103,7 @@ export function TimelineEvent({ event, onClick }: TimelineEventProps) {
             {isOverdue && (
               <>
                 <span className="text-xs text-muted-foreground">•</span>
-                <span className="text-xs text-red-600 font-medium flex items-center gap-0.5">
+                <span className="text-xs text-destructive font-medium flex items-center gap-0.5">
                   <AlertCircle className="h-3 w-3" />
                   Atrasado
                 </span>

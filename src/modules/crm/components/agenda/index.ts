@@ -5,4 +5,7 @@ export { UpcomingEvents } from './UpcomingEvents';
 export { EventItem } from './EventItem';
 export { DayTimeline } from './DayTimeline';
 export { TimelineEvent } from './TimelineEvent';
+export { WeekTimeline } from './WeekTimeline';
+export { MonthCalendar } from './MonthCalendar';
+export { MonthDayCell } from './MonthDayCell';
 export type { CalendarEvent, CalendarFilters as CalendarFiltersType, ViewMode } from './types';
