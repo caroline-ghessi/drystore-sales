@@ -54,7 +54,7 @@ serve(async (req) => {
     // 3. Buscar dados da conversa para contexto
     const { data: conversation } = await supabase
       .from('conversations')
-      .select('customer_name, whatsapp_number, customer_email, customer_city, customer_state, product_group, lead_temperature')
+      .select('customer_name, whatsapp_number, customer_email, customer_city, customer_state, product_group, lead_temperature, metadata')
       .eq('id', conversationId)
       .single();
 
@@ -170,6 +170,30 @@ serve(async (req) => {
         .from('conversations')
         .update({ last_lead_sent_at: new Date().toISOString() })
         .eq('id', conversationId);
+
+      // 7.4 Marcar conversa como finalizada
+      const existingMetadata = conversation?.metadata || {};
+      const { error: closeError } = await supabase
+        .from('conversations')
+        .update({ 
+          status: 'closed',
+          updated_at: new Date().toISOString(),
+          metadata: {
+            ...existingMetadata,
+            closed_at: new Date().toISOString(),
+            closed_by: sentByAgentId || 'system',
+            close_reason: 'lead_sent_to_vendor',
+            vendor_id: vendorId,
+            vendor_name: vendor.name
+          }
+        })
+        .eq('id', conversationId);
+
+      if (closeError) {
+        console.error('Erro ao fechar conversa:', closeError);
+      } else {
+        console.log(`Conversa ${conversationId} fechada após envio de lead`);
+      }
 
     } catch (crmError) {
       console.error('Erro ao processar CRM:', crmError);
