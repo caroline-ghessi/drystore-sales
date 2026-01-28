@@ -5,8 +5,10 @@ export { useGenerateLeadSummary, useSendLeadToVendor, useVendors, useLeadDistrib
 export { useRealQualityMetrics } from './useRealQualityMetrics';
 export { useOpportunities, useUpdateOpportunityStage, useOpportunitiesCount, STAGE_CONFIG } from './useOpportunities';
 export { usePipelineStats, formatCurrency, formatFullCurrency } from './usePipelineStats';
+export { useOpportunityDetail, useUpdateOpportunity, useConversationMessages } from './useOpportunityDetail';
 
 // Re-export types
 export type { HotLead } from './useHotLeads';
 export type { LeadSummaryData } from './useLeadSummary';
 export type { Opportunity, OpportunitiesByStage } from './useOpportunities';
+export type { OpportunityDetail } from './useOpportunityDetail';
