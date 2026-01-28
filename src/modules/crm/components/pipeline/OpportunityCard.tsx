@@ -2,8 +2,8 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Clock, CheckCircle } from 'lucide-react';
-import { formatFullCurrency } from '../../hooks/usePipelineStats';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { CheckCircle, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface OpportunityCardProps {
@@ -12,21 +12,18 @@ interface OpportunityCardProps {
   title: string;
   description?: string | null;
   value: number;
+  formattedValue: string;
   temperature?: string | null;
   validationStatus?: string | null;
   timeAgo: string;
   productCategory?: string | null;
   nextStep?: string | null;
   isNew?: boolean;
+  vendorName?: string | null;
+  isClosed?: boolean;
   onValidate?: () => void;
   onClick?: () => void;
 }
-
-const TEMPERATURE_INDICATORS = {
-  hot: { icon: '🔥', color: 'text-red-500', bg: 'bg-red-100' },
-  warm: { icon: '🟠', color: 'text-orange-500', bg: 'bg-orange-100' },
-  cold: { icon: '❄️', color: 'text-blue-500', bg: 'bg-blue-100' },
-};
 
 export function OpportunityCard({
   id,
@@ -34,113 +31,113 @@ export function OpportunityCard({
   title,
   description,
   value,
+  formattedValue,
   temperature,
   validationStatus,
   timeAgo,
   productCategory,
   nextStep,
   isNew,
+  vendorName,
+  isClosed,
   onValidate,
   onClick,
 }: OpportunityCardProps) {
-  const tempConfig = TEMPERATURE_INDICATORS[temperature as keyof typeof TEMPERATURE_INDICATORS] 
-    || TEMPERATURE_INDICATORS.warm;
-  
   const needsValidation = validationStatus === 'ai_generated' || validationStatus === 'pending';
   const isValidated = validationStatus === 'validated' || validationStatus === 'edited';
+  
+  // Get vendor initials
+  const vendorInitials = vendorName 
+    ? vendorName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    : 'V';
 
   return (
     <Card
       className={cn(
-        'p-3 cursor-pointer hover:shadow-md transition-all duration-200 border',
-        'bg-card hover:bg-card/90',
-        isNew && 'ring-2 ring-primary/50'
+        'p-3 cursor-pointer hover:shadow-md transition-all duration-200',
+        'bg-background border border-border hover:border-border/80',
+        isNew && 'border-l-4 border-l-green-500'
       )}
       onClick={onClick}
     >
-      {/* Header with badge and time */}
-      <div className="flex items-center justify-between mb-2">
+      {/* Line 1: Badge novo (optional) + Customer name + Time */}
+      <div className="flex items-center gap-2">
         {isNew && (
-          <Badge className="bg-primary/20 text-primary text-xs font-medium">
+          <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5">
             Novo
           </Badge>
         )}
-        <div className={cn(
-          'flex items-center gap-1 text-xs text-muted-foreground ml-auto',
-          timeAgo.includes('Atrasado') && 'text-destructive font-medium'
-        )}>
-          <Clock className="h-3 w-3" />
+        <span className="font-semibold text-sm text-foreground flex-1 truncate">
+          {customerName}
+        </span>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
           {timeAgo}
-        </div>
+        </span>
       </div>
 
-      {/* Customer name */}
-      <h4 className="font-semibold text-sm text-foreground truncate">
-        {customerName}
-      </h4>
-
-      {/* Title */}
-      <p className="text-sm text-muted-foreground truncate mt-1">
+      {/* Line 2: Project title */}
+      <p className="text-sm text-foreground mt-1 truncate">
         {title}
       </p>
 
-      {/* Description */}
+      {/* Line 3: Description (optional) */}
       {description && (
-        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
           {description}
         </p>
       )}
 
-      {/* Next step badge */}
-      {nextStep && (
-        <Badge variant="outline" className="mt-2 text-xs font-normal">
+      {/* Line 4: Next step badge or validated status */}
+      {nextStep && !isClosed && (
+        <Badge 
+          variant="outline" 
+          className="mt-2 text-xs bg-primary/10 text-primary border-primary/20 font-normal"
+        >
+          <Play className="w-3 h-3 mr-1 fill-primary" />
           {nextStep}
         </Badge>
       )}
-
-      {/* Validated status */}
-      {isValidated && (
-        <div className="flex items-center gap-1 mt-2 text-xs text-green-600">
+      
+      {isValidated && !isClosed && (
+        <div className="flex items-center gap-1 mt-2 text-xs text-primary">
           <CheckCircle className="h-3 w-3" />
-          Aprovado
+          <span>Aprovado pelo técnico</span>
         </div>
       )}
 
-      {/* Footer with value and actions */}
-      <div className="flex items-center justify-between mt-3 pt-2 border-t">
+      {/* Closed won badge */}
+      {isClosed && (
+        <Badge className="mt-2 bg-primary text-primary-foreground text-xs">
+          Ganho
+        </Badge>
+      )}
+
+      {/* Line 5: Value + Vendor avatar OR Validate button */}
+      <div className="flex items-center justify-between mt-3 pt-2 border-t border-border">
+        <span className="font-bold text-sm text-foreground">
+          {formattedValue}
+        </span>
+
         <div className="flex items-center gap-2">
-          <span className="font-bold text-sm text-foreground">
-            {formatFullCurrency(value)}
-          </span>
-          <span className={cn('text-sm', tempConfig.color)}>
-            {tempConfig.icon}
-          </span>
+          {needsValidation && onValidate ? (
+            <Button
+              size="sm"
+              className="h-6 text-xs px-3 bg-primary hover:bg-primary/90 text-primary-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                onValidate();
+              }}
+            >
+              Validar
+            </Button>
+          ) : (
+            <Avatar className="w-6 h-6">
+              <AvatarFallback className="text-xs bg-muted text-muted-foreground">
+                {vendorInitials}
+              </AvatarFallback>
+            </Avatar>
+          )}
         </div>
-
-        {needsValidation && onValidate && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 text-xs px-2 text-primary border-primary hover:bg-primary/10"
-            onClick={(e) => {
-              e.stopPropagation();
-              onValidate();
-            }}
-          >
-            Validar
-          </Button>
-        )}
-
-        {!needsValidation && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        )}
       </div>
     </Card>
   );
