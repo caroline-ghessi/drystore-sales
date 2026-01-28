@@ -138,12 +138,13 @@ serve(async (req) => {
         customerId = customer?.id;
         console.log(`Cliente CRM criado/atualizado: ${customerId}`);
 
-        // 7.2 Criar oportunidade no CRM
+        // 7.2 Criar oportunidade no CRM vinculada ao vendedor
         const { data: opportunity, error: oppError } = await supabase
           .from('crm_opportunities')
           .insert({
             customer_id: customerId,
             conversation_id: conversationId,
+            vendor_id: vendorId, // IMPORTANTE: Vincular ao vendedor que recebeu o lead
             title: `Oportunidade - ${conversation?.product_group || 'Nova'}`,
             source: 'whatsapp',
             product_category: conversation?.product_group,
