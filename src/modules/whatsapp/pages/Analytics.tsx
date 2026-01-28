@@ -22,6 +22,7 @@ import { ConversationMetrics } from '@/modules/whatsapp/components/analytics/Con
 import { VendorPerformance } from '@/modules/whatsapp/components/analytics/VendorPerformance';
 import { LeadAnalytics } from '@/modules/whatsapp/components/analytics/LeadAnalytics';
 import { QualityMetrics } from '@/modules/whatsapp/components/analytics/QualityMetrics';
+import { BotMetrics } from '@/modules/whatsapp/components/analytics/BotMetrics';
 
 const PERIOD_OPTIONS = [
   { value: 'today', label: 'Hoje' },
@@ -142,10 +143,14 @@ export default function Analytics() {
 
       {/* Main Analytics Tabs */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 h-12 bg-muted rounded-lg p-1">
+        <TabsList className="grid w-full grid-cols-6 h-12 bg-muted rounded-lg p-1">
           <TabsTrigger value="overview" className="font-medium">Visão Geral</TabsTrigger>
-          <TabsTrigger value="conversations" className="font-medium">Conversas</TabsTrigger>
+          <TabsTrigger value="bot" className="font-medium flex items-center gap-1">
+            <Bot className="w-4 h-4" />
+            Bot
+          </TabsTrigger>
           <TabsTrigger value="vendors" className="font-medium">Vendedores</TabsTrigger>
+          <TabsTrigger value="conversations" className="font-medium">Conversas</TabsTrigger>
           <TabsTrigger value="leads" className="font-medium">Leads</TabsTrigger>
           <TabsTrigger value="quality" className="font-medium">Qualidade</TabsTrigger>
         </TabsList>
@@ -154,12 +159,16 @@ export default function Analytics() {
           <AnalyticsOverview period={selectedPeriod} />
         </TabsContent>
 
-        <TabsContent value="conversations" className="space-y-6">
-          <ConversationMetrics period={selectedPeriod} />
+        <TabsContent value="bot" className="space-y-6">
+          <BotMetrics period={selectedPeriod} />
         </TabsContent>
 
         <TabsContent value="vendors" className="space-y-6">
           <VendorPerformance period={selectedPeriod} />
+        </TabsContent>
+
+        <TabsContent value="conversations" className="space-y-6">
+          <ConversationMetrics period={selectedPeriod} />
         </TabsContent>
 
         <TabsContent value="leads" className="space-y-6">
