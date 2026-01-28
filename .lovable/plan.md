@@ -1,257 +1,212 @@
 
-# Plano de Refatoração Arquitetural
+# Plano: Rotina de Análise Diária + Alertas WhatsApp
 
-## Resumo Executivo
+## Resumo
 
-Este plano organiza a refatoração em **3 fases incrementais**, cada uma com zero impacto funcional e baixo risco. Todas as mudanças são puramente organizacionais, utilizando re-exports para manter compatibilidade com imports existentes.
+Implementar sistema completo de análise de qualidade com:
+1. **Análise diária às 20h** - Processar todas as conversas do dia
+2. **Alertas críticos às 8:30h** - Enviar problemas graves diariamente  
+3. **Acompanhamento semanal às 8:30h (segundas)** - Resumo de alertas amarelos
 
-**Tempo estimado total:** 3-4 horas de desenvolvimento
-**Risco:** Baixo (apenas reorganização de arquivos)
-**Impacto em usuários:** Nenhum
-
----
-
-## Fase 1: Completar Estrutura do Módulo WhatsApp
-
-**Objetivo:** Igualar a estrutura do módulo `/whatsapp` ao padrão estabelecido no `/crm`
-
-### Situação Atual
+## Fluxo Completo
 
 ```text
-src/modules/crm/          src/modules/whatsapp/
-├── components/           ├── components/
-├── hooks/               ├── hooks/
-├── pages/               ├── pages/
-├── services/     ←      ├── (faltando)
-├── types/        ←      ├── (faltando)
-├── utils/        ←      ├── (faltando)
-└── index.ts             └── index.ts
+                    ┌─────────────────────────────────────────┐
+                    │         ANÁLISE DIÁRIA (20:00)          │
+                    │  daily-quality-analysis Edge Function    │
+                    └──────────────────┬──────────────────────┘
+                                       │
+                    ┌──────────────────▼──────────────────────┐
+                    │        Para cada vendedor ativo:         │
+                    │  - Buscar conversas do dia               │
+                    │  - Chamar quality-analysis               │
+                    │  - Salvar em vendor_quality_analysis     │
+                    │  - Criar alertas em quality_alerts       │
+                    └──────────────────┬──────────────────────┘
+                                       │
+          ┌────────────────────────────┼────────────────────────────┐
+          │                            │                            │
+          ▼                            ▼                            ▼
+┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
+│  quality_alerts     │    │ vendor_quality_     │    │   quality_metrics   │
+│  (severity: high/   │    │ analysis            │    │   (dashboard)       │
+│   medium/low)       │    │ (scores, SPIN)      │    │                     │
+└─────────┬───────────┘    └─────────────────────┘    └─────────────────────┘
+          │
+          ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    DISPARO DE ALERTAS                                    │
+├─────────────────────────────────────┬───────────────────────────────────┤
+│  DIÁRIO (8:30h) - Alertas Críticos  │  SEMANAL (Seg 8:30h) - Resumo     │
+│  severity = 'high' ou 'critical'    │  severity = 'medium' (amarelos)   │
+│  Não resolvidos (resolved = false)  │  Agregado por vendedor            │
+└─────────────────────────────────────┴───────────────────────────────────┘
+                                       │
+                                       ▼
+                    ┌─────────────────────────────────────────┐
+                    │    WhatsApp via WHAPI                    │
+                    │    De: +55 51 81155622 (Bot de Leads)   │
+                    │    Para: +55 51 98140-3789              │
+                    └─────────────────────────────────────────┘
 ```
 
-### Ações
+## Fase 1: Criar Edge Function de Análise Diária
 
-1. **Criar pastas faltantes:**
-   - `src/modules/whatsapp/services/`
-   - `src/modules/whatsapp/types/`
-   - `src/modules/whatsapp/utils/`
+### Arquivo: `supabase/functions/daily-quality-analysis/index.ts`
 
-2. **Mover arquivos globais relacionados:**
-   - `src/services/whatsapp/whatsapp-business.service.ts` → `src/modules/whatsapp/services/`
-   - `src/services/whatsapp/whatsapp-integration.service.ts` → `src/modules/whatsapp/services/`
-   - `src/types/conversation.types.ts` → `src/modules/whatsapp/types/`
-   - `src/types/bot.types.ts` → `src/modules/whatsapp/types/`
+**Responsabilidades:**
+- Executar às 20h (Brasília)
+- Buscar todos os vendedores ativos
+- Para cada vendedor: buscar conversas com atividade nas últimas 24h
+- Chamar `quality-analysis` para conversas não analisadas
+- Classificar alertas por severidade baseado no score
 
-3. **Criar re-exports para compatibilidade:**
-   ```typescript
-   // src/services/whatsapp/whatsapp-business.service.ts (mantido como re-export)
-   export { whatsappService } from '@/modules/whatsapp/services/whatsapp-business.service';
-   ```
+**Lógica de classificação de severidade:**
+| Score | Severidade | Cor |
+|-------|------------|-----|
+| 0-40 | critical/high | Vermelho |
+| 41-60 | medium | Amarelo |
+| 61-100 | low | Verde |
 
-4. **Atualizar barrel export:**
-   ```typescript
-   // src/modules/whatsapp/index.ts - adicionar:
-   export * from './services';
-   export * from './types';
-   export * from './utils';
-   ```
+## Fase 2: Criar Edge Function de Disparo de Alertas
 
-### Arquivos Afetados
-- 4 arquivos movidos
-- 4 re-exports criados
-- 1 barrel export atualizado
+### Arquivo: `supabase/functions/send-quality-alerts/index.ts`
 
----
+**Responsabilidades:**
+- Consultar alertas pendentes (resolved = false)
+- Formatar mensagem consolidada por vendedor
+- Enviar via WHAPI usando token `LEAD_BOT_WHAPI_TOKEN`
+- Marcar alertas como notificados (novo campo)
 
-## Fase 2: Migrar Hooks Globais para Módulos
+**Parâmetros de entrada:**
+- `alertType`: 'critical' (diário) ou 'weekly' (semanal)
+- `targetPhone`: '+5551981403789'
 
-**Objetivo:** Mover 25+ hooks de `/src/hooks/` para seus módulos de domínio apropriados
-
-### Mapeamento de Migração
-
-| Hook Atual | Destino | Justificativa |
-|------------|---------|---------------|
-| `useConversations.ts` | `/whatsapp/hooks/` | Gerencia conversas WhatsApp |
-| `useMessages.ts` | `/whatsapp/hooks/` | Gerencia mensagens |
-| `useRealtimeSubscription.ts` | `/whatsapp/hooks/` | Realtime para chat |
-| `useConversationActions.ts` | `/whatsapp/hooks/` | Ações de conversa |
-| `useConversationAnalytics.ts` | `/whatsapp/hooks/` | Analytics de conversa |
-| `useClassificationLogs.ts` | `/whatsapp/hooks/` | Logs do classificador |
-| `useClassificationKeywords.ts` | `/whatsapp/hooks/` | Keywords do classificador |
-| `useAgentConfigs.ts` | `/whatsapp/hooks/` | Configuração de agentes |
-| `useAgentPrompts.ts` | `/whatsapp/hooks/` | Prompts de agentes |
-| `useRAGSystem.ts` | `/whatsapp/hooks/` | Sistema RAG do bot |
-| `useSemanticSearch.ts` | `/whatsapp/hooks/` | Busca semântica |
-| `useKnowledgeFiles.ts` | `/whatsapp/hooks/` | Base de conhecimento |
-| `useFirecrawl.ts` | `/whatsapp/hooks/` | Web scraping |
-| `useHotLeads.ts` | `/crm/hooks/` | Leads quentes |
-| `useLeadAnalytics.ts` | `/crm/hooks/` | Analytics de leads |
-| `useLeadSummary.ts` | `/crm/hooks/` | Resumo de leads |
-| `useRealQualityMetrics.ts` | `/crm/hooks/` | Métricas de qualidade |
-| `useVendors.ts` | `/crm/hooks/` | Gestão de vendedores |
-| `useAtendentes.ts` | `/crm/hooks/` | Gestão de atendentes |
-| `useNotifications.ts` | `/crm/hooks/` | Notificações CRM |
-| `useOrderBumps.ts` | `/propostas/hooks/` | Order bumps |
-| `useProposalActions.ts` | `/propostas/hooks/` | Ações de proposta |
-
-### Hooks que Permanecem Globais
-
-| Hook | Motivo |
-|------|--------|
-| `use-mobile.tsx` | Utilitário UI global |
-| `use-toast.ts` | Utilitário UI global |
-| `useDebounce.ts` | Utilitário genérico |
-| `useUserPermissions.ts` | Autenticação global |
-| `useVendorPermissions.ts` | Autenticação global |
-| `useSystemConfigs.ts` | Configuração global |
-| `useInviteManagement.ts` | Gestão de acesso global |
-| `useBufferWorker.ts` | Worker global |
-| `useStorageCleanup.ts` | Utilitário global |
-
-### Estratégia de Re-export
-
-Para cada hook migrado, manter arquivo original com re-export:
-
-```typescript
-// src/hooks/useConversations.ts (arquivo original - mantido)
-export { 
-  useConversations, 
-  useConversation, 
-  useCreateConversation,
-  useUpdateConversation,
-  useDeleteConversation 
-} from '@/modules/whatsapp/hooks/useConversations';
-```
-
-### Arquivos Afetados
-- 22 hooks movidos para módulos
-- 22 re-exports criados
-- 3 barrel exports atualizados
-
----
-
-## Fase 3: Atualizar Barrel Exports dos Módulos
-
-**Objetivo:** Garantir que todos os módulos exportem corretamente seus recursos
-
-### WhatsApp Module - index.ts Atualizado
-
-```typescript
-// src/modules/whatsapp/index.ts
-
-// Pages
-export { default as Dashboard } from './pages/Dashboard';
-export { default as Conversas } from './pages/Conversas';
-// ... outras páginas
-
-// Components (mantém exports existentes)
-export { AgentList } from './components/bot/AgentList';
-// ... outros componentes
-
-// Hooks - NOVO
-export * from './hooks';
-
-// Services - NOVO
-export * from './services';
-
-// Types - NOVO  
-export * from './types';
-
-// Utils - NOVO
-export * from './utils';
-```
-
----
-
-## Ordem de Execução
-
+**Formato da mensagem crítica (diária):**
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  FASE 1: Estrutura WhatsApp (30 min)                       │
-│  ├── Criar pastas services/, types/, utils/                │
-│  ├── Mover arquivos de src/services/whatsapp/              │
-│  ├── Mover arquivos de src/types/                          │
-│  └── Criar re-exports e atualizar barrel                   │
-├─────────────────────────────────────────────────────────────┤
-│  FASE 2: Migrar Hooks (2h)                                 │
-│  ├── Mover hooks WhatsApp (13 arquivos)                    │
-│  ├── Mover hooks CRM (6 arquivos)                          │
-│  ├── Mover hooks Propostas (2 arquivos)                    │
-│  └── Criar todos os re-exports                             │
-├─────────────────────────────────────────────────────────────┤
-│  FASE 3: Barrel Exports (30 min)                           │
-│  ├── Atualizar whatsapp/index.ts                           │
-│  ├── Atualizar crm/hooks/index.ts                          │
-│  └── Atualizar propostas/hooks/index.ts                    │
-└─────────────────────────────────────────────────────────────┘
+🔴 ALERTAS CRÍTICOS DE QUALIDADE
+
+📅 Data: 28/01/2026
+
+⚠️ VENDEDOR: Antônio César
+• Cliente: Fernanda E.R.S.
+  Score: 15/100 - Tempo resposta: 144min
+  Problema: Sem SPIN, sem cross-selling
+  
+• Cliente: Rodrigo Luongo
+  Score: 25/100 - Tempo resposta: 6min
+  Problema: Sem confirmação de valores
+
+Total: 2 atendimentos críticos
+Ação requerida: Intervenção urgente
 ```
 
----
-
-## Validação e Testes
-
-Após cada fase:
-
-1. **Build Check:** `npm run build` deve passar sem erros
-2. **Import Check:** Verificar que imports existentes continuam funcionando
-3. **Functional Test:** Navegar pelas páginas principais para confirmar funcionamento
-
----
-
-## Resultado Final
-
-### Antes
+**Formato da mensagem semanal (segundas):**
 ```text
-src/
-├── hooks/           (31 arquivos misturados)
-├── services/        (arquivos soltos)
-├── types/           (tipos globais)
-└── modules/
-    ├── crm/         (estrutura completa)
-    ├── whatsapp/    (estrutura incompleta)
-    └── propostas/   (estrutura completa)
+📊 ACOMPANHAMENTO SEMANAL DE QUALIDADE
+
+📅 Semana: 20/01 a 26/01/2026
+
+🟡 ALERTAS DE ATENÇÃO
+
+VENDEDOR: Felipe Tubino
+• 3 atendimentos com pontuação média
+• Score médio: 52/100
+• Principal ponto: Falta de cross-selling
+
+VENDEDOR: Gabriel Rodrigues  
+• 2 atendimentos com pontuação média
+• Score médio: 48/100
+• Principal ponto: Tempo de resposta alto
+
+📈 Recomendação: Treinamento em técnicas SPIN
 ```
 
-### Depois
-```text
-src/
-├── hooks/           (9 hooks globais + re-exports)
-├── services/        (re-exports apenas)
-├── types/           (re-exports apenas)
-└── modules/
-    ├── crm/         (estrutura completa + hooks migrados)
-    ├── whatsapp/    (estrutura completa + hooks migrados)
-    └── propostas/   (estrutura completa + hooks migrados)
+## Fase 3: Adicionar Campo de Controle
+
+Adicionar campo `notified_at` na tabela `quality_alerts` para evitar duplicação de notificações.
+
+## Fase 4: Criar Cron Jobs
+
+### Job 1: Análise Diária (20h Brasília = 23h UTC)
+```sql
+-- daily-quality-analysis às 23:00 UTC (20:00 Brasília)
+SELECT cron.schedule(
+  'daily-quality-analysis',
+  '0 23 * * *',
+  $$
+  SELECT net.http_post(
+    url:='https://groqsnnytvjabgeaekkw.supabase.co/functions/v1/daily-quality-analysis',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer ..."}'::jsonb,
+    body:='{"automated": true}'::jsonb
+  );
+  $$
+);
 ```
 
----
-
-## Seção Técnica
-
-### Padrão de Re-export
-
-```typescript
-// Arquivo original mantido como proxy
-// src/hooks/useConversations.ts
-export { 
-  useConversations,
-  useConversation,
-  useCreateConversation,
-  useUpdateConversation,
-  useDeleteConversation
-} from '@/modules/whatsapp/hooks/useConversations';
+### Job 2: Alertas Críticos Diários (8:30h Brasília = 11:30 UTC)
+```sql
+-- send-quality-alerts críticos às 11:30 UTC (8:30 Brasília)
+SELECT cron.schedule(
+  'send-critical-quality-alerts',
+  '30 11 * * *',
+  $$
+  SELECT net.http_post(
+    url:='https://groqsnnytvjabgeaekkw.supabase.co/functions/v1/send-quality-alerts',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer ..."}'::jsonb,
+    body:='{"alertType": "critical", "targetPhone": "5551981403789"}'::jsonb
+  );
+  $$
+);
 ```
 
-### Benefícios Técnicos
+### Job 3: Resumo Semanal (Segundas 8:30h Brasília)
+```sql
+-- send-quality-alerts semanal às segundas 11:30 UTC (8:30 Brasília)
+SELECT cron.schedule(
+  'send-weekly-quality-summary',
+  '30 11 * * 1',
+  $$
+  SELECT net.http_post(
+    url:='https://groqsnnytvjabgeaekkw.supabase.co/functions/v1/send-quality-alerts',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer ..."}'::jsonb,
+    body:='{"alertType": "weekly", "targetPhone": "5551981403789"}'::jsonb
+  );
+  $$
+);
+```
 
-1. **Tree-shaking melhorado:** Imports diretos do módulo permitem melhor eliminação de código morto
-2. **Code splitting natural:** Módulos podem ser carregados sob demanda
-3. **Encapsulamento:** Dependências internas do módulo não vazam para o escopo global
-4. **Facilidade de teste:** Módulos isolados são mais fáceis de mockar
+## Arquivos a Criar/Modificar
 
-### Riscos Mitigados
+| Arquivo | Ação | Descrição |
+|---------|------|-----------|
+| `supabase/functions/daily-quality-analysis/index.ts` | Criar | Orquestrador de análise diária |
+| `supabase/functions/send-quality-alerts/index.ts` | Criar | Disparo de alertas WhatsApp |
+| `supabase/config.toml` | Editar | Registrar novas funções |
+| Database (migration) | SQL | Adicionar campo `notified_at` |
+| Database (insert) | SQL | Criar 3 cron jobs |
 
-| Risco | Mitigação |
-|-------|-----------|
-| Imports quebrados | Re-exports mantêm compatibilidade |
-| Conflitos de merge | Mudanças são aditivas, não destrutivas |
-| Regressões | Build check após cada fase |
+## Pré-requisitos
+
+### Secret já configurado
+O token `LEAD_BOT_WHAPI_TOKEN` já existe e é usado pela função `send-lead-to-vendor`.
+
+### Número de destino
+- **Para:** +55 51 98140-3789 (formatado: 5551981403789)
+- **De:** +55 51 81155622 (Bot de Leads)
+
+## Validação
+
+Após implementação:
+1. Executar `daily-quality-analysis` manualmente
+2. Verificar alertas criados em `quality_alerts`
+3. Executar `send-quality-alerts` com `alertType: 'critical'`
+4. Confirmar recebimento no WhatsApp +55 51 98140-3789
+5. Verificar logs em `system_logs`
+
+## Resultado Esperado
+
+- **20:00** - Sistema analisa todas as conversas do dia
+- **8:30 (diário)** - Supervisor recebe alertas críticos no WhatsApp
+- **8:30 (segundas)** - Supervisor recebe resumo semanal de atenções
+- Dashboard atualizado com métricas em tempo real
