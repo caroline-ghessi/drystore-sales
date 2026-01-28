@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { MessageCircle, Bot, Users, UserCheck, BarChart3, Home, Flame, ChevronLeft, ChevronRight, Activity, Settings, FileText } from 'lucide-react';
+import { MessageCircle, Bot, Users, UserCheck, BarChart3, Home, ChevronLeft, ChevronRight, Activity, Settings, FileText } from 'lucide-react';
 
 const whatsappItems = [
   { title: 'Dashboard WhatsApp', url: '/whatsapp', icon: BarChart3, exact: true },
@@ -10,7 +10,6 @@ const whatsappItems = [
 ];
 
 const atendimentoItems = [
-  { title: 'Leads Quentes', url: '/whatsapp/leads-quentes', icon: Flame },
   { title: 'Analytics', url: '/whatsapp/analytics', icon: BarChart3 },
   { title: 'Atendentes', url: '/whatsapp/atendentes', icon: UserCheck },
 ];
