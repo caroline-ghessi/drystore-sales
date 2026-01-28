@@ -34,6 +34,7 @@ interface AnalysisInfo {
 interface ConversationInfo {
   customer_name: string | null;
   customer_phone: string;
+  metadata?: { is_internal_contact?: boolean } | null;
 }
 
 serve(async (req) => {
@@ -140,15 +141,21 @@ serve(async (req) => {
               .single();
 
             if (analysis) {
-              score = `${(analysis as AnalysisInfo).quality_score}/100`;
-              
-              // Buscar nome do cliente
+              // Buscar conversa para verificar se é contato interno
               const { data: conversation } = await supabase
                 .from('vendor_conversations')
-                .select('customer_name, customer_phone')
+                .select('customer_name, customer_phone, metadata')
                 .eq('id', (analysis as AnalysisInfo).conversation_id)
                 .single();
 
+              // SKIP alertas de contatos internos
+              if (conversation?.metadata?.is_internal_contact) {
+                console.log(`[send-quality-alerts] Skipping alert for internal contact: ${(analysis as AnalysisInfo).conversation_id}`);
+                continue;
+              }
+
+              score = `${(analysis as AnalysisInfo).quality_score}/100`;
+              
               if (conversation) {
                 customerName = (conversation as ConversationInfo).customer_name || 
                   `Cliente (${(conversation as ConversationInfo).customer_phone.slice(-4)})`;

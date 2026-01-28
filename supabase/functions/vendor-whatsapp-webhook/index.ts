@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { isExcludedContact, normalizePhone } from '../_shared/phone-utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -377,6 +378,10 @@ async function processMessageStatus(supabase: any, vendor: any, status: any) {
 }
 
 async function findOrCreateConversation(supabase: any, vendorId: string, chatId: string, customerPhone: string, customerName?: string) {
+  // NOVA VERIFICAÇÃO: Checar se é contato interno
+  const isInternal = await isExcludedContact(supabase, customerPhone);
+  const normalizedPhone = normalizePhone(customerPhone);
+  
   // Tentar encontrar conversa existente
   let { data: conversation } = await supabase
     .from('vendor_conversations')
@@ -386,20 +391,25 @@ async function findOrCreateConversation(supabase: any, vendorId: string, chatId:
     .single();
 
   if (!conversation) {
-    // Criar nova conversa
+    // Criar nova conversa com flag de contato interno se aplicável
     const { data: newConversation } = await supabase
       .from('vendor_conversations')
       .insert({
         vendor_id: vendorId,
         chat_id: chatId,
-        customer_phone: customerPhone,
+        customer_phone: normalizedPhone,
         customer_name: customerName,
-        last_message_at: new Date().toISOString()
+        last_message_at: new Date().toISOString(),
+        metadata: isInternal ? { is_internal_contact: true } : {}
       })
       .select()
       .single();
       
     conversation = newConversation;
+    
+    if (isInternal) {
+      console.log(`📌 Internal contact flagged: ${normalizedPhone} (vendor: ${vendorId})`);
+    }
   } else {
     // Atualizar última mensagem e nome do cliente se disponível
     const updateData: any = {
@@ -409,6 +419,12 @@ async function findOrCreateConversation(supabase: any, vendorId: string, chatId:
     // Só atualizar o nome do cliente se estiver disponível (mensagem não é do vendedor)
     if (customerName) {
       updateData.customer_name = customerName;
+    }
+    
+    // Se é contato interno e não estava marcado, atualizar
+    if (isInternal && !conversation.metadata?.is_internal_contact) {
+      updateData.metadata = { ...conversation.metadata, is_internal_contact: true };
+      console.log(`📌 Existing conversation updated as internal contact: ${normalizedPhone}`);
     }
     
     await supabase

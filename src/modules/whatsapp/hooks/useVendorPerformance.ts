@@ -86,7 +86,7 @@ export function useVendorPerformance(period: string = '7d') {
 
       if (vendorsError) throw vendorsError;
 
-      // Buscar conversas dos vendedores no período
+      // Buscar conversas dos vendedores no período (incluindo metadata para filtrar contatos internos)
       const { data: conversations, error: conversationsError } = await supabase
         .from('vendor_conversations')
         .select(`
@@ -97,7 +97,8 @@ export function useVendorPerformance(period: string = '7d') {
           vendor_messages,
           customer_messages,
           created_at,
-          updated_at
+          updated_at,
+          metadata
         `)
         .gte('created_at', startDate.toISOString())
         .lte('created_at', endDate.toISOString());
@@ -113,9 +114,11 @@ export function useVendorPerformance(period: string = '7d') {
 
       if (qualityError) throw qualityError;
 
-      // Processar dados por vendedor
+      // Processar dados por vendedor (FILTRAR contatos internos)
       const vendorPerformance: VendorPerformanceData[] = vendors?.map(vendor => {
-        const vendorConversations = conversations?.filter(c => c.vendor_id === vendor.id) || [];
+        // Filtrar contatos internos para não distorcer métricas
+        const vendorConversations = (conversations?.filter(c => c.vendor_id === vendor.id) || [])
+          .filter(c => !(c.metadata as { is_internal_contact?: boolean })?.is_internal_contact);
         const vendorQuality = qualityMetrics?.filter(q => q.vendor_id === vendor.id) || [];
 
         const totalConversations = vendorConversations.length;
@@ -177,7 +180,7 @@ export function useVendorPerformance(period: string = '7d') {
         })
         .slice(0, 3);
 
-      // Dados de comparação temporal baseados em dados reais
+      // Dados de comparação temporal baseados em dados reais (também filtrar contatos internos)
       const performanceComparison = [];
       for (let i = 6; i >= 0; i--) {
         const date = subDays(new Date(), i);
@@ -188,9 +191,11 @@ export function useVendorPerformance(period: string = '7d') {
         const dayResponseTime = dayQuality.length > 0
           ? dayQuality.reduce((sum, q) => sum + (q.response_time_avg_minutes || 0), 0) / dayQuality.length
           : 0;
-          
+        
+        // Filtrar contatos internos no cálculo de conversas por dia
         const dayConversations = conversations?.filter(c => 
-          format(new Date(c.created_at), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+          format(new Date(c.created_at), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd') &&
+          !(c.metadata as { is_internal_contact?: boolean })?.is_internal_contact
         ).length || 0;
         
         const dayQualityScore = dayQuality.length > 0
