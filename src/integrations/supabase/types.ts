@@ -1997,6 +1997,7 @@ export type Database = {
           description: string | null
           id: string
           metadata: Json | null
+          notified_at: string | null
           resolved: boolean | null
           resolved_at: string | null
           resolved_by: string | null
@@ -2011,6 +2012,7 @@ export type Database = {
           description?: string | null
           id?: string
           metadata?: Json | null
+          notified_at?: string | null
           resolved?: boolean | null
           resolved_at?: string | null
           resolved_by?: string | null
@@ -2025,6 +2027,7 @@ export type Database = {
           description?: string | null
           id?: string
           metadata?: Json | null
+          notified_at?: string | null
           resolved?: boolean | null
           resolved_at?: string | null
           resolved_by?: string | null
