@@ -14,6 +14,7 @@ import Tasks from "@/modules/crm/pages/Tasks";
 import Agenda from "@/modules/crm/pages/Agenda";
 import Settings from "@/modules/crm/pages/Settings";
 import Opportunities from "@/modules/crm/pages/Opportunities";
+import NegotiationDetail from "@/modules/crm/pages/NegotiationDetail";
 
 export default function CRMLayout() {
   return (
@@ -30,6 +31,7 @@ export default function CRMLayout() {
               <Route path="/pipeline" element={<Pipeline />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/opportunities" element={<Opportunities />} />
+              <Route path="/opportunities/:id" element={<NegotiationDetail />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/agenda" element={<Agenda />} />
