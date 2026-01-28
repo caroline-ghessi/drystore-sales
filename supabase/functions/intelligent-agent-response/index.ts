@@ -10,6 +10,17 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
+// Função de sanitização para prevenir prompt injection
+function sanitize(input: string | null | undefined): string {
+  if (!input) return '';
+  return input
+    .normalize('NFKC')
+    .replace(/[\x00-\x1F\x7F]/g, '')
+    .replace(/["\n\r\\<>]/g, ' ')
+    .substring(0, 100)
+    .trim();
+}
+
 // Função utilitária para obter data/hora de Brasília
 function getBrasiliaDateTime() {
   const now = new Date();
@@ -40,6 +51,103 @@ function getBrasiliaDateTime() {
     dayPeriod,
     isoString: brasiliaTime.toISOString()
   };
+}
+
+// Função para consolidar dados já coletados do cliente
+function buildCollectedDataSection(
+  conversation: any,
+  extractedContexts: any[] | null
+): string {
+  const collectedData: string[] = [];
+  
+  // 1. Dados da tabela conversations (fonte primária - já tem customer_name do WhatsApp)
+  if (conversation.customer_name) {
+    collectedData.push(`- Nome: ${sanitize(conversation.customer_name)} ✓`);
+  }
+  if (conversation.customer_email) {
+    collectedData.push(`- Email: ${sanitize(conversation.customer_email)} ✓`);
+  }
+  if (conversation.customer_city) {
+    const location = conversation.customer_state 
+      ? `${sanitize(conversation.customer_city)}/${sanitize(conversation.customer_state)}`
+      : sanitize(conversation.customer_city);
+    collectedData.push(`- Localização: ${location} ✓`);
+  }
+  if (conversation.whatsapp_number) {
+    // Formatar número para exibição
+    const phoneDisplay = conversation.whatsapp_number.replace('@s.whatsapp.net', '');
+    collectedData.push(`- WhatsApp: ${phoneDisplay} ✓`);
+  }
+  
+  // 2. Dados da tabela extracted_contexts (dados extraídos pela IA)
+  if (extractedContexts && extractedContexts.length > 0) {
+    for (const ctx of extractedContexts) {
+      if (ctx.context_type === 'customer_data' && ctx.context_data) {
+        const data = ctx.context_data;
+        
+        // Evitar duplicação - só adicionar se não veio de conversations
+        if (data.nome && !conversation.customer_name) {
+          collectedData.push(`- Nome: ${sanitize(data.nome)} ✓`);
+        }
+        if (data.email && !conversation.customer_email) {
+          collectedData.push(`- Email: ${sanitize(data.email)} ✓`);
+        }
+        if (data.cidade && !conversation.customer_city) {
+          collectedData.push(`- Cidade: ${sanitize(data.cidade)} ✓`);
+        }
+        if (data.estado && !conversation.customer_state) {
+          collectedData.push(`- Estado: ${sanitize(data.estado)} ✓`);
+        }
+        
+        // Dados específicos do projeto
+        if (data.consumo_energia || data['Consumo de energia']) {
+          collectedData.push(`- Consumo de energia: ${sanitize(data.consumo_energia || data['Consumo de energia'])} ✓`);
+        }
+        if (data.tamanho_telhado || data.roof_size_m2) {
+          collectedData.push(`- Tamanho do telhado: ${sanitize(String(data.tamanho_telhado || data.roof_size_m2))} m² ✓`);
+        }
+        if (data.produto_desejado || data['Produto desejado']) {
+          collectedData.push(`- Produto desejado: ${sanitize(data.produto_desejado || data['Produto desejado'])} ✓`);
+        }
+      }
+    }
+  }
+  
+  // Se não há dados coletados, retornar string vazia
+  if (collectedData.length === 0) {
+    return '';
+  }
+  
+  // Construir seção de memória com instruções claras
+  return `
+DADOS JÁ COLETADOS DO CLIENTE (NÃO PERGUNTE NOVAMENTE):
+${collectedData.join('\n')}
+
+INSTRUÇÃO CRÍTICA: 
+- Use o nome do cliente naturalmente na conversa quando disponível
+- NUNCA pergunte informações marcadas com ✓
+- Se o cliente já informou email, cidade, etc., não solicite novamente
+- Apenas pergunte dados que AINDA NÃO foram coletados
+`;
+}
+
+// Função para detectar cliente retornando (re-engajamento)
+function buildReengagementContext(conversation: any): string {
+  // Verificar se é cliente retornando (campos serão adicionados na migração)
+  const isReturning = conversation.is_returning_customer === true;
+  const previousInterests = conversation.previous_product_groups || [];
+  
+  if (!isReturning || previousInterests.length === 0) {
+    return '';
+  }
+  
+  return `
+CONTEXTO DE RETORNO:
+- Este cliente JÁ FOI ATENDIDO antes
+- Interesses anteriores: ${previousInterests.join(', ')}
+- Trate com acolhimento especial: "Que bom ter você de volta!"
+- Não repita a apresentação da empresa, vá direto ao ponto
+`;
 }
 
 Deno.serve(async (req) => {
@@ -146,9 +254,16 @@ Deno.serve(async (req) => {
       .eq('conversation_id', conversationId)
       .eq('is_active', true);
 
-    const contextInfo = extractedContexts?.map(ctx => 
-      `${ctx.context_type}: ${JSON.stringify(ctx.context_data)}`
-    ).join('\n') || '';
+    // NOVO: Construir seção de dados já coletados (MEMÓRIA DO BOT)
+    const collectedDataSection = buildCollectedDataSection(conversation, extractedContexts);
+    
+    // NOVO: Construir seção de re-engajamento se aplicável
+    const reengagementSection = buildReengagementContext(conversation);
+    
+    // Log para debug
+    if (collectedDataSection) {
+      console.log(`📋 Bot memory active - collected data found for conversation ${conversationId}`);
+    }
 
     // RAG: Buscar conhecimento relevante da base de dados
     // SKIP para agente de triagem (general) - usa apenas o prompt
@@ -282,8 +397,14 @@ INFORMAÇÕES DA EMPRESA:
 - Atendemos em todo o Sul do Brasil
 - Temos expertise em energia solar, telhas, steel frame, drywall, ferramentas, pisos e acabamentos`;
 
-    if (contextInfo) {
-      finalPrompt += `\n\nINFORMAÇÕES DO CLIENTE:\n${contextInfo}`;
+    // NOVO: Injetar seção de dados já coletados (MEMÓRIA)
+    if (collectedDataSection) {
+      finalPrompt += `\n\n${collectedDataSection}`;
+    }
+    
+    // NOVO: Injetar seção de re-engajamento se aplicável
+    if (reengagementSection) {
+      finalPrompt += `\n\n${reengagementSection}`;
     }
     
     if (conversationHistory) {
@@ -338,7 +459,8 @@ RESPOSTA: Responda de forma natural e personalizada, considerando todo o context
       response,
       agentName: finalAgent.agent_name,
       agentType: finalAgent.agent_type,
-      messageId: messageData.id
+      messageId: messageData.id,
+      memoryActive: !!collectedDataSection
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
