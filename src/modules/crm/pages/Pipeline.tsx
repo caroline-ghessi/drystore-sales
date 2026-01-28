@@ -3,24 +3,18 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Filter, Search, Kanban, List } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { KanbanStats } from '../components/pipeline/KanbanStats';
 import { PipelineKanban } from '../components/pipeline/PipelineKanban';
 
 export default function Pipeline() {
   const [view, setView] = React.useState<'kanban' | 'list'>('kanban');
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-foreground">Pipeline de Vendas</h1>
-          <p className="text-sm text-muted-foreground">
-            Acompanhe o progresso das suas oportunidades através do funil de vendas
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-3">
+          
           {/* View Toggle */}
           <Tabs value={view} onValueChange={(v) => setView(v as 'kanban' | 'list')}>
             <TabsList className="grid w-[160px] grid-cols-2">
@@ -43,7 +37,7 @@ export default function Pipeline() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Buscar oportunidades..." 
-            className="pl-9"
+            className="pl-9 bg-background"
           />
         </div>
         
@@ -59,12 +53,9 @@ export default function Pipeline() {
         </div>
       </div>
 
-      {/* Pipeline Stats */}
-      <KanbanStats />
-
       {/* Pipeline Board */}
       {view === 'kanban' ? (
-        <div className="bg-muted/30 rounded-lg p-4">
+        <div className="bg-muted/20 rounded-lg p-3">
           <PipelineKanban />
         </div>
       ) : (
