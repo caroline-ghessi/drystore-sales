@@ -11,7 +11,7 @@ import AtendentesPage from "@/modules/whatsapp/pages/Atendentes";
 import { VendedoresPage } from "@/modules/whatsapp/pages/Vendedores";
 import { ConversationsPage } from "@/modules/whatsapp/pages/Conversations";
 import WhatsAppDashboard from "@/modules/whatsapp/pages/Dashboard";
-import LeadsQuentes from "@/modules/whatsapp/pages/LeadsQuentes";
+
 import ExcludedContactsPage from "@/modules/whatsapp/pages/ExcludedContactsPage";
 
 export default function WhatsAppLayout() {
@@ -30,7 +30,7 @@ export default function WhatsAppLayout() {
               <Route path="vendedores/contatos-excluidos" element={<ExcludedContactsPage />} />
               <Route path="atendentes" element={<AtendentesPage />} />
               <Route path="analytics" element={<Analytics />} />
-              <Route path="leads-quentes" element={<LeadsQuentes />} />
+              
               <Route path="templates" element={<div className="p-6"><h1 className="text-2xl font-semibold">Templates</h1><p className="text-muted-foreground mt-2">Em desenvolvimento</p></div>} />
               <Route path="settings" element={<div className="p-6"><h1 className="text-2xl font-semibold">Configurações</h1><p className="text-muted-foreground mt-2">Em desenvolvimento</p></div>} />
               <Route path="logs" element={<div className="p-6"><h1 className="text-2xl font-semibold">Logs</h1><p className="text-muted-foreground mt-2">Em desenvolvimento</p></div>} />

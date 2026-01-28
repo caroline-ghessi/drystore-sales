@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
   MessageCircle, 
-  Flame, 
   BarChart3, 
   Settings, 
   ChevronLeft,
@@ -38,7 +37,7 @@ export function Sidebar() {
   const { data: conversations } = useConversations();
   
   const totalConversations = conversations?.length || 0;
-  const hotLeads = conversations?.filter(c => c.lead_temperature === 'hot').length || 0;
+  
   const activeConversations = conversations?.filter(c => c.status === 'active').length || 0;
 
   const menuGroups: MenuGroup[] = [
@@ -75,13 +74,6 @@ export function Sidebar() {
     {
       title: 'Atendimento',
       items: [
-        {
-          title: 'Leads Quentes',
-          url: '/whatsapp/leads-quentes',
-          icon: Flame,
-          badge: hotLeads,
-          description: 'Leads com alta conversão'
-        },
         {
           title: 'Analytics',
           url: '/whatsapp/analytics',
@@ -217,10 +209,6 @@ export function Sidebar() {
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400">Conversas Ativas</span>
               <span className="text-green-400 font-semibold">{activeConversations}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Leads Quentes</span>
-              <span className="text-orange-400 font-semibold">{hotLeads}</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
