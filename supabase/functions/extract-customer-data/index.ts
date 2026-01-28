@@ -6,6 +6,110 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Função para sanitizar dados antes de salvar (previne problemas de encoding)
+function sanitize(input: string | null): string {
+  if (!input) return '';
+  return input
+    .normalize('NFKC')
+    .replace(/[\x00-\x1F\x7F]/g, '')
+    .replace(/["\n\r\\<>]/g, ' ')
+    .substring(0, 200)
+    .trim();
+}
+
+// Função para extrair dados com rotação automática de provedores
+async function extractWithProviderRotation(
+  prompt: string,
+  maxTokens: number = 2000
+): Promise<any> {
+  const providers = [
+    {
+      name: 'Claude',
+      model: 'claude-3-5-sonnet-20241022',
+      apiKey: Deno.env.get('ANTHROPIC_API_KEY'),
+      url: 'https://api.anthropic.com/v1/messages',
+      headers: (key: string) => ({
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01'
+      }),
+      body: (model: string, prompt: string, tokens: number) => ({
+        model,
+        max_tokens: tokens,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      extractResponse: (data: any) => data.content[0].text
+    },
+    {
+      name: 'OpenAI',
+      model: 'gpt-4o-mini',
+      apiKey: Deno.env.get('OPENAI_API_KEY'),
+      url: 'https://api.openai.com/v1/chat/completions',
+      headers: (key: string) => ({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      }),
+      body: (model: string, prompt: string, tokens: number) => ({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: tokens
+      }),
+      extractResponse: (data: any) => data.choices[0].message.content
+    },
+    {
+      name: 'xAI',
+      model: 'grok-beta',
+      apiKey: Deno.env.get('XAI_API_KEY'),
+      url: 'https://api.x.ai/v1/chat/completions',
+      headers: (key: string) => ({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      }),
+      body: (model: string, prompt: string, tokens: number) => ({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: tokens
+      }),
+      extractResponse: (data: any) => data.choices[0].message.content
+    }
+  ];
+
+  for (const provider of providers) {
+    if (!provider.apiKey) {
+      console.log(`⚠️ ${provider.name} API key not configured, skipping...`);
+      continue;
+    }
+
+    try {
+      console.log(`🔄 Trying ${provider.name} for data extraction...`);
+      
+      const response = await fetch(provider.url, {
+        method: 'POST',
+        headers: provider.headers(provider.apiKey),
+        body: JSON.stringify(provider.body(provider.model, prompt, maxTokens))
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ ${provider.name} failed:`, response.status, errorText);
+        continue; // Try next provider
+      }
+
+      const data = await response.json();
+      const result = provider.extractResponse(data);
+      
+      console.log(`✅ ${provider.name} data extraction successful`);
+      return result;
+      
+    } catch (error: any) {
+      console.error(`❌ ${provider.name} error:`, error.message);
+      continue; // Try next provider
+    }
+  }
+
+  throw new Error('All data extraction providers failed');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -62,88 +166,14 @@ ${conversationHistory}
 
 Última mensagem: "${message}"`;
 
-    // Get appropriate API key based on configured LLM
-    let apiKey = '';
-    let apiUrl = '';
-    let headers = {};
-    let requestBody = {};
-
-    const llmModel = extractorAgent.llm_model || 'claude-3-5-sonnet-20241022';
-    
-    if (llmModel.startsWith('claude')) {
-      const claudeApiKey = Deno.env.get('ANTHROPIC_API_KEY');
-      if (!claudeApiKey) throw new Error('Anthropic API key not configured');
-      
-      apiUrl = 'https://api.anthropic.com/v1/messages';
-      headers = {
-        'Content-Type': 'application/json',
-        'x-api-key': claudeApiKey,
-        'anthropic-version': '2023-06-01'
-      };
-      requestBody = {
-        model: llmModel,
-        max_tokens: 2000,
-        messages: [{ role: 'user', content: fullPrompt }]
-      };
-    } else if (llmModel.startsWith('gpt')) {
-      const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-      if (!openaiApiKey) throw new Error('OpenAI API key not configured');
-      
-      apiUrl = 'https://api.openai.com/v1/chat/completions';
-      headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiApiKey}`
-      };
-      requestBody = {
-        model: llmModel,
-        messages: [{ role: 'user', content: fullPrompt }],
-        max_tokens: 2000
-      };
-    } else if (llmModel.startsWith('grok')) {
-      const xaiApiKey = Deno.env.get('XAI_API_KEY');
-      if (!xaiApiKey) throw new Error('xAI API key not configured');
-      
-      apiUrl = 'https://api.x.ai/v1/chat/completions';
-      headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${xaiApiKey}`
-      };
-      requestBody = {
-        model: llmModel,
-        messages: [{ role: 'user', content: fullPrompt }],
-        max_tokens: 2000
-      };
-    } else {
-      throw new Error(`Unsupported LLM model: ${llmModel}`);
-    }
-
-    // Call the configured LLM API
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('LLM API error:', errorText);
-      throw new Error(`LLM API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // Extract data based on LLM type
-    let extractedDataText = '';
-    if (llmModel.startsWith('claude')) {
-      extractedDataText = data.content[0].text.trim();
-    } else if (llmModel.startsWith('gpt') || llmModel.startsWith('grok')) {
-      extractedDataText = data.choices[0].message.content.trim();
-    }
+    // Call LLM with provider rotation (fixes 404 error)
+    console.log('🔄 Calling LLM with provider rotation for data extraction...');
+    const extractedDataText = await extractWithProviderRotation(fullPrompt, 2000);
 
     console.log('Raw extraction result:', extractedDataText);
 
     // Try to parse as JSON
-    let extractedData = {};
+    let extractedData: Record<string, any> = {};
     try {
       extractedData = JSON.parse(extractedDataText);
     } catch (parseError) {
@@ -159,13 +189,13 @@ ${conversationHistory}
     // Update project context and conversation data
     const contextData = {
       conversation_id: conversationId,
-      whatsapp_confirmed: (extractedData as any).whatsapp || (extractedData as any).telefone || null,
-      energy_consumption: (extractedData as any)['Consumo de energia'] || (extractedData as any).energy_consumption || null,
-      roof_status: (extractedData as any)['Estado do telhado'] || (extractedData as any).roof_status || null,
-      project_status: (extractedData as any)['Projeto arquitetônico'] || (extractedData as any).project_status || null,
-      floor_rooms: (extractedData as any)['Quantidade de piso'] || (extractedData as any).floor_rooms || null,
-      materials_list: (extractedData as any)['Lista de materiais'] ? [(extractedData as any)['Lista de materiais']] : null,
-      desired_product: (extractedData as any)['Produto desejado'] || (extractedData as any).desired_product || null,
+      whatsapp_confirmed: extractedData.whatsapp || extractedData.telefone || null,
+      energy_consumption: extractedData['Consumo de energia'] || extractedData.energy_consumption || null,
+      roof_status: extractedData['Estado do telhado'] || extractedData.roof_status || null,
+      project_status: extractedData['Projeto arquitetônico'] || extractedData.project_status || null,
+      floor_rooms: extractedData['Quantidade de piso'] || extractedData.floor_rooms || null,
+      materials_list: extractedData['Lista de materiais'] ? [extractedData['Lista de materiais']] : null,
+      desired_product: extractedData['Produto desejado'] || extractedData.desired_product || null,
       notes: `Dados extraídos: ${JSON.stringify(extractedData)}`,
       updated_at: new Date().toISOString()
     };
@@ -193,22 +223,22 @@ ${conversationHistory}
     if (extractedContextError) {
       console.warn('Failed to save to extracted_contexts:', extractedContextError);
     } else {
-      console.log('Successfully saved to extracted_contexts for conversation:', conversationId);
+      console.log('✅ Successfully saved to extracted_contexts for conversation:', conversationId);
     }
 
-    // Update conversation data if available
-    const conversationUpdates: any = {};
-    if ((extractedData as any).nome || (extractedData as any).name) {
-      conversationUpdates.customer_name = (extractedData as any).nome || (extractedData as any).name;
+    // Update conversation data if available (with sanitization)
+    const conversationUpdates: Record<string, any> = {};
+    if (extractedData.nome || extractedData.name) {
+      conversationUpdates.customer_name = sanitize(extractedData.nome || extractedData.name);
     }
-    if ((extractedData as any).email) {
-      conversationUpdates.customer_email = (extractedData as any).email;
+    if (extractedData.email) {
+      conversationUpdates.customer_email = sanitize(extractedData.email);
     }
-    if ((extractedData as any).cidade || (extractedData as any).city) {
-      conversationUpdates.customer_city = (extractedData as any).cidade || (extractedData as any).city;
+    if (extractedData.cidade || extractedData.city) {
+      conversationUpdates.customer_city = sanitize(extractedData.cidade || extractedData.city);
     }
-    if ((extractedData as any).estado || (extractedData as any).state) {
-      conversationUpdates.customer_state = (extractedData as any).estado || (extractedData as any).state;
+    if (extractedData.estado || extractedData.state) {
+      conversationUpdates.customer_state = sanitize(extractedData.estado || extractedData.state);
     }
 
     if (Object.keys(conversationUpdates).length > 0) {
@@ -216,12 +246,14 @@ ${conversationHistory}
         .from('conversations')
         .update(conversationUpdates)
         .eq('id', conversationId);
+      
+      console.log(`✅ Conversation ${conversationId} updated with:`, Object.keys(conversationUpdates));
     }
 
     return new Response(JSON.stringify({
       customerData: extractedData,
       contextUpdated: true,
-      llmModel: llmModel
+      providersUsed: 'rotation'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
