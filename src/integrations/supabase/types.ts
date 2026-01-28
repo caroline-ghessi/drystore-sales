@@ -471,12 +471,15 @@ export type Database = {
           customer_state: string | null
           first_message_at: string | null
           id: string
+          is_returning_customer: boolean | null
+          last_lead_sent_at: string | null
           last_message_at: string | null
           lead_score: number | null
           lead_temperature:
             | Database["public"]["Enums"]["lead_temperature"]
             | null
           metadata: Json | null
+          previous_product_groups: Json | null
           product_group: Database["public"]["Enums"]["product_category"] | null
           profile_pic_url: string | null
           source: string | null
@@ -498,12 +501,15 @@ export type Database = {
           customer_state?: string | null
           first_message_at?: string | null
           id?: string
+          is_returning_customer?: boolean | null
+          last_lead_sent_at?: string | null
           last_message_at?: string | null
           lead_score?: number | null
           lead_temperature?:
             | Database["public"]["Enums"]["lead_temperature"]
             | null
           metadata?: Json | null
+          previous_product_groups?: Json | null
           product_group?: Database["public"]["Enums"]["product_category"] | null
           profile_pic_url?: string | null
           source?: string | null
@@ -525,12 +531,15 @@ export type Database = {
           customer_state?: string | null
           first_message_at?: string | null
           id?: string
+          is_returning_customer?: boolean | null
+          last_lead_sent_at?: string | null
           last_message_at?: string | null
           lead_score?: number | null
           lead_temperature?:
             | Database["public"]["Enums"]["lead_temperature"]
             | null
           metadata?: Json | null
+          previous_product_groups?: Json | null
           product_group?: Database["public"]["Enums"]["product_category"] | null
           profile_pic_url?: string | null
           source?: string | null
