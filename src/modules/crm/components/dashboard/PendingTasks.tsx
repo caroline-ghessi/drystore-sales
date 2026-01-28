@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowRight, AlertCircle, Sparkles, Phone, FileText, Users } from 'lucide-react';
+import { ArrowRight, AlertCircle, Sparkles, Phone, FileText, Users, CheckCircle2 } from 'lucide-react';
 import { useOpportunities } from '../../hooks/useOpportunities';
 import { cn } from '@/lib/utils';
 
@@ -55,30 +55,8 @@ export function PendingTasks() {
       });
     });
 
-  // If no real tasks, show placeholder tasks
-  const tasks: Task[] = derivedTasks.length > 0 ? derivedTasks : [
-    {
-      id: 'placeholder-1',
-      title: 'Ligar para cliente potencial',
-      dueInfo: 'Hoje 16:00',
-      type: 'today',
-      icon: <Phone className="h-4 w-4" />,
-    },
-    {
-      id: 'placeholder-2',
-      title: 'Enviar proposta comercial',
-      dueInfo: 'Amanhã 09:00',
-      type: 'upcoming',
-      icon: <FileText className="h-4 w-4" />,
-    },
-    {
-      id: 'placeholder-3',
-      title: 'Reunião de follow-up',
-      dueInfo: 'Sexta 10:30',
-      type: 'upcoming',
-      icon: <Users className="h-4 w-4" />,
-    },
-  ];
+  // Usar apenas tarefas reais derivadas de oportunidades
+  const tasks: Task[] = derivedTasks;
 
   const pendingCount = tasks.filter(t => !completedTasks.has(t.id)).length;
 
@@ -118,7 +96,13 @@ export function PendingTasks() {
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        {tasks.map((task) => {
+        {tasks.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <CheckCircle2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">Nenhuma tarefa pendente</p>
+            <p className="text-xs mt-1">Novas tarefas aparecerão conforme leads forem processados</p>
+          </div>
+        ) : tasks.map((task) => {
           const isCompleted = completedTasks.has(task.id);
           return (
             <div 
@@ -157,14 +141,16 @@ export function PendingTasks() {
           );
         })}
         
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="w-full mt-2 text-xs text-muted-foreground hover:text-foreground"
-        >
-          Ver todas as tarefas
-          <ArrowRight className="h-3 w-3 ml-1" />
-        </Button>
+        {tasks.length > 0 && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="w-full mt-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            Ver todas as tarefas
+            <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

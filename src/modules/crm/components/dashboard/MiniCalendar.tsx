@@ -1,21 +1,16 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, getDay, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useAgendaEvents } from '../../hooks/useAgendaEvents';
 
 interface CalendarEvent {
   date: Date;
   type: 'urgent' | 'meeting' | 'followup';
 }
-
-// Sample events - in production these would come from opportunities/tasks
-const sampleEvents: CalendarEvent[] = [
-  { date: new Date(), type: 'urgent' },
-  { date: addMonths(new Date(), 0), type: 'meeting' },
-];
 
 const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
@@ -27,6 +22,15 @@ const eventTypeColors = {
 
 export function MiniCalendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const { events: agendaEvents, isLoading } = useAgendaEvents();
+
+  // Converter eventos da agenda para o formato do calendário
+  const calendarEvents: CalendarEvent[] = (agendaEvents || []).map(e => ({
+    date: e.startTime instanceof Date ? e.startTime : new Date(e.startTime),
+    type: e.category === 'Ligação' ? 'urgent' 
+        : e.category === 'Reunião' ? 'meeting' 
+        : 'followup'
+  }));
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -42,7 +46,7 @@ export function MiniCalendar() {
   const goToNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
 
   const getEventsForDay = (day: Date): CalendarEvent[] => {
-    return sampleEvents.filter(event => isSameDay(event.date, day));
+    return calendarEvents.filter(event => isSameDay(event.date, day));
   };
 
   return (
@@ -113,21 +117,32 @@ export function MiniCalendar() {
           })}
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <div className="w-2 h-2 rounded-full bg-destructive" />
-            Urgente
+        {/* Legend or empty state */}
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-border">
+            <span className="text-xs text-muted-foreground">Carregando eventos...</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <div className="w-2 h-2 rounded-full bg-primary" />
-            Reunião
+        ) : calendarEvents.length === 0 ? (
+          <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-border">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Nenhum evento agendado</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <div className="w-2 h-2 rounded-full bg-accent-foreground" />
-            Follow-up
+        ) : (
+          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <div className="w-2 h-2 rounded-full bg-destructive" />
+              Urgente
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              Reunião
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <div className="w-2 h-2 rounded-full bg-accent-foreground" />
+              Follow-up
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

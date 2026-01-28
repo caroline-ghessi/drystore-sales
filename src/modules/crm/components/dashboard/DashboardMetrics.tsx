@@ -65,15 +65,13 @@ export function DashboardMetrics() {
         icon={<DollarSign className="h-5 w-5" />}
         value={stats ? formatCurrency(stats.totalPipelineValue) : 'R$ 0'}
         label="Receita do Mês"
-        change="+12%"
-        changeType="positive"
         isLoading={isLoading}
       />
       <MetricCard
         icon={<Target className="h-5 w-5" />}
         value={stats?.activeLeads || 0}
         label="Deals Ativos"
-        change={`+${stats?.newOpportunitiesToday || 0}`}
+        change={stats?.newOpportunitiesToday ? `+${stats.newOpportunitiesToday} hoje` : undefined}
         changeType="positive"
         isLoading={isLoading}
       />
@@ -81,16 +79,12 @@ export function DashboardMetrics() {
         icon={<Brain className="h-5 w-5" />}
         value={aiLeadsCount || 0}
         label="Leads (IA)"
-        change="Novo"
-        changeType="positive"
         isLoading={isLoading}
       />
       <MetricCard
         icon={<TrendingUp className="h-5 w-5" />}
         value={stats ? `${stats.conversionRate}%` : '0%'}
         label="Taxa de Conversão"
-        change="+3%"
-        changeType="positive"
         isLoading={isLoading}
       />
     </div>
