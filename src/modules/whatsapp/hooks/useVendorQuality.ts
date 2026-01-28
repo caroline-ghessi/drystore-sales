@@ -32,14 +32,19 @@ export function useVendorQuality(vendorId: string, periodDays: string) {
         .eq('vendor_id', vendorId)
         .gte('metric_date', startDate.toISOString().split('T')[0]);
 
-      // Buscar conversas recentes
+      // Buscar conversas recentes (incluindo metadata para filtrar contatos internos)
       const { data: conversations } = await supabase
         .from('vendor_conversations')
-        .select('*')
+        .select('*, metadata')
         .eq('vendor_id', vendorId)
         .gte('last_message_at', startDate.toISOString())
         .order('last_message_at', { ascending: false })
         .limit(10);
+
+      // Filtrar conversas de contatos internos
+      const filteredConversations = (conversations || []).filter(
+        conv => !(conv.metadata as { is_internal_contact?: boolean })?.is_internal_contact
+      );
 
       // Calcular estatísticas baseadas nas análises do agente de IA
       let avgResponseTime = 0;
@@ -82,8 +87,8 @@ export function useVendorQuality(vendorId: string, periodDays: string) {
         satisfactionRate = qualityScore > 0 ? qualityScore * 10 : 85;
       }
 
-      const totalConversations = conversations?.length || 0;
-      const activeConversations = conversations?.filter(c => c.conversation_status === 'active').length || 0;
+      const totalConversations = filteredConversations?.length || 0;
+      const activeConversations = filteredConversations?.filter(c => c.conversation_status === 'active').length || 0;
 
       // Usar alertas reais do agente de IA
       const alerts = qualityAlerts?.map(alert => ({
@@ -96,14 +101,14 @@ export function useVendorQuality(vendorId: string, periodDays: string) {
         metadata: alert.metadata
       })) || [];
 
-      // Adicionar métricas de análise às conversas
-      const conversationsWithMetrics = conversations?.map(conv => {
+      // Adicionar métricas de análise às conversas (usando conversas filtradas)
+      const conversationsWithMetrics = filteredConversations?.map(conv => {
         const analysis = qualityAnalysis?.find(a => a.conversation_id === conv.id);
         const traditionalMetrics = metrics?.find(m => m.conversation_id === conv.id);
         
         return {
           ...conv,
-          response_time: (analysis?.analysis_data as any)?.response_time_minutes || 
+          response_time: (analysis?.analysis_data as { response_time_minutes?: number })?.response_time_minutes || 
                         traditionalMetrics?.response_time_avg_minutes || 0,
           quality_score: analysis?.quality_score || traditionalMetrics?.automated_quality_score || 0,
           analysis_data: analysis?.analysis_data,

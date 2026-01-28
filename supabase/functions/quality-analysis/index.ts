@@ -27,6 +27,26 @@ serve(async (req) => {
       );
     }
 
+    // NOVA VERIFICAÇÃO: Checar se conversa é de contato interno
+    const { data: conversation } = await supabase
+      .from('vendor_conversations')
+      .select('metadata')
+      .eq('id', conversationId)
+      .single();
+
+    if (conversation?.metadata?.is_internal_contact) {
+      console.log(`[quality-analysis] Skipping internal contact conversation: ${conversationId}`);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          skipped: true, 
+          reason: 'internal_contact',
+          message: 'Conversa com contato interno ignorada na análise de qualidade'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Buscar agente de qualidade ativo
     const { data: qualityAgent, error: agentError } = await supabase
       .from('agent_configs')

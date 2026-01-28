@@ -784,6 +784,45 @@ export type Database = {
           },
         ]
       }
+      excluded_contacts: {
+        Row: {
+          contact_type: Database["public"]["Enums"]["contact_type"] | null
+          created_at: string | null
+          created_by: string | null
+          department: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          phone_number: string
+          reason: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          contact_type?: Database["public"]["Enums"]["contact_type"] | null
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          phone_number: string
+          reason?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          contact_type?: Database["public"]["Enums"]["contact_type"] | null
+          created_at?: string | null
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          phone_number?: string
+          reason?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       extracted_contexts: {
         Row: {
           confidence: number | null
@@ -3041,6 +3080,13 @@ export type Database = {
         | "summarizer"
         | "quality_monitor"
       app_role: "admin" | "supervisor" | "atendente" | "vendedor"
+      contact_type:
+        | "employee"
+        | "vendor"
+        | "test"
+        | "supplier"
+        | "partner"
+        | "spam"
       conversation_status:
         | "waiting"
         | "active"
@@ -3255,6 +3301,14 @@ export const Constants = {
         "quality_monitor",
       ],
       app_role: ["admin", "supervisor", "atendente", "vendedor"],
+      contact_type: [
+        "employee",
+        "vendor",
+        "test",
+        "supplier",
+        "partner",
+        "spam",
+      ],
       conversation_status: [
         "waiting",
         "active",

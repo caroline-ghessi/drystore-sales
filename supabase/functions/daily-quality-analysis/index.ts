@@ -60,10 +60,10 @@ serve(async (req) => {
       try {
         console.log(`[daily-quality-analysis] Processando vendedor: ${vendor.name} (${vendor.id})`);
 
-        // Buscar conversas do vendedor com atividade nas últimas 24h
+        // Buscar conversas do vendedor com atividade nas últimas 24h (incluindo metadata)
         const { data: conversations, error: convError } = await supabase
           .from('vendor_conversations')
-          .select('id, chat_id, customer_name, customer_phone, last_message_at, total_messages')
+          .select('id, chat_id, customer_name, customer_phone, last_message_at, total_messages, metadata')
           .eq('vendor_id', vendor.id)
           .gte('last_message_at', yesterday.toISOString())
           .order('last_message_at', { ascending: false });
@@ -79,10 +79,15 @@ serve(async (req) => {
           continue;
         }
 
-        console.log(`[daily-quality-analysis] ${conversations.length} conversas encontradas para ${vendor.name}`);
+        // FILTRAR contatos internos (colaboradores) para não distorcer métricas
+        const filteredConversations = conversations.filter(conv => 
+          !conv.metadata?.is_internal_contact
+        );
+
+        console.log(`[daily-quality-analysis] ${conversations.length} conversas encontradas, ${filteredConversations.length} após filtrar contatos internos para ${vendor.name}`);
 
         // Para cada conversa, verificar se já foi analisada hoje
-        for (const conversation of conversations) {
+        for (const conversation of filteredConversations) {
           try {
             // Verificar análise existente nas últimas 24h
             const { data: existingAnalysis } = await supabase
