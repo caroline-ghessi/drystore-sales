@@ -1,212 +1,189 @@
 
-# Plano: Rotina de Análise Diária + Alertas WhatsApp
 
-## Resumo
+# Plano: Separação de Métricas Bot vs Vendedores no Analytics WhatsApp
 
-Implementar sistema completo de análise de qualidade com:
-1. **Análise diária às 20h** - Processar todas as conversas do dia
-2. **Alertas críticos às 8:30h** - Enviar problemas graves diariamente  
-3. **Acompanhamento semanal às 8:30h (segundas)** - Resumo de alertas amarelos
+## Contexto do Problema
 
-## Fluxo Completo
+Atualmente, o módulo de Analytics do WhatsApp não distingue claramente entre:
+- **Atendimento do Bot (IA)**: Conversas gerenciadas pelos agentes de IA via WhatsApp da empresa
+- **Atendimento dos Vendedores**: Conversas nos WhatsApps individuais dos vendedores
 
-```text
-                    ┌─────────────────────────────────────────┐
-                    │         ANÁLISE DIÁRIA (20:00)          │
-                    │  daily-quality-analysis Edge Function    │
-                    └──────────────────┬──────────────────────┘
-                                       │
-                    ┌──────────────────▼──────────────────────┐
-                    │        Para cada vendedor ativo:         │
-                    │  - Buscar conversas do dia               │
-                    │  - Chamar quality-analysis               │
-                    │  - Salvar em vendor_quality_analysis     │
-                    │  - Criar alertas em quality_alerts       │
-                    └──────────────────┬──────────────────────┘
-                                       │
-          ┌────────────────────────────┼────────────────────────────┐
-          │                            │                            │
-          ▼                            ▼                            ▼
-┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│  quality_alerts     │    │ vendor_quality_     │    │   quality_metrics   │
-│  (severity: high/   │    │ analysis            │    │   (dashboard)       │
-│   medium/low)       │    │ (scores, SPIN)      │    │                     │
-└─────────┬───────────┘    └─────────────────────┘    └─────────────────────┘
-          │
-          ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    DISPARO DE ALERTAS                                    │
-├─────────────────────────────────────┬───────────────────────────────────┤
-│  DIÁRIO (8:30h) - Alertas Críticos  │  SEMANAL (Seg 8:30h) - Resumo     │
-│  severity = 'high' ou 'critical'    │  severity = 'medium' (amarelos)   │
-│  Não resolvidos (resolved = false)  │  Agregado por vendedor            │
-└─────────────────────────────────────┴───────────────────────────────────┘
-                                       │
-                                       ▼
-                    ┌─────────────────────────────────────────┐
-                    │    WhatsApp via WHAPI                    │
-                    │    De: +55 51 81155622 (Bot de Leads)   │
-                    │    Para: +55 51 98140-3789              │
-                    └─────────────────────────────────────────┘
+As métricas estão misturadas ou focam apenas em um dos dois, dificultando a análise de performance de cada camada do funil de atendimento.
+
+## Arquitetura de Dados Atual
+
+| Camada | Tabela Conversas | Tabela Mensagens | Identificador |
+|--------|------------------|------------------|---------------|
+| **Bot** | `conversations` | `messages` | `sender_type = 'bot'` |
+| **Atendente Humano** | `conversations` | `messages` | `sender_type = 'agent'` |
+| **Vendedores** | `vendor_conversations` | `vendor_messages` | `from_me = true` |
+
+**Volume atual (últimos 30 dias):**
+- Bot: ~17.000 mensagens em ~2.100 conversas
+- Atendentes humanos: ~168 mensagens
+- Vendedores: ~3.200 mensagens em ~314 conversas
+
+## Solução Proposta
+
+### Fase 1: Criar Hooks Separados para Métricas
+
+#### 1.1 Hook `useBotAnalytics.ts`
+Métricas específicas do atendimento por IA:
+- Total de conversas atendidas pelo bot
+- Mensagens enviadas pelo bot por dia
+- Tempo médio de resposta do bot (instantâneo)
+- Taxa de classificação correta (por categoria de produto)
+- Taxa de handoff (bot → vendedor)
+- Distribuição por agent_type (specialist, general)
+- Conversas ainda em atendimento bot vs encerradas
+
+#### 1.2 Hook `useVendorAnalytics.ts` (refatorar existente)
+Métricas específicas do atendimento humano dos vendedores:
+- Total de conversas por vendedor
+- Mensagens enviadas vs recebidas
+- Tempo médio de resposta dos vendedores
+- Score de qualidade por vendedor
+- Taxa de conversão (proposta enviada)
+- Tempo até primeira resposta
+
+### Fase 2: Criar Componentes de Visualização Separados
+
+#### 2.1 Novo Componente `BotMetrics.tsx`
+Dashboard específico para performance do bot:
+- Cards: Conversas Ativas, Taxa Handoff, Tempo Resposta, Classificações
+- Gráfico: Conversas por dia (bot)
+- Gráfico: Distribuição por categoria de produto
+- Gráfico: Taxa de sucesso por agent_type
+- Tabela: Conversas recentes com status
+
+#### 2.2 Refatorar `VendorPerformance.tsx`
+Manter foco exclusivo em vendedores, usando dados de `vendor_conversations`:
+- Cards: Vendedores Ativos, Tempo Médio, Score Qualidade
+- Gráfico: Performance por vendedor
+- Ranking de vendedores
+- Alertas de qualidade
+
+### Fase 3: Atualizar Página Analytics
+
+#### 3.1 Modificar `Analytics.tsx`
+Adicionar nova aba "Bot" ou reorganizar tabs:
+
+```
+Tabs atuais:
+- Visão Geral
+- Conversas
+- Vendedores
+- Leads
+- Qualidade
+
+Tabs propostas:
+- Visão Geral (mantém KPIs consolidados)
+- Atendimento Bot (nova - métricas do bot)
+- Atendimento Vendedores (renomear "Vendedores")
+- Leads
+- Qualidade (separar por bot vs vendedor)
 ```
 
-## Fase 1: Criar Edge Function de Análise Diária
+#### 3.2 Atualizar `AnalyticsOverview.tsx`
+Mostrar métricas lado a lado:
+- Seção "Atendimento Bot": conversas, tempo, taxa handoff
+- Seção "Atendimento Vendedores": conversas, tempo, qualidade
 
-### Arquivo: `supabase/functions/daily-quality-analysis/index.ts`
+## Arquivos a Criar
 
-**Responsabilidades:**
-- Executar às 20h (Brasília)
-- Buscar todos os vendedores ativos
-- Para cada vendedor: buscar conversas com atividade nas últimas 24h
-- Chamar `quality-analysis` para conversas não analisadas
-- Classificar alertas por severidade baseado no score
+| Arquivo | Descrição |
+|---------|-----------|
+| `src/modules/whatsapp/hooks/useBotAnalytics.ts` | Hook para métricas do bot |
+| `src/modules/whatsapp/components/analytics/BotMetrics.tsx` | Componente de métricas do bot |
 
-**Lógica de classificação de severidade:**
-| Score | Severidade | Cor |
-|-------|------------|-----|
-| 0-40 | critical/high | Vermelho |
-| 41-60 | medium | Amarelo |
-| 61-100 | low | Verde |
+## Arquivos a Modificar
 
-## Fase 2: Criar Edge Function de Disparo de Alertas
+| Arquivo | Modificação |
+|---------|-------------|
+| `src/modules/whatsapp/pages/Analytics.tsx` | Adicionar tab "Atendimento Bot" |
+| `src/modules/whatsapp/components/analytics/AnalyticsOverview.tsx` | Separar seções bot vs vendedor |
+| `src/modules/whatsapp/components/analytics/VendorPerformance.tsx` | Garantir foco em vendedores |
+| `src/modules/whatsapp/hooks/useVendorPerformance.ts` | Ajustar para usar apenas vendor_conversations |
 
-### Arquivo: `supabase/functions/send-quality-alerts/index.ts`
+## Métricas Específicas por Camada
 
-**Responsabilidades:**
-- Consultar alertas pendentes (resolved = false)
-- Formatar mensagem consolidada por vendedor
-- Enviar via WHAPI usando token `LEAD_BOT_WHAPI_TOKEN`
-- Marcar alertas como notificados (novo campo)
+### Métricas do Bot (IA)
+- **Conversas Atendidas**: Total de conversas onde o bot respondeu
+- **Taxa de Handoff**: % de conversas transferidas para vendedor
+- **Tempo Médio Resposta**: Tempo entre mensagem cliente e resposta bot
+- **Taxa de Classificação**: % de conversas classificadas corretamente por categoria
+- **Conversas por Categoria**: Distribuição por produto (solar, telhas, etc.)
+- **Conversas Pendentes**: Ainda em atendimento bot
 
-**Parâmetros de entrada:**
-- `alertType`: 'critical' (diário) ou 'weekly' (semanal)
-- `targetPhone`: '+5551981403789'
+### Métricas dos Vendedores
+- **Conversas por Vendedor**: Total de conversas individuais
+- **Tempo Primeira Resposta**: Tempo até vendedor responder lead
+- **Score de Qualidade**: Baseado em análise de IA (SPIN, vocabulário)
+- **Taxa de Conversão**: Leads que viraram propostas
+- **Mensagens por Conversa**: Volume de interação
 
-**Formato da mensagem crítica (diária):**
-```text
-🔴 ALERTAS CRÍTICOS DE QUALIDADE
+## Visualização Proposta
 
-📅 Data: 28/01/2026
-
-⚠️ VENDEDOR: Antônio César
-• Cliente: Fernanda E.R.S.
-  Score: 15/100 - Tempo resposta: 144min
-  Problema: Sem SPIN, sem cross-selling
-  
-• Cliente: Rodrigo Luongo
-  Score: 25/100 - Tempo resposta: 6min
-  Problema: Sem confirmação de valores
-
-Total: 2 atendimentos críticos
-Ação requerida: Intervenção urgente
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    ANALYTICS WHATSAPP                            │
+├─────────────────────────────────────────────────────────────────┤
+│  [Visão Geral] [Bot] [Vendedores] [Leads] [Qualidade]           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────────┐  ┌──────────────────────┐             │
+│  │   ATENDIMENTO BOT    │  │ ATENDIMENTO VENDEDOR │             │
+│  ├──────────────────────┤  ├──────────────────────┤             │
+│  │ Conversas: 2.139     │  │ Conversas: 314       │             │
+│  │ Msgs Bot: 17.042     │  │ Msgs Vendedor: 3.199 │             │
+│  │ Tempo Resp: <1s      │  │ Tempo Resp: 4.2min   │             │
+│  │ Handoff: 14.7%       │  │ Qualidade: 7.2/10    │             │
+│  └──────────────────────┘  └──────────────────────┘             │
+│                                                                  │
+│  [Gráficos comparativos e tendências]                           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**Formato da mensagem semanal (segundas):**
-```text
-📊 ACOMPANHAMENTO SEMANAL DE QUALIDADE
+## Queries SQL de Suporte
 
-📅 Semana: 20/01 a 26/01/2026
-
-🟡 ALERTAS DE ATENÇÃO
-
-VENDEDOR: Felipe Tubino
-• 3 atendimentos com pontuação média
-• Score médio: 52/100
-• Principal ponto: Falta de cross-selling
-
-VENDEDOR: Gabriel Rodrigues  
-• 2 atendimentos com pontuação média
-• Score médio: 48/100
-• Principal ponto: Tempo de resposta alto
-
-📈 Recomendação: Treinamento em técnicas SPIN
-```
-
-## Fase 3: Adicionar Campo de Controle
-
-Adicionar campo `notified_at` na tabela `quality_alerts` para evitar duplicação de notificações.
-
-## Fase 4: Criar Cron Jobs
-
-### Job 1: Análise Diária (20h Brasília = 23h UTC)
+### Métricas do Bot
 ```sql
--- daily-quality-analysis às 23:00 UTC (20:00 Brasília)
-SELECT cron.schedule(
-  'daily-quality-analysis',
-  '0 23 * * *',
-  $$
-  SELECT net.http_post(
-    url:='https://groqsnnytvjabgeaekkw.supabase.co/functions/v1/daily-quality-analysis',
-    headers:='{"Content-Type": "application/json", "Authorization": "Bearer ..."}'::jsonb,
-    body:='{"automated": true}'::jsonb
-  );
-  $$
-);
+-- Conversas atendidas pelo bot
+SELECT COUNT(DISTINCT conversation_id) as bot_conversations
+FROM messages 
+WHERE sender_type = 'bot' 
+  AND created_at >= NOW() - INTERVAL '30 days';
+
+-- Taxa de handoff (bot → vendedor)
+SELECT 
+  COUNT(CASE WHEN status = 'with_agent' THEN 1 END)::float / COUNT(*) * 100 as handoff_rate
+FROM conversations 
+WHERE created_at >= NOW() - INTERVAL '30 days';
 ```
 
-### Job 2: Alertas Críticos Diários (8:30h Brasília = 11:30 UTC)
+### Métricas dos Vendedores
 ```sql
--- send-quality-alerts críticos às 11:30 UTC (8:30 Brasília)
-SELECT cron.schedule(
-  'send-critical-quality-alerts',
-  '30 11 * * *',
-  $$
-  SELECT net.http_post(
-    url:='https://groqsnnytvjabgeaekkw.supabase.co/functions/v1/send-quality-alerts',
-    headers:='{"Content-Type": "application/json", "Authorization": "Bearer ..."}'::jsonb,
-    body:='{"alertType": "critical", "targetPhone": "5551981403789"}'::jsonb
-  );
-  $$
-);
+-- Performance por vendedor
+SELECT 
+  v.name,
+  COUNT(vc.id) as total_conversations,
+  SUM(vc.vendor_messages) as messages_sent,
+  AVG(qm.response_time_avg_minutes) as avg_response_time,
+  AVG(qm.automated_quality_score) as quality_score
+FROM vendors v
+LEFT JOIN vendor_conversations vc ON v.id = vc.vendor_id
+LEFT JOIN quality_metrics qm ON v.id = qm.vendor_id
+WHERE v.is_active = true
+GROUP BY v.id, v.name;
 ```
-
-### Job 3: Resumo Semanal (Segundas 8:30h Brasília)
-```sql
--- send-quality-alerts semanal às segundas 11:30 UTC (8:30 Brasília)
-SELECT cron.schedule(
-  'send-weekly-quality-summary',
-  '30 11 * * 1',
-  $$
-  SELECT net.http_post(
-    url:='https://groqsnnytvjabgeaekkw.supabase.co/functions/v1/send-quality-alerts',
-    headers:='{"Content-Type": "application/json", "Authorization": "Bearer ..."}'::jsonb,
-    body:='{"alertType": "weekly", "targetPhone": "5551981403789"}'::jsonb
-  );
-  $$
-);
-```
-
-## Arquivos a Criar/Modificar
-
-| Arquivo | Ação | Descrição |
-|---------|------|-----------|
-| `supabase/functions/daily-quality-analysis/index.ts` | Criar | Orquestrador de análise diária |
-| `supabase/functions/send-quality-alerts/index.ts` | Criar | Disparo de alertas WhatsApp |
-| `supabase/config.toml` | Editar | Registrar novas funções |
-| Database (migration) | SQL | Adicionar campo `notified_at` |
-| Database (insert) | SQL | Criar 3 cron jobs |
-
-## Pré-requisitos
-
-### Secret já configurado
-O token `LEAD_BOT_WHAPI_TOKEN` já existe e é usado pela função `send-lead-to-vendor`.
-
-### Número de destino
-- **Para:** +55 51 98140-3789 (formatado: 5551981403789)
-- **De:** +55 51 81155622 (Bot de Leads)
-
-## Validação
-
-Após implementação:
-1. Executar `daily-quality-analysis` manualmente
-2. Verificar alertas criados em `quality_alerts`
-3. Executar `send-quality-alerts` com `alertType: 'critical'`
-4. Confirmar recebimento no WhatsApp +55 51 98140-3789
-5. Verificar logs em `system_logs`
 
 ## Resultado Esperado
 
-- **20:00** - Sistema analisa todas as conversas do dia
-- **8:30 (diário)** - Supervisor recebe alertas críticos no WhatsApp
-- **8:30 (segundas)** - Supervisor recebe resumo semanal de atenções
-- Dashboard atualizado com métricas em tempo real
+Após implementação:
+1. Gestores poderão ver performance do bot separadamente
+2. Métricas de vendedores não serão "poluídas" com dados do bot
+3. Comparação clara entre as duas camadas de atendimento
+4. Identificação de gargalos específicos (bot lento? handoff alto? vendedor demorado?)
+5. KPIs mais precisos para cada etapa do funil
+
