@@ -1,40 +1,35 @@
 
 
-# Plano: Melhorar Kanban com @dnd-kit
+# Plano: Reformular Pagina Agenda com Novo Componente EventManager
 
 ## Resumo
 
-Implementar drag-and-drop no Kanban de Pipeline usando a biblioteca @dnd-kit, seguindo o modelo do 21st.dev. Isso permitira arrastar oportunidades entre os estagios do pipeline de forma intuitiva.
+Substituir todos os componentes atuais da pagina `/crm/agenda` pelo novo componente `EventManager` fornecido, que oferece uma experiencia de calendario mais rica com:
+- 4 visualizacoes (Mes, Semana, Dia, Lista)
+- Drag-and-drop de eventos
+- Sistema de filtros por cor, tags e categorias
+- Dialog completo para criar/editar eventos
+- Busca de eventos
+- Visual moderno com hover effects
 
 ---
 
-## Estrutura Visual com Drag-and-Drop
+## Estrutura Atual vs Nova
 
 ```text
-+-----------------------------------------------------------------------+
-|  Pipeline de Vendas                     [Kanban] [Lista] [Filtros]    |
-+-----------------------------------------------------------------------+
-|                                                                       |
-|  [Prospecção]      [Qualificação]     [Proposta]       [Negociação]   |
-|  +-------------+   +-------------+   +-------------+   +-------------+ |
-|  | Card 1    ←|   | Card A      |   | Card X      |   | Card Y      | |
-|  |   (drag)   |   |             |   |             |   |             | |
-|  +-------------+   +-------------+   +-------------+   +-------------+ |
-|  | Card 2      |   |             |   |             |   |             | |
-|  +-------------+   |  ↓ drop     |   |             |   |             | |
-|                    |   here      |   |             |   |             | |
-|                    +-------------+   +-------------+   +-------------+ |
-|  Total: R$ 50k     Total: R$ 30k     Total: R$ 80k     Total: R$ 120k |
-+-----------------------------------------------------------------------+
+ATUAL                                    NOVO (EventManager)
++----------------------------------+     +----------------------------------+
+| AgendaHeader (toggle Dia/Sem/Mes)|     | Header integrado com navegacao  |
+| AgendaDateNavigation             |     | + botoes de visualizacao        |
++----------------------------------+     | + botao "New Event"             |
+| Sidebar    | DayTimeline/        |     +----------------------------------+
+| - Filters  | WeekTimeline/       |     | Barra de busca + Filtros        |
+| - Upcoming | MonthCalendar       |     | (cores, tags, categorias)       |
++----------------------------------+     +----------------------------------+
+                                         | MonthView/WeekView/DayView/List |
+                                         | com drag-and-drop e hover cards |
+                                         +----------------------------------+
 ```
-
----
-
-## Dependencia a Instalar
-
-| Pacote | Descricao |
-|--------|-----------|
-| `@dnd-kit/core` | Nucleo da biblioteca de drag-and-drop |
 
 ---
 
@@ -42,7 +37,7 @@ Implementar drag-and-drop no Kanban de Pipeline usando a biblioteca @dnd-kit, se
 
 | Arquivo | Descricao |
 |---------|-----------|
-| `src/components/ui/kanban.tsx` | Componentes base do Kanban (KanbanProvider, KanbanBoard, KanbanCard, KanbanCards, KanbanHeader) |
+| `src/components/ui/event-manager.tsx` | Componente principal EventManager com todas as views |
 
 ---
 
@@ -50,134 +45,219 @@ Implementar drag-and-drop no Kanban de Pipeline usando a biblioteca @dnd-kit, se
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/modules/crm/components/pipeline/PipelineKanban.tsx` | Integrar KanbanProvider e DndContext com handler onDragEnd |
-| `src/modules/crm/components/pipeline/KanbanColumn.tsx` | Usar KanbanBoard para area droppable |
-| `src/modules/crm/components/pipeline/OpportunityCard.tsx` | Usar KanbanCard para tornar draggable |
+| `src/modules/crm/pages/Agenda.tsx` | Substituir conteudo por EventManager integrado com dados do Supabase |
+| `src/modules/crm/hooks/useAgendaEvents.ts` | Adaptar para retornar dados no formato do EventManager |
+
+---
+
+## Arquivos a Remover (opcionalmente manter para referencia)
+
+Os seguintes componentes nao serao mais usados pela Agenda, mas podem ser mantidos caso sejam usados em outro lugar:
+
+- `AgendaHeader.tsx`
+- `AgendaDateNavigation.tsx`
+- `CalendarFilters.tsx`
+- `UpcomingEvents.tsx`
+- `DayTimeline.tsx`
+- `WeekTimeline.tsx`
+- `MonthCalendar.tsx`
+- `EventItem.tsx`
+- `TimelineEvent.tsx`
+- `MonthDayCell.tsx`
 
 ---
 
 ## Implementacao
 
-### 1. Componente kanban.tsx (UI Component)
+### 1. Criar src/components/ui/event-manager.tsx
 
-Criar componentes reutilizaveis baseados no modelo 21st.dev:
+Copiar o codigo do arquivo `calendário.txt` fornecido, com adaptacoes:
 
-```tsx
-// KanbanProvider - Wrapper com DndContext
-// KanbanBoard - Area droppable (coluna)
-// KanbanCard - Card draggable
-// KanbanCards - Container de cards
-// KanbanHeader - Cabecalho da coluna
+- Remover `"use client"` (nao necessario no Vite)
+- Ajustar imports para caminhos do projeto
+- Traduzir textos para portugues (opcional)
+- Manter todas as funcionalidades:
+  - EventManager (componente principal)
+  - EventCard (card com hover effect)
+  - MonthView
+  - WeekView  
+  - DayView
+  - ListView
+
+### 2. Adaptar useAgendaEvents.ts
+
+Modificar o hook para retornar eventos no formato esperado pelo EventManager:
+
+```typescript
+// Formato atual (CalendarEvent)
+interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  startTime: Date;
+  endTime: Date;
+  type: 'call' | 'meeting' | 'followup' | 'proposal' | 'ai_task';
+  status: 'pending' | 'overdue' | 'completed';
+  isAIGenerated?: boolean;
+  relatedOpportunity?: { id: string; name: string; };
+}
+
+// Formato novo (Event do EventManager)
+interface Event {
+  id: string;
+  title: string;
+  description?: string;
+  startTime: Date;
+  endTime: Date;
+  color: string;           // novo: blue, green, purple, etc
+  category?: string;       // novo: Reuniao, Tarefa, etc
+  attendees?: string[];    // novo: opcional
+  tags?: string[];         // novo: Importante, Urgente, etc
+}
 ```
 
-Caracteristicas:
-- `KanbanProvider`: Envolve todo o Kanban com DndContext
-- `KanbanBoard`: Usa useDroppable para detectar drops, destaca quando `isOver`
-- `KanbanCard`: Usa useDraggable, aplica transform durante arrasto
-- Visual feedback: Opacidade reduzida durante drag, fundo destacado durante hover
+Mapeamento de cores por tipo:
+- `call` -> blue
+- `meeting` -> green
+- `followup` -> orange
+- `proposal` -> purple
+- `ai_task` -> pink
 
-### 2. PipelineKanban.tsx - Integracao DnD
+Mapeamento de categorias:
+- `meeting` -> "Reuniao"
+- `call` -> "Ligacao"
+- `followup` -> "Follow-up"
+- `proposal` -> "Proposta"
+- `ai_task` -> "Tarefa IA"
+
+### 3. Atualizar Agenda.tsx
+
+Nova estrutura simplificada:
 
 ```tsx
-import { KanbanProvider } from '@/components/ui/kanban';
-import { useUpdateOpportunityStage } from '../../hooks/useOpportunities';
+import { EventManager, Event } from '@/components/ui/event-manager';
+import { useAgendaEvents } from '../hooks/useAgendaEvents';
+import { toast } from 'sonner';
 
-export function PipelineKanban() {
-  const updateStage = useUpdateOpportunityStage();
-  
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (!over) return;
-    
-    const opportunityId = active.id as string;
-    const newStage = over.id as OpportunityStage;
-    const currentStage = active.data.current?.parent;
-    
-    if (currentStage !== newStage) {
-      updateStage.mutate({ opportunityId, newStage });
-    }
+export default function Agenda() {
+  const { events, isLoading, createEvent, updateEvent, deleteEvent } = useAgendaEvents();
+
+  const handleEventCreate = (event: Omit<Event, 'id'>) => {
+    createEvent(event);
+    toast.success('Evento criado com sucesso');
   };
+
+  const handleEventUpdate = (id: string, event: Partial<Event>) => {
+    updateEvent(id, event);
+    toast.success('Evento atualizado');
+  };
+
+  const handleEventDelete = (id: string) => {
+    deleteEvent(id);
+    toast.success('Evento removido');
+  };
+
+  if (isLoading) return <LoadingSpinner />;
+
+  return (
+    <div className="h-full p-6 bg-muted/20">
+      <EventManager
+        events={events}
+        onEventCreate={handleEventCreate}
+        onEventUpdate={handleEventUpdate}
+        onEventDelete={handleEventDelete}
+        categories={['Reuniao', 'Ligacao', 'Follow-up', 'Proposta', 'Tarefa IA']}
+        availableTags={['Importante', 'Urgente', 'Cliente', 'Equipe']}
+        defaultView="month"
+        className="h-full"
+      />
+    </div>
+  );
+}
+```
+
+### 4. Adicionar Mutations ao useAgendaEvents
+
+Expandir o hook para suportar CRUD de eventos:
+
+```typescript
+export function useAgendaEvents() {
+  // Query existente para buscar eventos
+  const { data: events, isLoading, refetch } = useQuery({...});
   
-  return (
-    <KanbanProvider onDragEnd={handleDragEnd}>
-      {/* columns */}
-    </KanbanProvider>
-  );
-}
-```
-
-### 3. KanbanColumn.tsx - Droppable Area
-
-```tsx
-import { KanbanBoard, KanbanCards, KanbanHeader } from '@/components/ui/kanban';
-
-export function KanbanColumn({ stage, opportunities, ... }) {
-  return (
-    <KanbanBoard id={stage}>
-      <KanbanHeader name={config.label} color={config.color} />
-      <KanbanCards>
-        {opportunities.map((opp, index) => (
-          <DraggableOpportunityCard 
-            key={opp.id}
-            opportunity={opp}
-            index={index}
-            parent={stage}
-          />
-        ))}
-      </KanbanCards>
-      <KanbanFooter total={totalValue} />
-    </KanbanBoard>
-  );
-}
-```
-
-### 4. OpportunityCard.tsx - Draggable Card
-
-Criar wrapper que combina KanbanCard com conteudo existente:
-
-```tsx
-import { KanbanCard } from '@/components/ui/kanban';
-
-export function DraggableOpportunityCard({ opportunity, index, parent }) {
-  return (
-    <KanbanCard 
-      id={opportunity.id} 
-      name={opportunity.title}
-      index={index}
-      parent={parent}
-    >
-      <OpportunityCardContent {...props} />
-    </KanbanCard>
-  );
+  // Mutation para criar evento
+  const createEventMutation = useMutation({
+    mutationFn: async (event: Omit<Event, 'id'>) => {
+      // Por enquanto, eventos sao derivados de oportunidades
+      // Futuramente: criar tabela crm_events
+      toast.info('Funcionalidade de criar evento sera integrada em breve');
+    },
+    onSuccess: () => refetch()
+  });
+  
+  // Mutation para atualizar evento (arrasto de drag-drop)
+  const updateEventMutation = useMutation({
+    mutationFn: async ({ id, event }: { id: string; event: Partial<Event> }) => {
+      // Atualiza a oportunidade relacionada se necessario
+    },
+    onSuccess: () => refetch()
+  });
+  
+  // Mutation para deletar evento
+  const deleteEventMutation = useMutation({...});
+  
+  return {
+    events,
+    isLoading,
+    createEvent: createEventMutation.mutate,
+    updateEvent: updateEventMutation.mutate,
+    deleteEvent: deleteEventMutation.mutate
+  };
 }
 ```
 
 ---
 
-## Estilos Visuais
+## Funcionalidades do Novo Componente
 
-| Estado | Estilo |
-|--------|--------|
-| Normal | Card com borda padrao |
-| Arrastando | `opacity-50`, `ring-2 ring-primary` |
-| Sobre coluna | Coluna com `bg-muted/50` |
-| Posicionamento | `transform` aplicado durante drag |
+| Funcionalidade | Descricao |
+|----------------|-----------|
+| 4 Visualizacoes | Mes, Semana, Dia e Lista |
+| Navegacao | Botoes prev/next + botao "Today" |
+| Drag-and-Drop | Arrastar eventos entre dias/horarios |
+| Criar Evento | Dialog completo com titulo, descricao, horarios, cor, categoria, tags |
+| Editar Evento | Click abre dialog de edicao |
+| Deletar Evento | Botao no dialog de edicao |
+| Busca | Input para filtrar eventos por texto |
+| Filtros | Dropdowns para cor, tags e categorias |
+| Hover Effects | Cards expandem com detalhes ao passar mouse |
 
 ---
 
-## Fluxo de Dados
+## Traducao de Textos
 
-```text
-1. Usuario arrasta card
-2. DndContext detecta movimento
-3. onDragEnd recebe { active, over }
-4. Se over.id !== active.data.parent:
-   - Chamar updateStage.mutate()
-   - Supabase atualiza crm_opportunities.stage
-   - React Query invalida cache
-   - UI atualiza automaticamente
-```
+| Original (EN) | Traduzido (PT-BR) |
+|---------------|-------------------|
+| "New Event" | "Novo Evento" |
+| "Today" | "Hoje" |
+| "Month" | "Mes" |
+| "Week" | "Semana" |
+| "Day" | "Dia" |
+| "List" | "Lista" |
+| "Search events..." | "Buscar eventos..." |
+| "Create Event" | "Criar Evento" |
+| "Event Details" | "Detalhes do Evento" |
+| "Title" | "Titulo" |
+| "Description" | "Descricao" |
+| "Start Time" | "Inicio" |
+| "End Time" | "Fim" |
+| "Category" | "Categoria" |
+| "Color" | "Cor" |
+| "Tags" | "Tags" |
+| "Delete" | "Excluir" |
+| "Cancel" | "Cancelar" |
+| "Save" | "Salvar" |
+| "Create" | "Criar" |
 
 ---
 
@@ -185,30 +265,26 @@ export function DraggableOpportunityCard({ opportunity, index, parent }) {
 
 | Passo | Acao |
 |-------|------|
-| 1 | Instalar @dnd-kit/core |
-| 2 | Criar src/components/ui/kanban.tsx |
-| 3 | Atualizar PipelineKanban.tsx com KanbanProvider |
-| 4 | Atualizar KanbanColumn.tsx com KanbanBoard |
-| 5 | Criar DraggableOpportunityCard integrando KanbanCard |
-| 6 | Testar drag-and-drop entre colunas |
+| 1 | Criar `src/components/ui/event-manager.tsx` com codigo do arquivo fornecido |
+| 2 | Traduzir textos para portugues |
+| 3 | Atualizar `useAgendaEvents.ts` para retornar formato compativel |
+| 4 | Adicionar mutations para CRUD |
+| 5 | Substituir conteudo de `Agenda.tsx` |
+| 6 | Testar todas as visualizacoes |
+| 7 | Testar drag-and-drop |
+| 8 | Testar criacao/edicao de eventos |
 
 ---
 
-## Comportamentos
+## Consideracoes Tecnicas
 
-| Acao | Resultado |
-|------|-----------|
-| Arrastar card | Card segue cursor com transform |
-| Soltar em coluna diferente | Atualiza stage no banco |
-| Soltar na mesma coluna | Nenhuma acao (mesma posicao) |
-| Soltar fora de coluna | Card volta a posicao original |
-| Click no card (sem arrastar) | Navega para detalhes |
+1. **Dados**: Os eventos continuam sendo derivados de `crm_opportunities.next_step`. Futuramente pode-se criar uma tabela dedicada `crm_events`.
 
----
+2. **CRUD Parcial**: Inicialmente, criar/deletar eventos pode mostrar toast informativo. A integracao completa com o banco pode ser feita depois.
 
-## Acessibilidade
+3. **Drag-and-Drop**: Usa HTML5 drag API nativa (onDragStart, onDragEnd, onDrop). Nao usa @dnd-kit.
 
-- KanbanCard com aria-pressed para estado arrastando
-- Cores de contraste mantidas durante drag
-- Focus visible em cards e colunas
+4. **Responsividade**: O componente ja inclui versoes mobile com selects e botoes adaptados.
+
+5. **Performance**: Lista de eventos filtrada com useMemo para evitar re-renders.
 
