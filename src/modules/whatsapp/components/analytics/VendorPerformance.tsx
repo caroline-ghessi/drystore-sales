@@ -110,7 +110,7 @@ export function VendorPerformance({ period }: VendorPerformanceProps) {
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{data.avgResponseTime}min</div>
             <p className="text-xs text-muted-foreground">
-              Meta: &lt; 3min
+              Meta: &lt; 60min
             </p>
           </CardContent>
         </Card>
@@ -118,14 +118,14 @@ export function VendorPerformance({ period }: VendorPerformanceProps) {
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Score Médio Qualidade
+              Score de Qualidade
             </CardTitle>
             <Star className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{data.avgQualityScore}/10</div>
             <p className="text-xs text-muted-foreground">
-              Meta: &gt; 8.0
+              Baseado em tempo e engajamento
             </p>
           </CardContent>
         </Card>
@@ -330,7 +330,7 @@ export function VendorPerformance({ period }: VendorPerformanceProps) {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span>{vendor.avgResponseTime}min</span>
-                      {vendor.avgResponseTime > 5 && (
+                      {vendor.avgResponseTime > 120 && (
                         <AlertCircle className="w-4 h-4 text-destructive" />
                       )}
                     </div>
