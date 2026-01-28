@@ -3114,6 +3114,7 @@ export type Database = {
         Args: { conversation_uuid: string }
         Returns: string
       }
+      get_user_vendor_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
