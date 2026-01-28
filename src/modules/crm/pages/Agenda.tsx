@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
+import { startOfWeek } from 'date-fns';
 import { 
   AgendaHeader, 
   AgendaDateNavigation, 
   CalendarFilters, 
   UpcomingEvents, 
   DayTimeline,
+  WeekTimeline,
+  MonthCalendar,
   ViewMode,
   CalendarFiltersType,
   CalendarEvent
@@ -32,6 +35,11 @@ export default function Agenda() {
     toast.info(`Evento: ${event.title}`);
   };
 
+  const handleDayClick = (date: Date) => {
+    setCurrentDate(date);
+    setViewMode('day');
+  };
+
   return (
     <div className="h-full flex flex-col p-6 bg-muted/20">
       {/* Header with view toggle */}
@@ -41,6 +49,7 @@ export default function Agenda() {
       <div className="mt-4">
         <AgendaDateNavigation 
           currentDate={currentDate}
+          viewMode={viewMode}
           onDateChange={setCurrentDate}
           onNewEvent={handleNewEvent}
         />
@@ -58,12 +67,32 @@ export default function Agenda() {
           />
         </div>
 
-        {/* Main timeline */}
-        <DayTimeline 
-          date={currentDate}
-          events={events}
-          onEventClick={handleEventClick}
-        />
+        {/* Main timeline/calendar */}
+        {viewMode === 'day' && (
+          <DayTimeline 
+            date={currentDate}
+            events={events}
+            onEventClick={handleEventClick}
+          />
+        )}
+
+        {viewMode === 'week' && (
+          <WeekTimeline 
+            startDate={startOfWeek(currentDate, { weekStartsOn: 0 })}
+            events={events}
+            onEventClick={handleEventClick}
+            onDayClick={handleDayClick}
+          />
+        )}
+
+        {viewMode === 'month' && (
+          <MonthCalendar 
+            currentDate={currentDate}
+            events={events}
+            onDayClick={handleDayClick}
+            onEventClick={handleEventClick}
+          />
+        )}
       </div>
     </div>
   );

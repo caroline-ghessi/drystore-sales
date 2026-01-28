@@ -1,26 +1,74 @@
 import React from 'react';
-import { format, addDays, subDays, isToday } from 'date-fns';
+import { format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, isToday, startOfWeek, endOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ViewMode } from './types';
 
 interface AgendaDateNavigationProps {
   currentDate: Date;
+  viewMode: ViewMode;
   onDateChange: (date: Date) => void;
   onNewEvent: () => void;
 }
 
 export function AgendaDateNavigation({ 
   currentDate, 
+  viewMode,
   onDateChange, 
   onNewEvent 
 }: AgendaDateNavigationProps) {
-  const handlePrevious = () => onDateChange(subDays(currentDate, 1));
-  const handleNext = () => onDateChange(addDays(currentDate, 1));
+  const handlePrevious = () => {
+    switch (viewMode) {
+      case 'day':
+        onDateChange(subDays(currentDate, 1));
+        break;
+      case 'week':
+        onDateChange(subWeeks(currentDate, 1));
+        break;
+      case 'month':
+        onDateChange(subMonths(currentDate, 1));
+        break;
+    }
+  };
+
+  const handleNext = () => {
+    switch (viewMode) {
+      case 'day':
+        onDateChange(addDays(currentDate, 1));
+        break;
+      case 'week':
+        onDateChange(addWeeks(currentDate, 1));
+        break;
+      case 'month':
+        onDateChange(addMonths(currentDate, 1));
+        break;
+    }
+  };
+
   const handleToday = () => onDateChange(new Date());
 
-  const formattedDate = format(currentDate, "dd MMMM yyyy", { locale: ptBR });
-  const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+  const getFormattedDate = () => {
+    switch (viewMode) {
+      case 'day': {
+        const formatted = format(currentDate, "dd MMMM yyyy", { locale: ptBR });
+        return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+      }
+      case 'week': {
+        const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+        const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
+        const startFormatted = format(weekStart, "dd", { locale: ptBR });
+        const endFormatted = format(weekEnd, "dd MMMM yyyy", { locale: ptBR });
+        return `${startFormatted} - ${endFormatted.charAt(0).toUpperCase() + endFormatted.slice(1)}`;
+      }
+      case 'month': {
+        const formatted = format(currentDate, "MMMM yyyy", { locale: ptBR });
+        return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+      }
+    }
+  };
+
+  const showTodayButton = !isToday(currentDate);
 
   return (
     <div className="flex items-center justify-between">
@@ -34,8 +82,8 @@ export function AgendaDateNavigation({
           <ChevronLeft className="h-4 w-4" />
         </Button>
         
-        <span className="font-semibold text-foreground min-w-[180px] text-center">
-          {capitalizedDate}
+        <span className="font-semibold text-foreground min-w-[200px] text-center">
+          {getFormattedDate()}
         </span>
         
         <Button
@@ -49,7 +97,7 @@ export function AgendaDateNavigation({
       </div>
 
       <div className="flex items-center gap-2">
-        {!isToday(currentDate) && (
+        {showTodayButton && (
           <Button
             variant="outline"
             size="sm"
