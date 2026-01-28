@@ -15,16 +15,18 @@ import {
   Cell
 } from 'recharts';
 import { 
-  TrendingUp, 
-  TrendingDown, 
   MessageCircle, 
   Users, 
-  Clock, 
-  Target 
+  Target,
+  Bot,
+  ArrowRightLeft,
+  Clock,
+  Star
 } from 'lucide-react';
 import { useConversationAnalytics } from '@/hooks/useConversationAnalytics';
 import { useVendorPerformance } from '@/modules/whatsapp/hooks/useVendorPerformance';
 import { useLeadAnalytics } from '@/hooks/useLeadAnalytics';
+import { useBotAnalytics } from '@/modules/whatsapp/hooks/useBotAnalytics';
 
 interface AnalyticsOverviewProps {
   period: string;
@@ -43,8 +45,9 @@ export function AnalyticsOverview({ period }: AnalyticsOverviewProps) {
   const { data: conversationData, isLoading: conversationLoading } = useConversationAnalytics(period);
   const { data: vendorData, isLoading: vendorLoading } = useVendorPerformance(period);
   const { data: leadData, isLoading: leadLoading } = useLeadAnalytics(period);
+  const { data: botData, isLoading: botLoading } = useBotAnalytics(period);
 
-  if (conversationLoading || vendorLoading || leadLoading) {
+  if (conversationLoading || vendorLoading || leadLoading || botLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {[...Array(4)].map((_, i) => (
@@ -61,33 +64,6 @@ export function AnalyticsOverview({ period }: AnalyticsOverviewProps) {
     );
   }
 
-  const kpiCards = [
-    {
-      title: 'Total de Conversas',
-      value: conversationData?.totalConversations || 0,
-      icon: MessageCircle,
-      color: 'text-primary'
-    },
-    {
-      title: 'Vendedores Ativos',
-      value: vendorData?.totalVendors || 0,
-      icon: Users,
-      color: 'text-primary'
-    },
-    {
-      title: 'Leads Quentes',
-      value: leadData?.hotLeads || 0,
-      icon: Target,
-      color: 'text-lead-hot'
-    },
-    {
-      title: 'Taxa de Conversão',
-      value: `${leadData?.overallConversionRate || 0}%`,
-      icon: Target,
-      color: 'text-primary'
-    }
-  ];
-
   const temperatureData = leadData?.temperatureDistribution.map(item => ({
     name: item.temperature === 'hot' ? 'Quente' : item.temperature === 'warm' ? 'Morno' : 'Frio',
     value: item.count,
@@ -97,21 +73,140 @@ export function AnalyticsOverview({ period }: AnalyticsOverviewProps) {
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards */}
+      {/* Comparison Cards: Bot vs Vendedores */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Bot Performance Card */}
+        <Card className="border-border bg-primary/5">
+          <CardHeader className="flex flex-row items-center gap-3 pb-4">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Bot className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-foreground">Atendimento Bot (IA)</CardTitle>
+              <CardDescription>WhatsApp da empresa - Atendimento automatizado</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Conversas</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {botData?.totalConversations.toLocaleString() || 0}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Mensagens Bot</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {botData?.totalBotMessages.toLocaleString() || 0}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Tempo Resposta</p>
+                <p className="text-2xl font-bold text-primary">&lt;1s</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Taxa Handoff</p>
+                <p className="text-2xl font-bold text-lead-warm">{botData?.handoffRate || 0}%</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Vendor Performance Card */}
+        <Card className="border-border bg-lead-warm/5">
+          <CardHeader className="flex flex-row items-center gap-3 pb-4">
+            <div className="p-2 bg-lead-warm/10 rounded-lg">
+              <Users className="w-6 h-6 text-lead-warm" />
+            </div>
+            <div>
+              <CardTitle className="text-foreground">Atendimento Vendedores</CardTitle>
+              <CardDescription>WhatsApps individuais - Atendimento humano</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Conversas</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {vendorData?.vendors.reduce((sum, v) => sum + v.totalConversations, 0) || 0}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Vendedores Ativos</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {vendorData?.totalVendors || 0}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Tempo Resposta</p>
+                <p className="text-2xl font-bold text-lead-warm">{vendorData?.avgResponseTime || 0}min</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Score Qualidade</p>
+                <p className="text-2xl font-bold text-primary">{vendorData?.avgQualityScore || 0}/10</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* KPI Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {kpiCards.map((kpi, index) => (
-          <Card key={index} className="border-border">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {kpi.title}
-              </CardTitle>
-              <kpi.icon className={`w-4 h-4 ${kpi.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">{kpi.value}</div>
-            </CardContent>
-          </Card>
-        ))}
+        <Card className="border-border">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Conversas (Todos)
+            </CardTitle>
+            <MessageCircle className="w-4 h-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">
+              {conversationData?.totalConversations || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Leads Quentes
+            </CardTitle>
+            <Target className="w-4 h-4 text-lead-hot" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-lead-hot">
+              {leadData?.hotLeads || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Taxa Conversão
+            </CardTitle>
+            <ArrowRightLeft className="w-4 h-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">
+              {leadData?.overallConversionRate || 0}%
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Bot Ativas Agora
+            </CardTitle>
+            <Bot className="w-4 h-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">
+              {botData?.activeConversations || 0}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Charts Row */}
