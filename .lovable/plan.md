@@ -1,190 +1,152 @@
 
-# Plano: Adicionar Opcao de Deletar Negociacoes no Pipeline
 
-## Resumo
+# Plano: Corrigir Visibilidade do Botao Delete na Etapa Prospeccao
 
-Adicionar um botao de exclusao em cada card de oportunidade no Kanban, com confirmacao via dialog para evitar exclusoes acidentais.
+## Problema Identificado
 
----
+O botao de delete (icone de lixeira) nao aparece nos cards da etapa "Prospeccao", mas funciona corretamente nas demais etapas.
 
-## Abordagem
+## Causa Raiz
 
-A opcao de deletar sera adicionada como um icone de lixeira no canto superior direito de cada card. Ao clicar, um dialog de confirmacao sera exibido antes de executar a exclusao.
+Analisando o codigo do `OpportunityCard.tsx`, a estrutura da primeira linha do card e:
 
----
-
-## Arquivos a Modificar/Criar
-
-| Arquivo | Acao | Descricao |
-|---------|------|-----------|
-| `src/modules/crm/hooks/useOpportunities.ts` | Modificar | Adicionar hook `useDeleteOpportunity` |
-| `src/modules/crm/hooks/index.ts` | Modificar | Exportar o novo hook |
-| `src/modules/crm/components/pipeline/OpportunityCard.tsx` | Modificar | Adicionar botao de delete com dialog |
-
----
-
-## Detalhes Tecnicos
-
-### 1. Hook useDeleteOpportunity
-
-Adicionar ao arquivo `useOpportunities.ts`:
-
-```typescript
-export function useDeleteOpportunity() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (opportunityId: string) => {
-      const { error } = await supabase
-        .from('crm_opportunities')
-        .delete()
-        .eq('id', opportunityId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['crm-opportunities'] });
-    },
-  });
-}
+```
+[Badge Novo] + [Nome do Cliente (flex-1 truncate)] + [Botao Delete] + [Tempo]
 ```
 
-### 2. Modificar OpportunityCard.tsx
+Na etapa de prospeccao, os cards frequentemente tem:
+1. Badge "Novo" visivel (quando `isNew = true`)
+2. Badge do botao "Validar" no footer
 
-Adicionar:
-- Prop `onDelete?: () => void`
-- Icone de lixeira (Trash2) no header do card
-- AlertDialog para confirmacao
+O problema visual ocorre porque:
+- O `customerName` tem `flex-1` que ocupa todo o espaco disponivel
+- Quando o badge "Novo" esta presente, o espaco remanescente e reduzido
+- O botao de delete (`h-5 w-5`) fica muito pequeno e pode ser cortado pelo overflow
 
-**Estrutura visual do card modificado:**
+## Solucao Proposta
 
-```text
-+----------------------------------------+
-| [Novo] Cliente Nome    [X]    2h       |
-| Titulo do Projeto                      |
-| Descricao...                           |
-| [Proximo passo badge]                  |
-|----------------------------------------|
-| R$ 15k           [Validar] ou [Avatar] |
-+----------------------------------------+
-
-O [X] e o botao de delete com icone Trash2
-```
-
-**Codigo do botao de delete:**
-
-```typescript
-// No header, apos o timeAgo
-{onDelete && (
-  <AlertDialog>
-    <AlertDialogTrigger asChild>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-5 w-5 text-muted-foreground hover:text-destructive"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Trash2 className="h-3 w-3" />
-      </Button>
-    </AlertDialogTrigger>
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        <AlertDialogTitle>Excluir negociacao?</AlertDialogTitle>
-        <AlertDialogDescription>
-          Esta acao nao pode ser desfeita. A negociacao "{customerName}" sera 
-          permanentemente removida do sistema.
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-        <AlertDialogAction 
-          className="bg-destructive hover:bg-destructive/90"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-        >
-          Excluir
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
-)}
-```
-
-### 3. Propagar Delete pelos Componentes
-
-**DraggableOpportunityCard.tsx:**
-- Adicionar prop `onDelete: () => void`
-- Passar para OpportunityCard
-
-**KanbanColumn.tsx:**
-- Adicionar prop `onDelete?: (opportunity: Opportunity) => void`
-- Passar para DraggableOpportunityCard
-
-**PipelineKanban.tsx:**
-- Importar e usar `useDeleteOpportunity`
-- Implementar handler que chama a mutacao
-- Exibir toast de sucesso/erro
+Reorganizar a estrutura visual do header para garantir que o botao de delete sempre tenha espaco suficiente, independente dos outros elementos.
 
 ---
 
-## Fluxo de Interacao
+## Arquivo a Modificar
 
-```text
-Usuario clica no icone de lixeira
-           |
-           v
-    Dialog de confirmacao aparece
-    "Excluir negociacao?"
-           |
-    +------+------+
-    |             |
- Cancelar      Excluir
-    |             |
-    v             v
- Fecha       Chama useDeleteOpportunity
- dialog            |
-                   v
-              DELETE no Supabase
-                   |
-                   v
-              Invalida cache
-              Toast "Negociacao excluida"
+**`src/modules/crm/components/pipeline/OpportunityCard.tsx`**
+
+### Mudanca: Reorganizar Layout do Header
+
+**Antes (linhas 77-127):**
+```tsx
+<div className="flex items-center gap-2">
+  {isNew && (<Badge>Novo</Badge>)}
+  <span className="flex-1 truncate">{customerName}</span>
+  {onDelete && (<AlertDialog>...</AlertDialog>)}
+  <span>{timeAgo}</span>
+</div>
+```
+
+**Depois:**
+```tsx
+<div className="flex items-center gap-2">
+  {isNew && (<Badge>Novo</Badge>)}
+  <span className="flex-1 truncate min-w-0">{customerName}</span>
+  <div className="flex items-center gap-1 shrink-0">
+    {onDelete && (<AlertDialog>...</AlertDialog>)}
+    <span>{timeAgo}</span>
+  </div>
+</div>
+```
+
+### Detalhes das Mudancas
+
+1. **Adicionar `min-w-0`** ao nome do cliente
+   - Permite que o truncate funcione corretamente dentro de flex containers
+
+2. **Agrupar delete + tempo em um `<div>` com `shrink-0`**
+   - Garante que estes elementos nunca encolham
+   - O botao de delete e o tempo sempre terao espaco
+
+3. **Usar `gap-1`** entre delete e tempo
+   - Reduz espaco entre eles para caber melhor
+
+---
+
+## Codigo Completo da Secao Modificada
+
+```tsx
+{/* Line 1: Badge novo (optional) + Customer name + Delete + Time */}
+<div className="flex items-center gap-2">
+  {isNew && (
+    <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5 shrink-0">
+      Novo
+    </Badge>
+  )}
+  <span className="font-semibold text-sm text-foreground flex-1 truncate min-w-0">
+    {customerName}
+  </span>
+  
+  <div className="flex items-center gap-1 shrink-0">
+    {/* Delete button */}
+    {onDelete && (
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 text-muted-foreground hover:text-destructive shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir negociacao?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acao nao pode ser desfeita. A negociacao de "{customerName}" sera 
+              permanentemente removida do sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    )}
+    
+    <span className="text-xs text-muted-foreground whitespace-nowrap">
+      {timeAgo}
+    </span>
+  </div>
+</div>
 ```
 
 ---
 
-## Imports Necessarios
+## Resumo das Mudancas CSS
 
-**OpportunityCard.tsx:**
-```typescript
-import { Trash2 } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-```
-
----
-
-## Consideracoes de UX
-
-1. **Icone discreto**: Trash2 pequeno (h-3 w-3) para nao poluir visualmente
-2. **Hover vermelho**: Indica acao destrutiva ao passar o mouse
-3. **Confirmacao obrigatoria**: Evita exclusoes acidentais
-4. **stopPropagation**: Evita abrir detalhes da oportunidade ao clicar no delete
-5. **Toast feedback**: Usuario sabe que a acao foi completada
+| Elemento | Antes | Depois |
+|----------|-------|--------|
+| Badge "Novo" | sem shrink-0 | `shrink-0` |
+| Customer name | `flex-1 truncate` | `flex-1 truncate min-w-0` |
+| Delete + Time | elementos separados | agrupados em div com `shrink-0` |
 
 ---
 
 ## Resultado Esperado
 
-Apos implementacao, cada card tera um icone de lixeira que permite exclusao com confirmacao, mantendo a interface limpa e segura.
+Apos a correcao:
+- Botao de delete visivel em TODAS as etapas do pipeline
+- Layout consistente independente do tamanho do nome do cliente
+- Badge "Novo" nao interfere na visibilidade do botao delete
+- Comportamento responsivo mantido para cards de diferentes larguras
+
