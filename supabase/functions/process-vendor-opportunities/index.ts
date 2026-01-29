@@ -78,6 +78,11 @@ serve(async (req) => {
         }
 
         const normalizedPhone = normalizePhone(conv.customer_phone);
+        
+        if (!normalizedPhone) {
+          console.log(`[VendorOpportunities] Conversa ${conv.id} telefone inválido: ${conv.customer_phone}, pulando`);
+          continue;
+        }
 
         // 3.1 Criar/atualizar cliente no CRM
         const { data: customer, error: customerError } = await supabase
