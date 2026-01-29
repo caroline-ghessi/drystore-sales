@@ -1,31 +1,25 @@
 
+# Plano: Garantir Visibilidade do Botão Delete em Todas as Etapas
 
-# Plano: Corrigir Visibilidade do Botao Delete na Etapa Prospeccao
+## Problema Real Identificado
 
-## Problema Identificado
+Analisando a imagem, percebi que na coluna **Prospecção**, os cards não mostram nem a lixeira NEM o `timeAgo`, enquanto na coluna **Qualificação** ambos aparecem. Isso indica que o problema não é específico do botão de delete, mas sim que **todos os elementos à direita estão sendo cortados**.
 
-O botao de delete (icone de lixeira) nao aparece nos cards da etapa "Prospeccao", mas funciona corretamente nas demais etapas.
+### Comparação Visual
+| Coluna | Resultado |
+|--------|-----------|
+| Prospecção | `[Novo] Kevin LMN` - SEM lixeira, SEM tempo |
+| Qualificação | `[Novo] Arthur Madruga [🗑️] menos de um minu...` |
 
 ## Causa Raiz
 
-Analisando o codigo do `OpportunityCard.tsx`, a estrutura da primeira linha do card e:
+O layout flexbox com `flex-1 truncate` no nome do cliente está comprimindo excessivamente o container dos elementos à direita (delete + timeAgo), apesar do `shrink-0`.
 
-```
-[Badge Novo] + [Nome do Cliente (flex-1 truncate)] + [Botao Delete] + [Tempo]
-```
+A diferença entre as colunas pode estar relacionada à largura do card ou ao número de caracteres do nome.
 
-Na etapa de prospeccao, os cards frequentemente tem:
-1. Badge "Novo" visivel (quando `isNew = true`)
-2. Badge do botao "Validar" no footer
+## Solução Proposta
 
-O problema visual ocorre porque:
-- O `customerName` tem `flex-1` que ocupa todo o espaco disponivel
-- Quando o badge "Novo" esta presente, o espaco remanescente e reduzido
-- O botao de delete (`h-5 w-5`) fica muito pequeno e pode ser cortado pelo overflow
-
-## Solucao Proposta
-
-Reorganizar a estrutura visual do header para garantir que o botao de delete sempre tenha espaco suficiente, independente dos outros elementos.
+Refatorar o layout do header do card para usar uma estrutura mais robusta que garante espaço mínimo para os elementos de ação.
 
 ---
 
@@ -33,58 +27,92 @@ Reorganizar a estrutura visual do header para garantir que o botao de delete sem
 
 **`src/modules/crm/components/pipeline/OpportunityCard.tsx`**
 
-### Mudanca: Reorganizar Layout do Header
+### Mudança: Usar Grid ou Estrutura Mais Robusta
 
-**Antes (linhas 77-127):**
+Trocar o layout flexbox por grid, ou usar `max-width` no nome do cliente para garantir espaço.
+
+**De (linhas 76-129):**
 ```tsx
 <div className="flex items-center gap-2">
-  {isNew && (<Badge>Novo</Badge>)}
-  <span className="flex-1 truncate">{customerName}</span>
-  {onDelete && (<AlertDialog>...</AlertDialog>)}
-  <span>{timeAgo}</span>
-</div>
-```
-
-**Depois:**
-```tsx
-<div className="flex items-center gap-2">
-  {isNew && (<Badge>Novo</Badge>)}
-  <span className="flex-1 truncate min-w-0">{customerName}</span>
+  {isNew && (...)}
+  <span className="... flex-1 truncate min-w-0">
+    {customerName}
+  </span>
   <div className="flex items-center gap-1 shrink-0">
-    {onDelete && (<AlertDialog>...</AlertDialog>)}
-    <span>{timeAgo}</span>
+    {onDelete && (...)}
+    <span>...</span>
   </div>
 </div>
 ```
 
-### Detalhes das Mudancas
+**Para:**
+```tsx
+<div className="flex items-center gap-2">
+  {isNew && (
+    <Badge className="... shrink-0">Novo</Badge>
+  )}
+  
+  {/* Customer name com max-width calculado */}
+  <span className="font-semibold text-sm text-foreground truncate" 
+        style={{ maxWidth: 'calc(100% - 80px)' }}>
+    {customerName}
+  </span>
+  
+  {/* Actions container - SEMPRE visível */}
+  <div className="ml-auto flex items-center gap-1 shrink-0">
+    {onDelete && (
+      <AlertDialog>...</AlertDialog>
+    )}
+    <span className="text-xs text-muted-foreground whitespace-nowrap">
+      {timeAgo}
+    </span>
+  </div>
+</div>
+```
 
-1. **Adicionar `min-w-0`** ao nome do cliente
-   - Permite que o truncate funcione corretamente dentro de flex containers
+### Alternativa: Usar Overflow Hidden no Container + Width Fixo
 
-2. **Agrupar delete + tempo em um `<div>` com `shrink-0`**
-   - Garante que estes elementos nunca encolham
-   - O botao de delete e o tempo sempre terao espaco
-
-3. **Usar `gap-1`** entre delete e tempo
-   - Reduz espaco entre eles para caber melhor
+```tsx
+<div className="flex items-center gap-2 overflow-hidden">
+  {isNew && (<Badge className="shrink-0">Novo</Badge>)}
+  
+  <div className="flex-1 min-w-0 overflow-hidden">
+    <span className="font-semibold text-sm text-foreground block truncate">
+      {customerName}
+    </span>
+  </div>
+  
+  {/* Ações com width mínimo garantido */}
+  <div className="flex items-center gap-1 shrink-0 min-w-[60px]">
+    {onDelete && (<AlertDialog>...</AlertDialog>)}
+    <span className="text-xs text-muted-foreground whitespace-nowrap">
+      {timeAgo}
+    </span>
+  </div>
+</div>
+```
 
 ---
 
-## Codigo Completo da Secao Modificada
+## Código Completo da Primeira Linha Refatorada
 
 ```tsx
 {/* Line 1: Badge novo (optional) + Customer name + Delete + Time */}
-<div className="flex items-center gap-2">
+<div className="flex items-center gap-2 overflow-hidden">
   {isNew && (
     <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5 shrink-0">
       Novo
     </Badge>
   )}
-  <span className="font-semibold text-sm text-foreground flex-1 truncate min-w-0">
-    {customerName}
-  </span>
   
+  {/* Container para o nome - permite truncar */}
+  <div className="flex-1 min-w-0 overflow-hidden">
+    <span className="font-semibold text-sm text-foreground block truncate">
+      {customerName}
+    </span>
+  </div>
+  
+  {/* Actions container - SEMPRE visível com min-width */}
   <div className="flex items-center gap-1 shrink-0">
     {/* Delete button */}
     {onDelete && (
@@ -93,7 +121,7 @@ Reorganizar a estrutura visual do header para garantir que o botao de delete sem
           <Button
             variant="ghost"
             size="icon"
-            className="h-5 w-5 text-muted-foreground hover:text-destructive shrink-0"
+            className="h-5 w-5 text-muted-foreground hover:text-destructive"
             onClick={(e) => e.stopPropagation()}
           >
             <Trash2 className="h-3 w-3" />
@@ -101,9 +129,9 @@ Reorganizar a estrutura visual do header para garantir que o botao de delete sem
         </AlertDialogTrigger>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir negociacao?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir negociação?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acao nao pode ser desfeita. A negociacao de "{customerName}" sera 
+              Esta ação não pode ser desfeita. A negociação de "{customerName}" será 
               permanentemente removida do sistema.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -132,21 +160,17 @@ Reorganizar a estrutura visual do header para garantir que o botao de delete sem
 
 ---
 
-## Resumo das Mudancas CSS
+## Mudanças Chave
 
-| Elemento | Antes | Depois |
-|----------|-------|--------|
-| Badge "Novo" | sem shrink-0 | `shrink-0` |
-| Customer name | `flex-1 truncate` | `flex-1 truncate min-w-0` |
-| Delete + Time | elementos separados | agrupados em div com `shrink-0` |
+1. **Envolver `customerName` em um `<div>` separado** com `flex-1 min-w-0 overflow-hidden`
+2. **Mudar o `<span>` do nome para `block truncate`** ao invés de inline
+3. **Container de ações com `shrink-0`** sem `flex-1` para garantir que nunca encolha
 
 ---
 
 ## Resultado Esperado
 
-Apos a correcao:
-- Botao de delete visivel em TODAS as etapas do pipeline
-- Layout consistente independente do tamanho do nome do cliente
-- Badge "Novo" nao interfere na visibilidade do botao delete
-- Comportamento responsivo mantido para cards de diferentes larguras
-
+- Botão de delete visível em TODAS as etapas
+- `timeAgo` visível em todos os cards
+- Nome do cliente trunca quando necessário
+- Layout consistente independente do comprimento do nome
