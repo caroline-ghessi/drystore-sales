@@ -7,6 +7,7 @@ import { PipelineKanban } from '../components/pipeline/PipelineKanban';
 
 export default function Pipeline() {
   const [view, setView] = React.useState<'kanban' | 'list'>('kanban');
+  const [searchTerm, setSearchTerm] = React.useState('');
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -38,6 +39,8 @@ export default function Pipeline() {
           <Input 
             placeholder="Buscar oportunidades..." 
             className="pl-9 bg-background"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         
@@ -56,7 +59,7 @@ export default function Pipeline() {
       {/* Pipeline Board */}
       {view === 'kanban' ? (
         <div className="bg-muted/20 rounded-lg p-3">
-          <PipelineKanban />
+          <PipelineKanban searchTerm={searchTerm} />
         </div>
       ) : (
         <div className="text-center py-12 text-muted-foreground">

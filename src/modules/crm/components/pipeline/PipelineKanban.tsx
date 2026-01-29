@@ -12,16 +12,49 @@ type OpportunityStage = Database['public']['Enums']['opportunity_stage'];
 
 interface PipelineKanbanProps {
   onValidate?: (opportunity: Opportunity) => void;
+  searchTerm?: string;
 }
 
 // Stages to show in the Kanban (excluding closed_lost for cleaner view)
 const VISIBLE_STAGES = ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won'] as const;
 
-export function PipelineKanban({ onValidate }: PipelineKanbanProps) {
+export function PipelineKanban({ onValidate, searchTerm = '' }: PipelineKanbanProps) {
   const { data, isLoading, error } = useOpportunities();
   const updateStage = useUpdateOpportunityStage();
   const deleteOpportunity = useDeleteOpportunity();
   const navigate = useNavigate();
+
+  // Filter opportunities based on search term
+  const filteredByStage = React.useMemo(() => {
+    if (!data?.byStage || !searchTerm.trim()) {
+      return data?.byStage;
+    }
+    
+    const lowerSearch = searchTerm.toLowerCase().trim();
+    
+    const filtered: typeof data.byStage = {
+      prospecting: [],
+      qualification: [],
+      proposal: [],
+      negotiation: [],
+      closed_won: [],
+      closed_lost: [],
+    };
+    
+    Object.entries(data.byStage).forEach(([stage, opportunities]) => {
+      filtered[stage as keyof typeof filtered] = opportunities.filter(opp => {
+        const customerName = opp.customer?.name?.toLowerCase() || '';
+        const title = opp.title?.toLowerCase() || '';
+        const city = opp.customer?.city?.toLowerCase() || '';
+        
+        return customerName.includes(lowerSearch) || 
+               title.includes(lowerSearch) || 
+               city.includes(lowerSearch);
+      });
+    });
+    
+    return filtered;
+  }, [data?.byStage, searchTerm]);
 
   const handleOpportunityClick = (opportunity: Opportunity) => {
     navigate(`/crm/opportunities/${opportunity.id}`);
@@ -88,7 +121,7 @@ export function PipelineKanban({ onValidate }: PipelineKanbanProps) {
     );
   }
 
-  const byStage = data?.byStage;
+  const byStage = filteredByStage;
 
   return (
     <ScrollArea className="w-full">
