@@ -76,54 +76,56 @@ export function OpportunityCard({
       {/* Line 1: Badge novo (optional) + Customer name + Delete + Time */}
       <div className="flex items-center gap-2">
         {isNew && (
-          <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5">
+          <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5 shrink-0">
             Novo
           </Badge>
         )}
-        <span className="font-semibold text-sm text-foreground flex-1 truncate">
+        <span className="font-semibold text-sm text-foreground flex-1 truncate min-w-0">
           {customerName}
         </span>
         
-        {/* Delete button */}
-        {onDelete && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-5 w-5 text-muted-foreground hover:text-destructive shrink-0"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Excluir negociação?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta ação não pode ser desfeita. A negociação de "{customerName}" será 
-                  permanentemente removida do sistema.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction 
-                  className="bg-destructive hover:bg-destructive/90"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                  }}
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Delete button */}
+          {onDelete && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 text-muted-foreground hover:text-destructive shrink-0"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-        
-        <span className="text-xs text-muted-foreground whitespace-nowrap">
-          {timeAgo}
-        </span>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir negociação?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação não pode ser desfeita. A negociação de "{customerName}" será 
+                    permanentemente removida do sistema.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction 
+                    className="bg-destructive hover:bg-destructive/90"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete();
+                    }}
+                  >
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {timeAgo}
+          </span>
+        </div>
       </div>
 
       {/* Line 2: Project title */}
