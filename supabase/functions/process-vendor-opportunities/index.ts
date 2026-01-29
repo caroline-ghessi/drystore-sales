@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0';
-import { normalizePhone } from '../_shared/phone-utils.ts';
+import { normalizePhone, isExcludedContact } from '../_shared/phone-utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,7 +84,26 @@ serve(async (req) => {
           continue;
         }
 
-        // 3.1 NOVO: Verificar se cliente veio do bot oficial
+        // 3.1 VERIFICAÇÃO DUPLA: Checar lista de exclusão diretamente
+        const isExcluded = await isExcludedContact(supabase, normalizedPhone);
+        if (isExcluded) {
+          console.log(`[VendorOpportunities] Telefone ${normalizedPhone} na lista de exclusão, pulando conversa ${conv.id}`);
+          
+          // Self-healing: Corrigir metadata se necessário
+          if (!conv.metadata?.is_internal_contact) {
+            await supabase
+              .from('vendor_conversations')
+              .update({ 
+                metadata: { ...(conv.metadata || {}), is_internal_contact: true },
+                has_opportunity: true
+              })
+              .eq('id', conv.id);
+            console.log(`[VendorOpportunities] Conversa ${conv.id} corrigida como internal_contact`);
+          }
+          continue;
+        }
+
+        // 3.2 Verificar se cliente veio do bot oficial
         const { data: botConversation } = await supabase
           .from('conversations')
           .select('id, whatsapp_number')
