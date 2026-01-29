@@ -74,16 +74,21 @@ export function OpportunityCard({
       onClick={onClick}
     >
       {/* Line 1: Badge novo (optional) + Customer name + Delete + Time */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 overflow-hidden">
         {isNew && (
           <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5 shrink-0">
             Novo
           </Badge>
         )}
-        <span className="font-semibold text-sm text-foreground flex-1 truncate min-w-0">
-          {customerName}
-        </span>
         
+        {/* Container para o nome - permite truncar */}
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <span className="font-semibold text-sm text-foreground block truncate">
+            {customerName}
+          </span>
+        </div>
+        
+        {/* Actions container - SEMPRE visível */}
         <div className="flex items-center gap-1 shrink-0">
           {/* Delete button */}
           {onDelete && (
@@ -92,7 +97,7 @@ export function OpportunityCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5 text-muted-foreground hover:text-destructive shrink-0"
+                  className="h-5 w-5 text-muted-foreground hover:text-destructive"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Trash2 className="h-3 w-3" />
