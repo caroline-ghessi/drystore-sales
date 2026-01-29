@@ -1,202 +1,167 @@
 
 
-# Plano: Corrigir Atribuicao de Origem de Leads no CRM
+# Plano: Adicionar Verificacao de Seguranca em process-vendor-opportunities
 
-## Contexto e Problema
+## Analise do Sistema Atual
 
-Atualmente, 168 das 992 oportunidades (17%) marcadas como `vendor_whatsapp` na verdade tiveram primeiro contato pelo bot oficial da empresa. Isso distorce as metricas de origem dos leads.
+O sistema de exclusao de contatos esta funcionando com duas camadas:
 
-### Evidencia dos Dados
+1. **Webhook** (vendor-whatsapp-webhook): Marca novas conversas com `is_internal_contact: true`
+2. **Trigger** (update_existing_conversations_on_exclusion): Atualiza conversas existentes quando contato e adicionado a lista
 
-```
-Oportunidades marcadas vendor_whatsapp: 992
-Dessas, vieram do bot primeiro:        168 (17%)
-Oportunidades com conversation_id:       0 (nenhuma!)
-```
+### Status Atual
 
-### Causa Raiz
+| Verificacao | Resultado |
+|-------------|-----------|
+| Contatos excluidos ativos | 29 |
+| Conversas marcadas como internas | Funcionando |
+| Oportunidades criadas para excluidos | 0 (correto) |
+| Conversas nao marcadas mas deveriam | 0 (correto) |
 
-A edge function `process-vendor-opportunities` cria oportunidades para TODAS as conversas dos vendedores sem verificar se o cliente ja foi atendido pelo bot oficial.
-
----
-
-## Logica de Verificacao
-
-Para determinar a origem correta de um lead:
-
-```text
-+-------------------------------------------+
-|   Cliente aparece em vendor_conversations |
-+-------------------------------------------+
-                    |
-                    v
-+-------------------------------------------+
-| O telefone existe na tabela conversations?|
-+-------------------------------------------+
-         |                        |
-        SIM                      NAO
-         |                        |
-         v                        v
-+-------------------+   +--------------------+
-| Origem: whatsapp  |   | Origem:            |
-| (bot oficial)     |   | vendor_whatsapp    |
-+-------------------+   +--------------------+
-```
-
-**Regra adicional**: Se houver registro em `lead_distributions` para o mesmo cliente, significa que o resumo foi enviado ao vendedor - confirmacao extra de que veio do bot.
+O sistema esta operando corretamente no momento.
 
 ---
 
-## Valores de Source a Usar
+## Vulnerabilidade Identificada
 
-| Cenario | Valor de Source | Descricao |
-|---------|-----------------|-----------|
-| Cliente veio do bot oficial | `whatsapp` | Primeiro contato pelo WhatsApp da empresa |
-| Cliente veio direto do vendedor | `vendor_whatsapp` | Contato iniciado no WhatsApp individual do vendedor |
-
-Estes valores ja existem no sistema (send-lead-to-vendor usa `whatsapp`).
-
----
-
-## Modificacoes Necessarias
-
-### 1. Edge Function: `process-vendor-opportunities`
-
-**Arquivo:** `supabase/functions/process-vendor-opportunities/index.ts`
-
-Adicionar verificacao antes de criar a oportunidade:
-
-**Linha 73-78** - Apos validar o telefone, verificar origem:
+A edge function `process-vendor-opportunities` verifica apenas o campo `metadata.is_internal_contact`:
 
 ```typescript
-// 3.2 NOVO: Verificar se cliente veio do bot oficial
-const { data: botConversation } = await supabase
-  .from('conversations')
-  .select('id, whatsapp_number')
-  .eq('whatsapp_number', normalizedPhone)
-  .limit(1)
-  .single();
+// Linha 58-64 - Verificacao atual
+const validConversations = conversations.filter((conv) => {
+  const isInternal = conv.metadata?.is_internal_contact === true;
+  if (isInternal) {
+    console.log(`Ignorando conversa ${conv.id} - contato interno`);
+  }
+  return !isInternal;
+});
+```
 
-const isFromBot = !!botConversation;
-const opportunitySource = isFromBot ? 'whatsapp' : 'vendor_whatsapp';
-const botConversationId = isFromBot ? botConversation.id : null;
+**Problema potencial**: Se por algum motivo o metadata nao foi atualizado (falha de trigger, timing, etc.), a oportunidade seria criada indevidamente.
 
-if (isFromBot) {
-  console.log(`[VendorOpportunities] Cliente ${normalizedPhone} veio do bot oficial`);
+---
+
+## Solucao Proposta
+
+Adicionar verificacao dupla: manter a checagem do metadata (rapida) E adicionar verificacao direta na tabela `excluded_contacts` usando a funcao `isExcludedContact` ja existente.
+
+---
+
+## Arquivo a Modificar
+
+**`supabase/functions/process-vendor-opportunities/index.ts`**
+
+### Mudanca 1: Importar funcao isExcludedContact
+
+```typescript
+// Linha 3 - Adicionar import
+import { normalizePhone, isExcludedContact } from '../_shared/phone-utils.ts';
+```
+
+### Mudanca 2: Adicionar verificacao direta antes de criar oportunidade
+
+Apos normalizar o telefone (linha 80-85), adicionar:
+
+```typescript
+// Apos normalizar telefone, verificar diretamente na lista de exclusao
+const isExcluded = await isExcludedContact(supabase, normalizedPhone);
+if (isExcluded) {
+  console.log(`[VendorOpportunities] Telefone ${normalizedPhone} esta na lista de exclusao, pulando`);
+  
+  // Atualizar metadata da conversa se nao estava marcada
+  if (!conv.metadata?.is_internal_contact) {
+    await supabase
+      .from('vendor_conversations')
+      .update({ 
+        metadata: { ...conv.metadata, is_internal_contact: true },
+        has_opportunity: true // Marcar como processada para nao tentar novamente
+      })
+      .eq('id', conv.id);
+  }
+  continue;
 }
 ```
 
-**Linha 87-99** - Atualizar criacao do cliente:
+---
+
+## Fluxo de Verificacao Apos Mudanca
+
+```text
+vendor_conversations com has_opportunity = false
+                    |
+                    v
++------------------------------------------+
+| Filtro 1: metadata.is_internal_contact   |
+| (rapido, ja no SELECT inicial)           |
++------------------------------------------+
+                    |
+              Passou filtro
+                    |
+                    v
++------------------------------------------+
+| Filtro 2: isExcludedContact(phone)       |
+| (consulta tabela excluded_contacts)      |
++------------------------------------------+
+                    |
+              Passou filtro
+                    |
+                    v
+         Criar oportunidade no CRM
+```
+
+---
+
+## Codigo Completo da Secao Modificada
 
 ```typescript
-const { data: customer, error: customerError } = await supabase
-  .from('crm_customers')
-  .upsert({
-    phone: normalizedPhone,
-    name: conv.customer_name || 'Cliente sem nome',
-    source: opportunitySource,  // Usar source dinamico
-    conversation_id: botConversationId,  // Vincular ao bot se existir
-    last_interaction_at: new Date().toISOString(),
-    status: 'lead',
-  }, { 
-    onConflict: 'phone',
-    ignoreDuplicates: false 
-  })
-  .select('id')
-  .single();
-```
+// Linha 80-101 - Secao modificada
+const normalizedPhone = normalizePhone(conv.customer_phone);
 
-**Linha 110-124** - Atualizar criacao da oportunidade:
+if (!normalizedPhone) {
+  console.log(`[VendorOpportunities] Conversa ${conv.id} telefone invalido: ${conv.customer_phone}, pulando`);
+  continue;
+}
 
-```typescript
-const { error: oppError } = await supabase
-  .from('crm_opportunities')
-  .insert({
-    customer_id: customer.id,
-    vendor_conversation_id: conv.id,
-    vendor_id: conv.vendor_id,
-    conversation_id: botConversationId,  // NOVO: vincular ao bot
-    title: `Oportunidade - ${conv.product_category || 'Nova'}`,
-    source: opportunitySource,  // MODIFICADO: usar source dinamico
-    product_category: conv.product_category,
-    stage: 'prospecting',
-    probability: isFromBot ? 20 : 10,  // Leads do bot tem maior probabilidade
-    value: 0,
-    validation_status: 'ai_generated',
-  });
+// NOVA VERIFICACAO: Checar lista de exclusao diretamente
+const isExcluded = await isExcludedContact(supabase, normalizedPhone);
+if (isExcluded) {
+  console.log(`[VendorOpportunities] Telefone ${normalizedPhone} na lista de exclusao, pulando conversa ${conv.id}`);
+  
+  // Corrigir metadata se necessario (self-healing)
+  if (!conv.metadata?.is_internal_contact) {
+    await supabase
+      .from('vendor_conversations')
+      .update({ 
+        metadata: { ...(conv.metadata || {}), is_internal_contact: true },
+        has_opportunity: true
+      })
+      .eq('id', conv.id);
+    console.log(`[VendorOpportunities] Conversa ${conv.id} corrigida como internal_contact`);
+  }
+  continue;
+}
+
+// 3.1 Verificar se cliente veio do bot oficial
+const { data: botConversation } = await supabase
+  .from('conversations')
+  // ... resto do codigo existente
 ```
 
 ---
 
-### 2. Script SQL: Corrigir Dados Existentes
+## Beneficios da Mudanca
 
-Executar uma vez para corrigir as 168 oportunidades que vieram do bot:
-
-```sql
--- Atualizar oportunidades que vieram do bot para source correto
-WITH bot_originated_opps AS (
-  SELECT 
-    o.id as opp_id,
-    conv.id as bot_conversation_id
-  FROM crm_opportunities o
-  JOIN crm_customers c ON c.id = o.customer_id
-  JOIN conversations conv ON conv.whatsapp_number = c.phone
-  WHERE o.source = 'vendor_whatsapp'
-)
-UPDATE crm_opportunities o
-SET 
-  source = 'whatsapp',
-  conversation_id = boo.bot_conversation_id,
-  probability = GREATEST(probability, 20)
-FROM bot_originated_opps boo
-WHERE o.id = boo.opp_id;
-
--- Atualizar crm_customers correspondentes
-UPDATE crm_customers c
-SET 
-  source = 'whatsapp',
-  conversation_id = conv.id
-FROM conversations conv
-WHERE conv.whatsapp_number = c.phone
-AND c.source = 'vendor_whatsapp';
-```
+1. **Dupla verificacao**: Metadata + consulta direta
+2. **Self-healing**: Corrige automaticamente conversas que escaparam do trigger
+3. **Zero oportunidades indevidas**: Garantia total de que contatos excluidos nao geram leads
+4. **Reutiliza codigo existente**: Usa `isExcludedContact` que ja tem cache de 5 minutos
 
 ---
 
-## Resumo das Mudancas
+## Impacto de Performance
 
-| Arquivo | Tipo | Descricao |
-|---------|------|-----------|
-| `supabase/functions/process-vendor-opportunities/index.ts` | Modificar | Adicionar verificacao de origem do cliente |
-| SQL de correcao | Executar | Corrigir 168 oportunidades existentes |
-
----
-
-## Resultado Esperado
-
-Apos implementacao:
-
-1. **Novas oportunidades**: Origem corretamente identificada
-2. **Dados existentes**: 168 registros atualizados para `source: 'whatsapp'`
-3. **Metricas**: Atribuicao precisa entre canal bot e canal vendedor
-4. **Historico**: `conversation_id` preenchido permite visualizar conversa do bot no CRM
-
----
-
-## Metricas de Validacao
-
-```sql
--- Query para validar apos implementacao
-SELECT 
-  source,
-  COUNT(*) as total,
-  ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as percentual
-FROM crm_opportunities
-GROUP BY source
-ORDER BY total DESC;
-```
-
-Resultado esperado:
-- `vendor_whatsapp`: ~824 (83%)
-- `whatsapp`: ~168 (17%)
+- A funcao `isExcludedContact` usa cache de 5 minutos
+- Primeira chamada: 1 query para carregar 29 telefones
+- Proximas chamadas: verificacao em memoria (Set.has)
+- Impacto: minimo (~1ms por verificacao)
 
