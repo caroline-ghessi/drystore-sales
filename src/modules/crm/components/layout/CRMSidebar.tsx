@@ -10,7 +10,8 @@ import {
   Settings, 
   Home,
   Brain,
-  ChevronRight
+  ChevronRight,
+  Bot
 } from 'lucide-react';
 import {
   Sidebar,
@@ -27,6 +28,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { AIStatusIndicator } from './AIStatusIndicator';
 import { useOpportunitiesCount } from '../../hooks/useOpportunities';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { cn } from '@/lib/utils';
 
 const mainMenuItems = [
@@ -42,10 +44,15 @@ const managementItems = [
   { title: 'Configurações', url: '/crm/settings', icon: Settings },
 ];
 
+const adminItems = [
+  { title: 'Agentes IA', url: '/crm/agentes', icon: Bot },
+];
+
 export function CRMSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const { data: aiOpportunitiesCount } = useOpportunitiesCount();
+  const { isAdmin } = useUserPermissions();
   const collapsed = state === "collapsed";
 
   const isActive = (path: string, end?: boolean) => {
@@ -181,6 +188,40 @@ export function CRMSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Admin Section - Only for admins */}
+        {isAdmin && (
+          <SidebarGroup>
+            {!collapsed && (
+              <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3">
+                Administração
+              </SidebarGroupLabel>
+            )}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => {
+                  const active = isActive(item.url);
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink 
+                          to={item.url}
+                          className={getNavCls(active)}
+                        >
+                          <item.icon className={cn(
+                            'h-4 w-4 mr-2',
+                            active ? 'text-primary' : 'text-muted-foreground'
+                          )} />
+                          {!collapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );

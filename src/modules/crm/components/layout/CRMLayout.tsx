@@ -15,6 +15,7 @@ import Agenda from "@/modules/crm/pages/Agenda";
 import Settings from "@/modules/crm/pages/Settings";
 import Opportunities from "@/modules/crm/pages/Opportunities";
 import NegotiationDetail from "@/modules/crm/pages/NegotiationDetail";
+import AgentManagement from "@/modules/crm/pages/AgentManagement";
 
 export default function CRMLayout() {
   return (
@@ -36,6 +37,7 @@ export default function CRMLayout() {
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/agenda" element={<Agenda />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/agentes" element={<AgentManagement />} />
             </Routes>
           </main>
         </div>

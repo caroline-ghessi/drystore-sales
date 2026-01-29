@@ -9,6 +9,7 @@ export { default as Customers } from './pages/Customers';
 export { default as Opportunities } from './pages/Opportunities';
 export { default as Tasks } from './pages/Tasks';
 export { default as Settings } from './pages/Settings';
+export { default as AgentManagement } from './pages/AgentManagement';
 
 // Hooks
 export * from './hooks';

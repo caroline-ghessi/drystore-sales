@@ -606,6 +606,53 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_agent_extractions: {
+        Row: {
+          agent_type: string
+          confidence: number | null
+          created_at: string
+          extraction_data: Json
+          id: string
+          model_used: string | null
+          opportunity_id: string
+          processing_time_ms: number | null
+          tokens_used: number | null
+          version: number
+        }
+        Insert: {
+          agent_type: string
+          confidence?: number | null
+          created_at?: string
+          extraction_data?: Json
+          id?: string
+          model_used?: string | null
+          opportunity_id: string
+          processing_time_ms?: number | null
+          tokens_used?: number | null
+          version?: number
+        }
+        Update: {
+          agent_type?: string
+          confidence?: number | null
+          created_at?: string
+          extraction_data?: Json
+          id?: string
+          model_used?: string | null
+          opportunity_id?: string
+          processing_time_ms?: number | null
+          tokens_used?: number | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_agent_extractions_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "crm_opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_customers: {
         Row: {
           assigned_to: string | null
@@ -613,12 +660,21 @@ export type Database = {
           company: string | null
           conversation_id: string | null
           created_at: string | null
+          decision_makers: Json | null
           email: string | null
           id: string
+          is_technical: boolean | null
           last_interaction_at: string | null
+          main_motivation: string | null
           name: string
+          origin_channel: string | null
+          pain_points: Json | null
           phone: string
           priority: Database["public"]["Enums"]["customer_priority"] | null
+          profession: string | null
+          profile_extracted_at: string | null
+          profile_type: string | null
+          referred_by: string | null
           segment: string | null
           source: string | null
           state: string | null
@@ -632,12 +688,21 @@ export type Database = {
           company?: string | null
           conversation_id?: string | null
           created_at?: string | null
+          decision_makers?: Json | null
           email?: string | null
           id?: string
+          is_technical?: boolean | null
           last_interaction_at?: string | null
+          main_motivation?: string | null
           name: string
+          origin_channel?: string | null
+          pain_points?: Json | null
           phone: string
           priority?: Database["public"]["Enums"]["customer_priority"] | null
+          profession?: string | null
+          profile_extracted_at?: string | null
+          profile_type?: string | null
+          referred_by?: string | null
           segment?: string | null
           source?: string | null
           state?: string | null
@@ -651,12 +716,21 @@ export type Database = {
           company?: string | null
           conversation_id?: string | null
           created_at?: string | null
+          decision_makers?: Json | null
           email?: string | null
           id?: string
+          is_technical?: boolean | null
           last_interaction_at?: string | null
+          main_motivation?: string | null
           name?: string
+          origin_channel?: string | null
+          pain_points?: Json | null
           phone?: string
           priority?: Database["public"]["Enums"]["customer_priority"] | null
+          profession?: string | null
+          profile_extracted_at?: string | null
+          profile_type?: string | null
+          referred_by?: string | null
           segment?: string | null
           source?: string | null
           state?: string | null
@@ -695,22 +769,40 @@ export type Database = {
           ai_extracted_at: string | null
           ai_model: string | null
           assigned_to: string | null
+          bant_qualified: boolean | null
+          bant_score: number | null
+          budget_range: string | null
+          client_mentioned_value: number | null
+          competitors: Json | null
           conversation_id: string | null
           created_at: string | null
           customer_id: string | null
+          days_in_negotiation: number | null
           description: string | null
+          discount_offered: number | null
+          discount_requested: number | null
           expected_close_date: string | null
+          first_contact_at: string | null
           id: string
+          last_ai_analysis_at: string | null
           next_step: string | null
           objections: string[] | null
+          payment_preference: string | null
           probability: number | null
           product_category:
             | Database["public"]["Enums"]["product_category"]
             | null
+          proposal_requested: boolean | null
+          proposal_sent: boolean | null
+          proposal_value: number | null
+          recommended_actions: Json | null
           source: string | null
+          spin_score: number | null
+          spin_stage: string | null
           stage: Database["public"]["Enums"]["opportunity_stage"] | null
           temperature: string | null
           title: string
+          total_interactions: number | null
           updated_at: string | null
           validated_at: string | null
           validated_by: string | null
@@ -718,6 +810,8 @@ export type Database = {
           value: number
           vendor_conversation_id: number | null
           vendor_id: string | null
+          visit_offered: boolean | null
+          visits_done: number | null
         }
         Insert: {
           actual_close_date?: string | null
@@ -725,22 +819,40 @@ export type Database = {
           ai_extracted_at?: string | null
           ai_model?: string | null
           assigned_to?: string | null
+          bant_qualified?: boolean | null
+          bant_score?: number | null
+          budget_range?: string | null
+          client_mentioned_value?: number | null
+          competitors?: Json | null
           conversation_id?: string | null
           created_at?: string | null
           customer_id?: string | null
+          days_in_negotiation?: number | null
           description?: string | null
+          discount_offered?: number | null
+          discount_requested?: number | null
           expected_close_date?: string | null
+          first_contact_at?: string | null
           id?: string
+          last_ai_analysis_at?: string | null
           next_step?: string | null
           objections?: string[] | null
+          payment_preference?: string | null
           probability?: number | null
           product_category?:
             | Database["public"]["Enums"]["product_category"]
             | null
+          proposal_requested?: boolean | null
+          proposal_sent?: boolean | null
+          proposal_value?: number | null
+          recommended_actions?: Json | null
           source?: string | null
+          spin_score?: number | null
+          spin_stage?: string | null
           stage?: Database["public"]["Enums"]["opportunity_stage"] | null
           temperature?: string | null
           title: string
+          total_interactions?: number | null
           updated_at?: string | null
           validated_at?: string | null
           validated_by?: string | null
@@ -748,6 +860,8 @@ export type Database = {
           value?: number
           vendor_conversation_id?: number | null
           vendor_id?: string | null
+          visit_offered?: boolean | null
+          visits_done?: number | null
         }
         Update: {
           actual_close_date?: string | null
@@ -755,22 +869,40 @@ export type Database = {
           ai_extracted_at?: string | null
           ai_model?: string | null
           assigned_to?: string | null
+          bant_qualified?: boolean | null
+          bant_score?: number | null
+          budget_range?: string | null
+          client_mentioned_value?: number | null
+          competitors?: Json | null
           conversation_id?: string | null
           created_at?: string | null
           customer_id?: string | null
+          days_in_negotiation?: number | null
           description?: string | null
+          discount_offered?: number | null
+          discount_requested?: number | null
           expected_close_date?: string | null
+          first_contact_at?: string | null
           id?: string
+          last_ai_analysis_at?: string | null
           next_step?: string | null
           objections?: string[] | null
+          payment_preference?: string | null
           probability?: number | null
           product_category?:
             | Database["public"]["Enums"]["product_category"]
             | null
+          proposal_requested?: boolean | null
+          proposal_sent?: boolean | null
+          proposal_value?: number | null
+          recommended_actions?: Json | null
           source?: string | null
+          spin_score?: number | null
+          spin_stage?: string | null
           stage?: Database["public"]["Enums"]["opportunity_stage"] | null
           temperature?: string | null
           title?: string
+          total_interactions?: number | null
           updated_at?: string | null
           validated_at?: string | null
           validated_by?: string | null
@@ -778,6 +910,8 @@ export type Database = {
           value?: number
           vendor_conversation_id?: number | null
           vendor_id?: string | null
+          visit_offered?: boolean | null
+          visits_done?: number | null
         }
         Relationships: [
           {
@@ -1605,19 +1739,29 @@ export type Database = {
           construction_size_m2: number | null
           conversation_id: string
           created_at: string | null
+          deadline_urgency: string | null
           desired_product: string | null
           energy_bill_value: number | null
           energy_consumption: string | null
+          estimated_quantities: Json | null
           floor_quantity_m2: number | null
           floor_rooms: string | null
           has_architectural_project: boolean | null
           has_energy_backups: boolean | null
+          has_professional: boolean | null
           id: string
+          location_neighborhood: string | null
           materials_list: string[] | null
           notes: string | null
+          products_needed: Json | null
+          professional_name: string | null
+          project_phase: string | null
           project_status: string | null
+          project_type_detailed: string | null
           roof_size_m2: number | null
           roof_status: string | null
+          start_date: string | null
+          technical_specs: Json | null
           timeline: string | null
           updated_at: string | null
           urgency: string | null
@@ -1628,19 +1772,29 @@ export type Database = {
           construction_size_m2?: number | null
           conversation_id: string
           created_at?: string | null
+          deadline_urgency?: string | null
           desired_product?: string | null
           energy_bill_value?: number | null
           energy_consumption?: string | null
+          estimated_quantities?: Json | null
           floor_quantity_m2?: number | null
           floor_rooms?: string | null
           has_architectural_project?: boolean | null
           has_energy_backups?: boolean | null
+          has_professional?: boolean | null
           id?: string
+          location_neighborhood?: string | null
           materials_list?: string[] | null
           notes?: string | null
+          products_needed?: Json | null
+          professional_name?: string | null
+          project_phase?: string | null
           project_status?: string | null
+          project_type_detailed?: string | null
           roof_size_m2?: number | null
           roof_status?: string | null
+          start_date?: string | null
+          technical_specs?: Json | null
           timeline?: string | null
           updated_at?: string | null
           urgency?: string | null
@@ -1651,19 +1805,29 @@ export type Database = {
           construction_size_m2?: number | null
           conversation_id?: string
           created_at?: string | null
+          deadline_urgency?: string | null
           desired_product?: string | null
           energy_bill_value?: number | null
           energy_consumption?: string | null
+          estimated_quantities?: Json | null
           floor_quantity_m2?: number | null
           floor_rooms?: string | null
           has_architectural_project?: boolean | null
           has_energy_backups?: boolean | null
+          has_professional?: boolean | null
           id?: string
+          location_neighborhood?: string | null
           materials_list?: string[] | null
           notes?: string | null
+          products_needed?: Json | null
+          professional_name?: string | null
+          project_phase?: string | null
           project_status?: string | null
+          project_type_detailed?: string | null
           roof_size_m2?: number | null
           roof_status?: string | null
+          start_date?: string | null
+          technical_specs?: Json | null
           timeline?: string | null
           updated_at?: string | null
           urgency?: string | null
@@ -3212,6 +3376,10 @@ export type Database = {
         | "lead_scorer"
         | "summarizer"
         | "quality_monitor"
+        | "crm_analyzer"
+        | "crm_extractor"
+        | "crm_classifier"
+        | "crm_coach"
       app_role: "admin" | "supervisor" | "atendente" | "vendedor"
       contact_type:
         | "employee"
@@ -3432,6 +3600,10 @@ export const Constants = {
         "lead_scorer",
         "summarizer",
         "quality_monitor",
+        "crm_analyzer",
+        "crm_extractor",
+        "crm_classifier",
+        "crm_coach",
       ],
       app_role: ["admin", "supervisor", "atendente", "vendedor"],
       contact_type: [
