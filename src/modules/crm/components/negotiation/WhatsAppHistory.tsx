@@ -1,16 +1,20 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, ExternalLink } from 'lucide-react';
 import { WhatsAppMessage } from './WhatsAppMessage';
 import { useConversationMessages, useVendorConversationMessages } from '../../hooks/useOpportunityDetail';
+import { FullConversationDialog } from './FullConversationDialog';
 
 interface WhatsAppHistoryProps {
   conversationId: string | null | undefined;
   vendorConversationId: number | null | undefined;
+  customerName?: string;
+  vendorName?: string;
 }
 
-export function WhatsAppHistory({ conversationId, vendorConversationId }: WhatsAppHistoryProps) {
+export function WhatsAppHistory({ conversationId, vendorConversationId, customerName, vendorName }: WhatsAppHistoryProps) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { data: botMessages, isLoading: loadingBot } = useConversationMessages(conversationId);
   const { data: vendorMessages, isLoading: loadingVendor } = useVendorConversationMessages(vendorConversationId);
 
@@ -68,7 +72,12 @@ export function WhatsAppHistory({ conversationId, vendorConversationId }: WhatsA
             <MessageSquare className="h-5 w-5 text-green-600" />
             Histórico WhatsApp
           </CardTitle>
-          <Button variant="link" size="sm" className="gap-1 text-primary">
+          <Button 
+            variant="link" 
+            size="sm" 
+            className="gap-1 text-primary"
+            onClick={() => setIsDialogOpen(true)}
+          >
             Ver Conversa Completa
             <ExternalLink className="h-3 w-3" />
           </Button>
@@ -99,6 +108,15 @@ export function WhatsAppHistory({ conversationId, vendorConversationId }: WhatsA
           </p>
         )}
       </CardContent>
+
+      <FullConversationDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        vendorConversationId={vendorConversationId}
+        conversationId={conversationId}
+        customerName={customerName}
+        vendorName={vendorName}
+      />
     </Card>
   );
 }
