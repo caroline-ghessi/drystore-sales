@@ -1,130 +1,120 @@
 
-# Plano: Corrigir Visibilidade do Botao Delete (Causa Raiz Identificada)
 
-## Problema Real Identificado
+# Plano: Implementar Funcionalidade de Filtro no Pipeline
 
-Apos investigacao profunda, descobri que o problema esta no **ScrollArea do Radix UI**. Quando a coluna tem muitos cards (como Prospecção com 999), a scrollbar vertical e ativada e o viewport interno reduz a largura disponivel para os cards.
+## Problema Identificado
 
-### Diferenca entre colunas:
-| Coluna | Cards | Scrollbar | Largura disponivel |
-|--------|-------|-----------|-------------------|
-| Prospecção | 999 | Ativa (vertical) | Reduzida (~268px) |
-| Qualificação | 1 | Inativa | Total (~280px) |
+O campo de busca "Buscar oportunidades..." é apenas visual - não está conectado a nenhuma lógica de filtragem. Quando você digita, nada acontece porque:
 
-O problema nao e no CSS do header do card (que ja foi modificado corretamente), mas sim que os **cards na coluna com scrollbar tem menos largura** e o layout esta estourando.
+1. Não existe estado para armazenar o termo de busca
+2. O Input não tem `onChange` para capturar a digitação
+3. O `PipelineKanban` não recebe nenhum filtro
+4. O hook `useOpportunities` retorna todos os dados sem filtrar
 
-## Solucao
+## Solução Proposta
 
-Modificar o KanbanColumn para garantir que os cards tenham largura minima adequada, independente da scrollbar, e adicionar `overflow-hidden` no container dos cards.
+Implementar filtro funcional que busca por nome do cliente, título da oportunidade ou cidade.
 
 ---
 
 ## Arquivos a Modificar
 
-### 1. `src/modules/crm/components/pipeline/KanbanColumn.tsx`
+### 1. `src/modules/crm/pages/Pipeline.tsx`
 
-**Mudanca**: Adicionar classe de largura minima ao container interno do ScrollArea.
+Adicionar estado de busca e passar para o Kanban:
 
 ```tsx
-// Antes (linha 77):
-<div className="p-2 space-y-2">
+export default function Pipeline() {
+  const [view, setView] = React.useState<'kanban' | 'list'>('kanban');
+  const [searchTerm, setSearchTerm] = React.useState('');  // NOVO
 
-// Depois:
-<div className="p-2 space-y-2 min-w-0">
+  // ...
+
+  <Input 
+    placeholder="Buscar oportunidades..." 
+    className="pl-9 bg-background"
+    value={searchTerm}                        // NOVO
+    onChange={(e) => setSearchTerm(e.target.value)}  // NOVO
+  />
+
+  // ...
+
+  <PipelineKanban searchTerm={searchTerm} />  // PASSAR FILTRO
 ```
 
-### 2. `src/modules/crm/components/pipeline/OpportunityCard.tsx`
+### 2. `src/modules/crm/components/pipeline/PipelineKanban.tsx`
 
-**Mudanca**: Remover a logica de `maxWidth` calculado que nao funcionou e usar uma abordagem diferente - CSS Grid ou estrutura de duas linhas.
-
-**Opção A - Separar linha do nome e linha das acoes:**
-
-Em vez de forçar tudo na mesma linha, separar o layout:
-- Linha 1: Badge Novo + Nome do cliente
-- Linha 2: Lixeira + Tempo (alinhados a direita)
-
-**Opção B - Usar CSS Grid com colunas fixas:**
+Receber o filtro e aplicar nos dados:
 
 ```tsx
-<div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-  {isNew && <Badge>Novo</Badge>}
-  <span className="truncate">{customerName}</span>
-  <div className="flex items-center gap-1">
-    {onDelete && (/* lixeira */)}
-    <span>{timeAgo}</span>
-  </div>
-</div>
-```
+interface PipelineKanbanProps {
+  onValidate?: (opportunity: Opportunity) => void;
+  searchTerm?: string;  // NOVO
+}
 
----
-
-## Solucao Recomendada (Opção B - CSS Grid)
-
-O CSS Grid garante que as 3 colunas (badge, nome, acoes) respeitem seus tamanhos sem overflow.
-
-### Codigo Completo da Mudanca no OpportunityCard.tsx
-
-```tsx
-{/* Line 1: Badge novo (optional) + Customer name + Delete + Time */}
-<div className="grid items-center gap-2" style={{ gridTemplateColumns: isNew ? 'auto 1fr auto' : '1fr auto' }}>
-  {isNew && (
-    <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5">
-      Novo
-    </Badge>
-  )}
+export function PipelineKanban({ onValidate, searchTerm = '' }: PipelineKanbanProps) {
+  const { data, isLoading, error } = useOpportunities();
   
-  <span className="font-semibold text-sm text-foreground truncate overflow-hidden">
-    {customerName}
-  </span>
-  
-  <div className="flex items-center gap-1">
-    {onDelete && (
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 text-muted-foreground hover:text-destructive flex-shrink-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </AlertDialogTrigger>
-        {/* ... resto do dialog ... */}
-      </AlertDialog>
-    )}
+  // Filtrar oportunidades com base no termo de busca
+  const filteredByStage = React.useMemo(() => {
+    if (!data?.byStage || !searchTerm.trim()) {
+      return data?.byStage;
+    }
     
-    <span className="text-xs text-muted-foreground whitespace-nowrap">
-      {timeAgo}
-    </span>
-  </div>
-</div>
+    const lowerSearch = searchTerm.toLowerCase().trim();
+    
+    // Filtrar cada estágio
+    const filtered: typeof data.byStage = {
+      prospecting: [],
+      qualification: [],
+      proposal: [],
+      negotiation: [],
+      closed_won: [],
+      closed_lost: [],
+    };
+    
+    Object.entries(data.byStage).forEach(([stage, opportunities]) => {
+      filtered[stage as keyof typeof filtered] = opportunities.filter(opp => {
+        const customerName = opp.customer?.name?.toLowerCase() || '';
+        const title = opp.title?.toLowerCase() || '';
+        const city = opp.customer?.city?.toLowerCase() || '';
+        
+        return customerName.includes(lowerSearch) || 
+               title.includes(lowerSearch) || 
+               city.includes(lowerSearch);
+      });
+    });
+    
+    return filtered;
+  }, [data?.byStage, searchTerm]);
+
+  // Usar filteredByStage em vez de data?.byStage
+  // ...
+}
 ```
 
 ---
 
-## Por que CSS Grid Funciona
+## Campos que Serão Buscados
 
-1. **`auto`**: O badge "Novo" ocupa apenas o espaco necessario
-2. **`1fr`**: O nome ocupa o espaco restante E trunca quando necessario
-3. **`auto`**: As acoes (delete + tempo) ocupam apenas o necessario e NUNCA sao cortadas
-
-O Grid CSS garante que cada coluna respeite seu tamanho sem ser afetada por overflow de outras colunas.
-
----
-
-## Mudancas Resumidas
-
-| Arquivo | Linha(s) | Mudanca |
-|---------|----------|---------|
-| `OpportunityCard.tsx` | 77-138 | Trocar Flexbox por CSS Grid |
-| `KanbanColumn.tsx` | 77 | Adicionar `min-w-0 overflow-hidden` |
+A busca funcionará nos seguintes campos:
+- **Nome do cliente** (customer.name)
+- **Título da oportunidade** (title)
+- **Cidade do cliente** (customer.city)
 
 ---
 
-## Resultado Esperado
+## Comportamento Esperado
 
-- Botao de delete (lixeira) visivel em TODAS as etapas
-- Timestamp visivel em todos os cards
-- Layout funciona corretamente com ou sem scrollbar
-- Nome do cliente trunca adequadamente
+1. Usuário digita no campo de busca
+2. A busca é aplicada em tempo real (sem debounce para resposta imediata)
+3. Apenas os cards que correspondem ao filtro são exibidos em cada coluna
+4. Se nenhum resultado for encontrado em uma coluna, ela mostrará "Nenhuma oportunidade"
+5. Limpar o campo restaura todos os resultados
+
+---
+
+## Resultado Final
+
+O filtro funcionará corretamente, permitindo encontrar negociações pelo nome do cliente, título ou cidade.
+
