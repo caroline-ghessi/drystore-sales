@@ -22,6 +22,7 @@ export interface OpportunityDetail {
   objections: string[] | null;
   ai_confidence: number | null;
   conversation_id: string | null;
+  vendor_conversation_id: number | null;
   customer: {
     id: string;
     name: string;
@@ -64,6 +65,7 @@ export function useOpportunityDetail(id: string | undefined) {
           objections,
           ai_confidence,
           conversation_id,
+          vendor_conversation_id,
           customer:crm_customers(id, name, phone, email, city, state, company, segment),
           vendor:vendors(id, name)
         `)
@@ -136,5 +138,25 @@ export function useConversationMessages(conversationId: string | null | undefine
       return data || [];
     },
     enabled: !!conversationId,
+  });
+}
+
+export function useVendorConversationMessages(vendorConversationId: number | null | undefined) {
+  return useQuery({
+    queryKey: ['vendor-conversation-messages', vendorConversationId],
+    queryFn: async () => {
+      if (!vendorConversationId) return [];
+
+      const { data, error } = await supabase
+        .from('vendor_messages')
+        .select('id, content, from_me, from_name, created_at')
+        .eq('conversation_id', vendorConversationId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!vendorConversationId,
   });
 }

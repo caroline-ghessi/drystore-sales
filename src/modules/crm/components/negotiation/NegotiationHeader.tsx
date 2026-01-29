@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Share2, Save, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Share2, Save, AlertTriangle, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { OpportunityDetail } from '../../hooks/useOpportunityDetail';
@@ -53,7 +53,13 @@ export function NegotiationHeader({ opportunity, onBack, onSave, isSaving }: Neg
             {displayTitle}
           </h1>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {opportunity?.vendor?.name && (
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+                <User className="h-3 w-3 mr-1" />
+                {opportunity.vendor.name}
+              </Badge>
+            )}
             {risk && (
               <Badge variant="outline" className={risk.className}>
                 <AlertTriangle className="h-3 w-3 mr-1" />
