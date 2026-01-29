@@ -84,13 +84,30 @@ serve(async (req) => {
           continue;
         }
 
-        // 3.1 Criar/atualizar cliente no CRM
+        // 3.1 NOVO: Verificar se cliente veio do bot oficial
+        const { data: botConversation } = await supabase
+          .from('conversations')
+          .select('id, whatsapp_number')
+          .eq('whatsapp_number', normalizedPhone)
+          .limit(1)
+          .maybeSingle();
+
+        const isFromBot = !!botConversation;
+        const opportunitySource = isFromBot ? 'whatsapp' : 'vendor_whatsapp';
+        const botConversationId = isFromBot ? botConversation.id : null;
+
+        if (isFromBot) {
+          console.log(`[VendorOpportunities] Cliente ${normalizedPhone} veio do bot oficial (conversa ${botConversation.id})`);
+        }
+
+        // 3.2 Criar/atualizar cliente no CRM
         const { data: customer, error: customerError } = await supabase
           .from('crm_customers')
           .upsert({
             phone: normalizedPhone,
             name: conv.customer_name || 'Cliente sem nome',
-            source: 'vendor_whatsapp',
+            source: opportunitySource,
+            conversation_id: botConversationId,
             last_interaction_at: new Date().toISOString(),
             status: 'lead',
           }, { 
@@ -107,18 +124,19 @@ serve(async (req) => {
           continue;
         }
 
-        // 3.2 Criar oportunidade no CRM
+        // 3.3 Criar oportunidade no CRM
         const { error: oppError } = await supabase
           .from('crm_opportunities')
           .insert({
             customer_id: customer.id,
             vendor_conversation_id: conv.id,
             vendor_id: conv.vendor_id,
+            conversation_id: botConversationId,
             title: `Oportunidade - ${conv.product_category || 'Nova'}`,
-            source: 'vendor_whatsapp',
+            source: opportunitySource,
             product_category: conv.product_category,
             stage: 'prospecting',
-            probability: 10,
+            probability: isFromBot ? 20 : 10,
             value: 0,
             validation_status: 'ai_generated',
           });
