@@ -1,79 +1,56 @@
 
+# Plano: Corrigir Visibilidade do Botao Delete (Causa Raiz Identificada)
 
-# Plano: Corrigir Visibilidade do Botao Delete em Prospecção
+## Problema Real Identificado
 
-## Problema Identificado
+Apos investigacao profunda, descobri que o problema esta no **ScrollArea do Radix UI**. Quando a coluna tem muitos cards (como Prospecção com 999), a scrollbar vertical e ativada e o viewport interno reduz a largura disponivel para os cards.
 
-O botao de delete (lixeira) e o timestamp nao aparecem nos cards da etapa "Prospecção", mas aparecem corretamente nas demais etapas (Qualificação, Proposta, etc.).
+### Diferenca entre colunas:
+| Coluna | Cards | Scrollbar | Largura disponivel |
+|--------|-------|-----------|-------------------|
+| Prospecção | 999 | Ativa (vertical) | Reduzida (~268px) |
+| Qualificação | 1 | Inativa | Total (~280px) |
 
-Analisando a imagem fornecida:
-- **Prospecção (999 cards)**: Nenhum card mostra lixeira ou tempo
-- **Qualificação (1 card)**: Card mostra lixeira e "22 minutos"
-
-## Causa Raiz
-
-O problema e de layout CSS. O `ScrollArea` do Radix UI, quando tem muitos itens, pode estar afetando a largura disponivel para os cards internos. O viewport interno (`ScrollAreaPrimitive.Viewport`) tem `w-full` que pode nao estar respeitando a largura minima necessaria quando ha scroll vertical.
-
-O layout atual do header do card usa:
-```
-flex container
-  -> Badge "Novo" (shrink-0)
-  -> Div nome (flex-1 min-w-0 overflow-hidden)
-  -> Div acoes (shrink-0 com delete + time)
-```
-
-Quando o container do card tem largura restrita (devido ao ScrollArea viewport), os elementos com `shrink-0` podem ser empurrados para fora se o `flex-1` tiver prioridade errada.
+O problema nao e no CSS do header do card (que ja foi modificado corretamente), mas sim que os **cards na coluna com scrollbar tem menos largura** e o layout esta estourando.
 
 ## Solucao
 
-Modificar o layout do header do card para garantir que os elementos de acao SEMPRE tenham prioridade de exibicao, usando uma abordagem de CSS Grid ou forçando a largura maxima do nome.
+Modificar o KanbanColumn para garantir que os cards tenham largura minima adequada, independente da scrollbar, e adicionar `overflow-hidden` no container dos cards.
 
 ---
 
-## Arquivo a Modificar
+## Arquivos a Modificar
 
-**`src/modules/crm/components/pipeline/OpportunityCard.tsx`**
+### 1. `src/modules/crm/components/pipeline/KanbanColumn.tsx`
 
-### Mudanca: Usar max-width calculado no nome
+**Mudanca**: Adicionar classe de largura minima ao container interno do ScrollArea.
 
-Em vez de confiar apenas em `flex-1 min-w-0`, forcar uma largura maxima calculada no nome do cliente para garantir que sempre sobre espaco para a lixeira e o tempo.
-
-**De:**
 ```tsx
-<div className="flex items-center gap-2 overflow-hidden">
-  {isNew && (
-    <Badge className="... shrink-0">Novo</Badge>
-  )}
-  
-  <div className="flex-1 min-w-0 overflow-hidden">
-    <span className="... block truncate">{customerName}</span>
-  </div>
-  
-  <div className="flex items-center gap-1 shrink-0">
-    {onDelete && (...)}
-    <span>{timeAgo}</span>
-  </div>
-</div>
+// Antes (linha 77):
+<div className="p-2 space-y-2">
+
+// Depois:
+<div className="p-2 space-y-2 min-w-0">
 ```
 
-**Para:**
+### 2. `src/modules/crm/components/pipeline/OpportunityCard.tsx`
+
+**Mudanca**: Remover a logica de `maxWidth` calculado que nao funcionou e usar uma abordagem diferente - CSS Grid ou estrutura de duas linhas.
+
+**Opção A - Separar linha do nome e linha das acoes:**
+
+Em vez de forçar tudo na mesma linha, separar o layout:
+- Linha 1: Badge Novo + Nome do cliente
+- Linha 2: Lixeira + Tempo (alinhados a direita)
+
+**Opção B - Usar CSS Grid com colunas fixas:**
+
 ```tsx
-<div className="flex items-center gap-2 w-full">
-  {isNew && (
-    <Badge className="... shrink-0">Novo</Badge>
-  )}
-  
-  {/* Nome com largura maxima para garantir espaco para acoes */}
-  <span 
-    className="font-semibold text-sm text-foreground truncate"
-    style={{ flex: '1 1 0', minWidth: 0, maxWidth: isNew ? 'calc(100% - 120px)' : 'calc(100% - 80px)' }}
-  >
-    {customerName}
-  </span>
-  
-  {/* Acoes com ml-auto para alinhar a direita */}
-  <div className="flex items-center gap-1 ml-auto shrink-0">
-    {onDelete && (...)}
+<div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+  {isNew && <Badge>Novo</Badge>}
+  <span className="truncate">{customerName}</span>
+  <div className="flex items-center gap-1">
+    {onDelete && (/* lixeira */)}
     <span>{timeAgo}</span>
   </div>
 </div>
@@ -81,65 +58,39 @@ Em vez de confiar apenas em `flex-1 min-w-0`, forcar uma largura maxima calculad
 
 ---
 
-## Codigo Completo da Primeira Linha Refatorada
+## Solucao Recomendada (Opção B - CSS Grid)
+
+O CSS Grid garante que as 3 colunas (badge, nome, acoes) respeitem seus tamanhos sem overflow.
+
+### Codigo Completo da Mudanca no OpportunityCard.tsx
 
 ```tsx
 {/* Line 1: Badge novo (optional) + Customer name + Delete + Time */}
-<div className="flex items-center gap-2 w-full">
+<div className="grid items-center gap-2" style={{ gridTemplateColumns: isNew ? 'auto 1fr auto' : '1fr auto' }}>
   {isNew && (
-    <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5 shrink-0">
+    <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5">
       Novo
     </Badge>
   )}
   
-  {/* Nome do cliente com largura maxima calculada */}
-  <span 
-    className="font-semibold text-sm text-foreground truncate"
-    style={{ 
-      flex: '1 1 0', 
-      minWidth: 0, 
-      maxWidth: isNew ? 'calc(100% - 130px)' : 'calc(100% - 90px)' 
-    }}
-  >
+  <span className="font-semibold text-sm text-foreground truncate overflow-hidden">
     {customerName}
   </span>
   
-  {/* Actions container - SEMPRE visível com ml-auto */}
-  <div className="flex items-center gap-1 ml-auto shrink-0">
-    {/* Delete button */}
+  <div className="flex items-center gap-1">
     {onDelete && (
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
-            className="h-5 w-5 text-muted-foreground hover:text-destructive"
+            className="h-5 w-5 text-muted-foreground hover:text-destructive flex-shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
             <Trash2 className="h-3 w-3" />
           </Button>
         </AlertDialogTrigger>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir negociação?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. A negociação de "{customerName}" será 
-              permanentemente removida do sistema.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              className="bg-destructive hover:bg-destructive/90"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+        {/* ... resto do dialog ... */}
       </AlertDialog>
     )}
     
@@ -152,22 +103,28 @@ Em vez de confiar apenas em `flex-1 min-w-0`, forcar uma largura maxima calculad
 
 ---
 
-## Por que Esta Solução Funciona
+## Por que CSS Grid Funciona
 
-1. **`w-full` no container**: Garante que o container ocupe toda a largura disponível
-2. **`ml-auto` nas ações**: Empurra o container de ações para a extrema direita, garantindo que sempre fique visível
-3. **`maxWidth` calculado dinamicamente**: Limita o nome do cliente a uma largura máxima que deixa espaço suficiente para a lixeira e o tempo
-   - Com badge "Novo": `calc(100% - 130px)` (40px badge + 20px gap + 20px lixeira + 50px tempo)
-   - Sem badge "Novo": `calc(100% - 90px)` (20px lixeira + 50px tempo + margem)
-4. **`shrink-0` nas ações**: Impede que o container de ações encolha
+1. **`auto`**: O badge "Novo" ocupa apenas o espaco necessario
+2. **`1fr`**: O nome ocupa o espaco restante E trunca quando necessario
+3. **`auto`**: As acoes (delete + tempo) ocupam apenas o necessario e NUNCA sao cortadas
+
+O Grid CSS garante que cada coluna respeite seu tamanho sem ser afetada por overflow de outras colunas.
+
+---
+
+## Mudancas Resumidas
+
+| Arquivo | Linha(s) | Mudanca |
+|---------|----------|---------|
+| `OpportunityCard.tsx` | 77-138 | Trocar Flexbox por CSS Grid |
+| `KanbanColumn.tsx` | 77 | Adicionar `min-w-0 overflow-hidden` |
 
 ---
 
 ## Resultado Esperado
 
-Apos a implementacao:
-- Botao de delete (lixeira) visivel em TODAS as etapas, incluindo Prospecção
-- Timestamp visível em todos os cards
-- Nome do cliente trunca corretamente quando muito longo
-- Layout consistente independente da quantidade de cards na coluna
-
+- Botao de delete (lixeira) visivel em TODAS as etapas
+- Timestamp visivel em todos os cards
+- Layout funciona corretamente com ou sem scrollbar
+- Nome do cliente trunca adequadamente
