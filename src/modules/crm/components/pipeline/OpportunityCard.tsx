@@ -3,8 +3,19 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { CheckCircle, Play } from 'lucide-react';
+import { CheckCircle, Play, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface OpportunityCardProps {
   id: string;
@@ -23,6 +34,7 @@ interface OpportunityCardProps {
   isClosed?: boolean;
   onValidate?: () => void;
   onClick?: () => void;
+  onDelete?: () => void;
 }
 
 export function OpportunityCard({
@@ -42,6 +54,7 @@ export function OpportunityCard({
   isClosed,
   onValidate,
   onClick,
+  onDelete,
 }: OpportunityCardProps) {
   const needsValidation = validationStatus === 'ai_generated' || validationStatus === 'pending';
   const isValidated = validationStatus === 'validated' || validationStatus === 'edited';
@@ -60,7 +73,7 @@ export function OpportunityCard({
       )}
       onClick={onClick}
     >
-      {/* Line 1: Badge novo (optional) + Customer name + Time */}
+      {/* Line 1: Badge novo (optional) + Customer name + Delete + Time */}
       <div className="flex items-center gap-2">
         {isNew && (
           <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5">
@@ -70,6 +83,44 @@ export function OpportunityCard({
         <span className="font-semibold text-sm text-foreground flex-1 truncate">
           {customerName}
         </span>
+        
+        {/* Delete button */}
+        {onDelete && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 text-muted-foreground hover:text-destructive shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir negociação?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação não pode ser desfeita. A negociação de "{customerName}" será 
+                  permanentemente removida do sistema.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction 
+                  className="bg-destructive hover:bg-destructive/90"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+        
         <span className="text-xs text-muted-foreground whitespace-nowrap">
           {timeAgo}
         </span>

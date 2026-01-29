@@ -195,3 +195,21 @@ export function useOpportunitiesCount() {
     },
   });
 }
+
+export function useDeleteOpportunity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (opportunityId: string) => {
+      const { error } = await supabase
+        .from('crm_opportunities')
+        .delete()
+        .eq('id', opportunityId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['crm-opportunities'] });
+    },
+  });
+}
