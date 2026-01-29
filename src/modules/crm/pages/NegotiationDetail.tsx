@@ -156,6 +156,8 @@ export default function NegotiationDetail() {
           <WhatsAppHistory 
             conversationId={opportunity.conversation_id} 
             vendorConversationId={opportunity.vendor_conversation_id}
+            customerName={opportunity.customer?.name}
+            vendorName={opportunity.vendor?.name}
           />
         </div>
 
