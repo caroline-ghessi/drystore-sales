@@ -1,18 +1,46 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, ExternalLink } from 'lucide-react';
 import { WhatsAppMessage } from './WhatsAppMessage';
-import { useConversationMessages } from '../../hooks/useOpportunityDetail';
+import { useConversationMessages, useVendorConversationMessages } from '../../hooks/useOpportunityDetail';
 
 interface WhatsAppHistoryProps {
   conversationId: string | null | undefined;
+  vendorConversationId: number | null | undefined;
 }
 
-export function WhatsAppHistory({ conversationId }: WhatsAppHistoryProps) {
-  const { data: messages, isLoading } = useConversationMessages(conversationId);
+export function WhatsAppHistory({ conversationId, vendorConversationId }: WhatsAppHistoryProps) {
+  const { data: botMessages, isLoading: loadingBot } = useConversationMessages(conversationId);
+  const { data: vendorMessages, isLoading: loadingVendor } = useVendorConversationMessages(vendorConversationId);
 
-  if (!conversationId) {
+  const isLoading = loadingBot || loadingVendor;
+  const hasAnySource = conversationId || vendorConversationId;
+
+  // Normalize and combine messages from both sources
+  const allMessages = useMemo(() => {
+    const normalizedBotMessages = (botMessages || []).map((msg) => ({
+      id: msg.id,
+      content: msg.content,
+      created_at: msg.created_at,
+      isFromCustomer: msg.sender_type === 'customer',
+      source: 'bot' as const,
+    }));
+
+    const normalizedVendorMessages = (vendorMessages || []).map((msg) => ({
+      id: String(msg.id),
+      content: msg.content,
+      created_at: msg.created_at,
+      isFromCustomer: !msg.from_me,
+      source: 'vendor' as const,
+    }));
+
+    return [...normalizedBotMessages, ...normalizedVendorMessages].sort(
+      (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+    );
+  }, [botMessages, vendorMessages]);
+
+  if (!hasAnySource) {
     return (
       <Card>
         <CardHeader className="pb-3">
@@ -53,15 +81,15 @@ export function WhatsAppHistory({ conversationId }: WhatsAppHistoryProps) {
               <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
             ))}
           </div>
-        ) : messages && messages.length > 0 ? (
+        ) : allMessages.length > 0 ? (
           <div className="space-y-1">
-            {[...messages].reverse().map((message) => (
+            {allMessages.map((message) => (
               <WhatsAppMessage
                 key={message.id}
                 content={message.content}
                 timestamp={new Date(message.created_at || Date.now())}
-                isFromCustomer={message.sender_type === 'customer'}
-                hasAvatar={message.sender_type === 'customer'}
+                isFromCustomer={message.isFromCustomer}
+                hasAvatar={message.isFromCustomer}
               />
             ))}
           </div>

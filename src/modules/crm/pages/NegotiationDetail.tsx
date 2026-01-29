@@ -153,7 +153,10 @@ export default function NegotiationDetail() {
             onDateChange={handleDateChange}
           />
           <NegotiationTimeline opportunityId={id} />
-          <WhatsAppHistory conversationId={opportunity.conversation_id} />
+          <WhatsAppHistory 
+            conversationId={opportunity.conversation_id} 
+            vendorConversationId={opportunity.vendor_conversation_id}
+          />
         </div>
 
         {/* Right Column - 2/5 */}
