@@ -73,7 +73,7 @@ export function FullConversationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+      <DialogContent className="max-w-2xl h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-green-600" />
@@ -87,7 +87,7 @@ export function FullConversationDialog({
           )}
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4" style={{ maxHeight: 'calc(80vh - 140px)' }}>
+        <ScrollArea className="flex-1 min-h-0 pr-4">
           {isLoading ? (
             <div className="space-y-3 py-4">
               {[1, 2, 3, 4, 5].map((i) => (
