@@ -73,36 +73,29 @@ export function OpportunityCard({
       )}
       onClick={onClick}
     >
-      {/* Line 1: Badge novo (optional) + Customer name + Delete + Time */}
-      <div className="flex items-center gap-2 w-full">
+      {/* Line 1: Badge novo (optional) + Customer name + Delete + Time - using CSS Grid */}
+      <div 
+        className="grid items-center gap-2" 
+        style={{ gridTemplateColumns: isNew ? 'auto 1fr auto' : '1fr auto' }}
+      >
         {isNew && (
-          <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5 shrink-0">
+          <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5">
             Novo
           </Badge>
         )}
         
-        {/* Nome do cliente com largura máxima calculada */}
-        <span 
-          className="font-semibold text-sm text-foreground truncate"
-          style={{ 
-            flex: '1 1 0', 
-            minWidth: 0, 
-            maxWidth: isNew ? 'calc(100% - 130px)' : 'calc(100% - 90px)' 
-          }}
-        >
+        <span className="font-semibold text-sm text-foreground truncate overflow-hidden min-w-0">
           {customerName}
         </span>
         
-        {/* Actions container - SEMPRE visível com ml-auto */}
-        <div className="flex items-center gap-1 ml-auto shrink-0">
-          {/* Delete button */}
+        <div className="flex items-center gap-1">
           {onDelete && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                  className="h-5 w-5 text-muted-foreground hover:text-destructive flex-shrink-0"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Trash2 className="h-3 w-3" />

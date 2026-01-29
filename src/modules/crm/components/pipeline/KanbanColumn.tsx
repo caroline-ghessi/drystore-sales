@@ -74,7 +74,7 @@ export function KanbanColumn({
 
       {/* Cards Container */}
       <ScrollArea className="flex-1 min-h-[300px] max-h-[calc(100vh-380px)]">
-        <div className="p-2 space-y-2">
+        <div className="p-2 space-y-2 min-w-0 overflow-hidden">
           {opportunities.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground text-sm">
               Nenhuma oportunidade
