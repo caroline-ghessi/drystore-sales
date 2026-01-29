@@ -1,25 +1,32 @@
 
-# Plano: Garantir Visibilidade do Botão Delete em Todas as Etapas
 
-## Problema Real Identificado
+# Plano: Corrigir Visibilidade do Botao Delete em Prospecção
 
-Analisando a imagem, percebi que na coluna **Prospecção**, os cards não mostram nem a lixeira NEM o `timeAgo`, enquanto na coluna **Qualificação** ambos aparecem. Isso indica que o problema não é específico do botão de delete, mas sim que **todos os elementos à direita estão sendo cortados**.
+## Problema Identificado
 
-### Comparação Visual
-| Coluna | Resultado |
-|--------|-----------|
-| Prospecção | `[Novo] Kevin LMN` - SEM lixeira, SEM tempo |
-| Qualificação | `[Novo] Arthur Madruga [🗑️] menos de um minu...` |
+O botao de delete (lixeira) e o timestamp nao aparecem nos cards da etapa "Prospecção", mas aparecem corretamente nas demais etapas (Qualificação, Proposta, etc.).
+
+Analisando a imagem fornecida:
+- **Prospecção (999 cards)**: Nenhum card mostra lixeira ou tempo
+- **Qualificação (1 card)**: Card mostra lixeira e "22 minutos"
 
 ## Causa Raiz
 
-O layout flexbox com `flex-1 truncate` no nome do cliente está comprimindo excessivamente o container dos elementos à direita (delete + timeAgo), apesar do `shrink-0`.
+O problema e de layout CSS. O `ScrollArea` do Radix UI, quando tem muitos itens, pode estar afetando a largura disponivel para os cards internos. O viewport interno (`ScrollAreaPrimitive.Viewport`) tem `w-full` que pode nao estar respeitando a largura minima necessaria quando ha scroll vertical.
 
-A diferença entre as colunas pode estar relacionada à largura do card ou ao número de caracteres do nome.
+O layout atual do header do card usa:
+```
+flex container
+  -> Badge "Novo" (shrink-0)
+  -> Div nome (flex-1 min-w-0 overflow-hidden)
+  -> Div acoes (shrink-0 com delete + time)
+```
 
-## Solução Proposta
+Quando o container do card tem largura restrita (devido ao ScrollArea viewport), os elementos com `shrink-0` podem ser empurrados para fora se o `flex-1` tiver prioridade errada.
 
-Refatorar o layout do header do card para usar uma estrutura mais robusta que garante espaço mínimo para os elementos de ação.
+## Solucao
+
+Modificar o layout do header do card para garantir que os elementos de acao SEMPRE tenham prioridade de exibicao, usando uma abordagem de CSS Grid ou forçando a largura maxima do nome.
 
 ---
 
@@ -27,93 +34,78 @@ Refatorar o layout do header do card para usar uma estrutura mais robusta que ga
 
 **`src/modules/crm/components/pipeline/OpportunityCard.tsx`**
 
-### Mudança: Usar Grid ou Estrutura Mais Robusta
+### Mudanca: Usar max-width calculado no nome
 
-Trocar o layout flexbox por grid, ou usar `max-width` no nome do cliente para garantir espaço.
+Em vez de confiar apenas em `flex-1 min-w-0`, forcar uma largura maxima calculada no nome do cliente para garantir que sempre sobre espaco para a lixeira e o tempo.
 
-**De (linhas 76-129):**
+**De:**
 ```tsx
-<div className="flex items-center gap-2">
-  {isNew && (...)}
-  <span className="... flex-1 truncate min-w-0">
-    {customerName}
-  </span>
+<div className="flex items-center gap-2 overflow-hidden">
+  {isNew && (
+    <Badge className="... shrink-0">Novo</Badge>
+  )}
+  
+  <div className="flex-1 min-w-0 overflow-hidden">
+    <span className="... block truncate">{customerName}</span>
+  </div>
+  
   <div className="flex items-center gap-1 shrink-0">
     {onDelete && (...)}
-    <span>...</span>
+    <span>{timeAgo}</span>
   </div>
 </div>
 ```
 
 **Para:**
 ```tsx
-<div className="flex items-center gap-2">
+<div className="flex items-center gap-2 w-full">
   {isNew && (
     <Badge className="... shrink-0">Novo</Badge>
   )}
   
-  {/* Customer name com max-width calculado */}
-  <span className="font-semibold text-sm text-foreground truncate" 
-        style={{ maxWidth: 'calc(100% - 80px)' }}>
+  {/* Nome com largura maxima para garantir espaco para acoes */}
+  <span 
+    className="font-semibold text-sm text-foreground truncate"
+    style={{ flex: '1 1 0', minWidth: 0, maxWidth: isNew ? 'calc(100% - 120px)' : 'calc(100% - 80px)' }}
+  >
     {customerName}
   </span>
   
-  {/* Actions container - SEMPRE visível */}
-  <div className="ml-auto flex items-center gap-1 shrink-0">
-    {onDelete && (
-      <AlertDialog>...</AlertDialog>
-    )}
-    <span className="text-xs text-muted-foreground whitespace-nowrap">
-      {timeAgo}
-    </span>
-  </div>
-</div>
-```
-
-### Alternativa: Usar Overflow Hidden no Container + Width Fixo
-
-```tsx
-<div className="flex items-center gap-2 overflow-hidden">
-  {isNew && (<Badge className="shrink-0">Novo</Badge>)}
-  
-  <div className="flex-1 min-w-0 overflow-hidden">
-    <span className="font-semibold text-sm text-foreground block truncate">
-      {customerName}
-    </span>
-  </div>
-  
-  {/* Ações com width mínimo garantido */}
-  <div className="flex items-center gap-1 shrink-0 min-w-[60px]">
-    {onDelete && (<AlertDialog>...</AlertDialog>)}
-    <span className="text-xs text-muted-foreground whitespace-nowrap">
-      {timeAgo}
-    </span>
+  {/* Acoes com ml-auto para alinhar a direita */}
+  <div className="flex items-center gap-1 ml-auto shrink-0">
+    {onDelete && (...)}
+    <span>{timeAgo}</span>
   </div>
 </div>
 ```
 
 ---
 
-## Código Completo da Primeira Linha Refatorada
+## Codigo Completo da Primeira Linha Refatorada
 
 ```tsx
 {/* Line 1: Badge novo (optional) + Customer name + Delete + Time */}
-<div className="flex items-center gap-2 overflow-hidden">
+<div className="flex items-center gap-2 w-full">
   {isNew && (
     <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5 shrink-0">
       Novo
     </Badge>
   )}
   
-  {/* Container para o nome - permite truncar */}
-  <div className="flex-1 min-w-0 overflow-hidden">
-    <span className="font-semibold text-sm text-foreground block truncate">
-      {customerName}
-    </span>
-  </div>
+  {/* Nome do cliente com largura maxima calculada */}
+  <span 
+    className="font-semibold text-sm text-foreground truncate"
+    style={{ 
+      flex: '1 1 0', 
+      minWidth: 0, 
+      maxWidth: isNew ? 'calc(100% - 130px)' : 'calc(100% - 90px)' 
+    }}
+  >
+    {customerName}
+  </span>
   
-  {/* Actions container - SEMPRE visível com min-width */}
-  <div className="flex items-center gap-1 shrink-0">
+  {/* Actions container - SEMPRE visível com ml-auto */}
+  <div className="flex items-center gap-1 ml-auto shrink-0">
     {/* Delete button */}
     {onDelete && (
       <AlertDialog>
@@ -160,17 +152,22 @@ Trocar o layout flexbox por grid, ou usar `max-width` no nome do cliente para ga
 
 ---
 
-## Mudanças Chave
+## Por que Esta Solução Funciona
 
-1. **Envolver `customerName` em um `<div>` separado** com `flex-1 min-w-0 overflow-hidden`
-2. **Mudar o `<span>` do nome para `block truncate`** ao invés de inline
-3. **Container de ações com `shrink-0`** sem `flex-1` para garantir que nunca encolha
+1. **`w-full` no container**: Garante que o container ocupe toda a largura disponível
+2. **`ml-auto` nas ações**: Empurra o container de ações para a extrema direita, garantindo que sempre fique visível
+3. **`maxWidth` calculado dinamicamente**: Limita o nome do cliente a uma largura máxima que deixa espaço suficiente para a lixeira e o tempo
+   - Com badge "Novo": `calc(100% - 130px)` (40px badge + 20px gap + 20px lixeira + 50px tempo)
+   - Sem badge "Novo": `calc(100% - 90px)` (20px lixeira + 50px tempo + margem)
+4. **`shrink-0` nas ações**: Impede que o container de ações encolha
 
 ---
 
 ## Resultado Esperado
 
-- Botão de delete visível em TODAS as etapas
-- `timeAgo` visível em todos os cards
-- Nome do cliente trunca quando necessário
-- Layout consistente independente do comprimento do nome
+Apos a implementacao:
+- Botao de delete (lixeira) visivel em TODAS as etapas, incluindo Prospecção
+- Timestamp visível em todos os cards
+- Nome do cliente trunca corretamente quando muito longo
+- Layout consistente independente da quantidade de cards na coluna
+
