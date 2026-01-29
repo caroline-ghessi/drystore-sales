@@ -1,167 +1,190 @@
 
+# Plano: Adicionar Opcao de Deletar Negociacoes no Pipeline
 
-# Plano: Adicionar Verificacao de Seguranca em process-vendor-opportunities
+## Resumo
 
-## Analise do Sistema Atual
-
-O sistema de exclusao de contatos esta funcionando com duas camadas:
-
-1. **Webhook** (vendor-whatsapp-webhook): Marca novas conversas com `is_internal_contact: true`
-2. **Trigger** (update_existing_conversations_on_exclusion): Atualiza conversas existentes quando contato e adicionado a lista
-
-### Status Atual
-
-| Verificacao | Resultado |
-|-------------|-----------|
-| Contatos excluidos ativos | 29 |
-| Conversas marcadas como internas | Funcionando |
-| Oportunidades criadas para excluidos | 0 (correto) |
-| Conversas nao marcadas mas deveriam | 0 (correto) |
-
-O sistema esta operando corretamente no momento.
+Adicionar um botao de exclusao em cada card de oportunidade no Kanban, com confirmacao via dialog para evitar exclusoes acidentais.
 
 ---
 
-## Vulnerabilidade Identificada
+## Abordagem
 
-A edge function `process-vendor-opportunities` verifica apenas o campo `metadata.is_internal_contact`:
-
-```typescript
-// Linha 58-64 - Verificacao atual
-const validConversations = conversations.filter((conv) => {
-  const isInternal = conv.metadata?.is_internal_contact === true;
-  if (isInternal) {
-    console.log(`Ignorando conversa ${conv.id} - contato interno`);
-  }
-  return !isInternal;
-});
-```
-
-**Problema potencial**: Se por algum motivo o metadata nao foi atualizado (falha de trigger, timing, etc.), a oportunidade seria criada indevidamente.
+A opcao de deletar sera adicionada como um icone de lixeira no canto superior direito de cada card. Ao clicar, um dialog de confirmacao sera exibido antes de executar a exclusao.
 
 ---
 
-## Solucao Proposta
+## Arquivos a Modificar/Criar
 
-Adicionar verificacao dupla: manter a checagem do metadata (rapida) E adicionar verificacao direta na tabela `excluded_contacts` usando a funcao `isExcludedContact` ja existente.
+| Arquivo | Acao | Descricao |
+|---------|------|-----------|
+| `src/modules/crm/hooks/useOpportunities.ts` | Modificar | Adicionar hook `useDeleteOpportunity` |
+| `src/modules/crm/hooks/index.ts` | Modificar | Exportar o novo hook |
+| `src/modules/crm/components/pipeline/OpportunityCard.tsx` | Modificar | Adicionar botao de delete com dialog |
 
 ---
 
-## Arquivo a Modificar
+## Detalhes Tecnicos
 
-**`supabase/functions/process-vendor-opportunities/index.ts`**
+### 1. Hook useDeleteOpportunity
 
-### Mudanca 1: Importar funcao isExcludedContact
-
-```typescript
-// Linha 3 - Adicionar import
-import { normalizePhone, isExcludedContact } from '../_shared/phone-utils.ts';
-```
-
-### Mudanca 2: Adicionar verificacao direta antes de criar oportunidade
-
-Apos normalizar o telefone (linha 80-85), adicionar:
+Adicionar ao arquivo `useOpportunities.ts`:
 
 ```typescript
-// Apos normalizar telefone, verificar diretamente na lista de exclusao
-const isExcluded = await isExcludedContact(supabase, normalizedPhone);
-if (isExcluded) {
-  console.log(`[VendorOpportunities] Telefone ${normalizedPhone} esta na lista de exclusao, pulando`);
-  
-  // Atualizar metadata da conversa se nao estava marcada
-  if (!conv.metadata?.is_internal_contact) {
-    await supabase
-      .from('vendor_conversations')
-      .update({ 
-        metadata: { ...conv.metadata, is_internal_contact: true },
-        has_opportunity: true // Marcar como processada para nao tentar novamente
-      })
-      .eq('id', conv.id);
-  }
-  continue;
+export function useDeleteOpportunity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (opportunityId: string) => {
+      const { error } = await supabase
+        .from('crm_opportunities')
+        .delete()
+        .eq('id', opportunityId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['crm-opportunities'] });
+    },
+  });
 }
 ```
 
----
+### 2. Modificar OpportunityCard.tsx
 
-## Fluxo de Verificacao Apos Mudanca
+Adicionar:
+- Prop `onDelete?: () => void`
+- Icone de lixeira (Trash2) no header do card
+- AlertDialog para confirmacao
+
+**Estrutura visual do card modificado:**
 
 ```text
-vendor_conversations com has_opportunity = false
-                    |
-                    v
-+------------------------------------------+
-| Filtro 1: metadata.is_internal_contact   |
-| (rapido, ja no SELECT inicial)           |
-+------------------------------------------+
-                    |
-              Passou filtro
-                    |
-                    v
-+------------------------------------------+
-| Filtro 2: isExcludedContact(phone)       |
-| (consulta tabela excluded_contacts)      |
-+------------------------------------------+
-                    |
-              Passou filtro
-                    |
-                    v
-         Criar oportunidade no CRM
++----------------------------------------+
+| [Novo] Cliente Nome    [X]    2h       |
+| Titulo do Projeto                      |
+| Descricao...                           |
+| [Proximo passo badge]                  |
+|----------------------------------------|
+| R$ 15k           [Validar] ou [Avatar] |
++----------------------------------------+
+
+O [X] e o botao de delete com icone Trash2
 ```
 
----
-
-## Codigo Completo da Secao Modificada
+**Codigo do botao de delete:**
 
 ```typescript
-// Linha 80-101 - Secao modificada
-const normalizedPhone = normalizePhone(conv.customer_phone);
+// No header, apos o timeAgo
+{onDelete && (
+  <AlertDialog>
+    <AlertDialogTrigger asChild>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-5 w-5 text-muted-foreground hover:text-destructive"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Trash2 className="h-3 w-3" />
+      </Button>
+    </AlertDialogTrigger>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Excluir negociacao?</AlertDialogTitle>
+        <AlertDialogDescription>
+          Esta acao nao pode ser desfeita. A negociacao "{customerName}" sera 
+          permanentemente removida do sistema.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+        <AlertDialogAction 
+          className="bg-destructive hover:bg-destructive/90"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
+          Excluir
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+)}
+```
 
-if (!normalizedPhone) {
-  console.log(`[VendorOpportunities] Conversa ${conv.id} telefone invalido: ${conv.customer_phone}, pulando`);
-  continue;
-}
+### 3. Propagar Delete pelos Componentes
 
-// NOVA VERIFICACAO: Checar lista de exclusao diretamente
-const isExcluded = await isExcludedContact(supabase, normalizedPhone);
-if (isExcluded) {
-  console.log(`[VendorOpportunities] Telefone ${normalizedPhone} na lista de exclusao, pulando conversa ${conv.id}`);
-  
-  // Corrigir metadata se necessario (self-healing)
-  if (!conv.metadata?.is_internal_contact) {
-    await supabase
-      .from('vendor_conversations')
-      .update({ 
-        metadata: { ...(conv.metadata || {}), is_internal_contact: true },
-        has_opportunity: true
-      })
-      .eq('id', conv.id);
-    console.log(`[VendorOpportunities] Conversa ${conv.id} corrigida como internal_contact`);
-  }
-  continue;
-}
+**DraggableOpportunityCard.tsx:**
+- Adicionar prop `onDelete: () => void`
+- Passar para OpportunityCard
 
-// 3.1 Verificar se cliente veio do bot oficial
-const { data: botConversation } = await supabase
-  .from('conversations')
-  // ... resto do codigo existente
+**KanbanColumn.tsx:**
+- Adicionar prop `onDelete?: (opportunity: Opportunity) => void`
+- Passar para DraggableOpportunityCard
+
+**PipelineKanban.tsx:**
+- Importar e usar `useDeleteOpportunity`
+- Implementar handler que chama a mutacao
+- Exibir toast de sucesso/erro
+
+---
+
+## Fluxo de Interacao
+
+```text
+Usuario clica no icone de lixeira
+           |
+           v
+    Dialog de confirmacao aparece
+    "Excluir negociacao?"
+           |
+    +------+------+
+    |             |
+ Cancelar      Excluir
+    |             |
+    v             v
+ Fecha       Chama useDeleteOpportunity
+ dialog            |
+                   v
+              DELETE no Supabase
+                   |
+                   v
+              Invalida cache
+              Toast "Negociacao excluida"
 ```
 
 ---
 
-## Beneficios da Mudanca
+## Imports Necessarios
 
-1. **Dupla verificacao**: Metadata + consulta direta
-2. **Self-healing**: Corrige automaticamente conversas que escaparam do trigger
-3. **Zero oportunidades indevidas**: Garantia total de que contatos excluidos nao geram leads
-4. **Reutiliza codigo existente**: Usa `isExcludedContact` que ja tem cache de 5 minutos
+**OpportunityCard.tsx:**
+```typescript
+import { Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+```
 
 ---
 
-## Impacto de Performance
+## Consideracoes de UX
 
-- A funcao `isExcludedContact` usa cache de 5 minutos
-- Primeira chamada: 1 query para carregar 29 telefones
-- Proximas chamadas: verificacao em memoria (Set.has)
-- Impacto: minimo (~1ms por verificacao)
+1. **Icone discreto**: Trash2 pequeno (h-3 w-3) para nao poluir visualmente
+2. **Hover vermelho**: Indica acao destrutiva ao passar o mouse
+3. **Confirmacao obrigatoria**: Evita exclusoes acidentais
+4. **stopPropagation**: Evita abrir detalhes da oportunidade ao clicar no delete
+5. **Toast feedback**: Usuario sabe que a acao foi completada
 
+---
+
+## Resultado Esperado
+
+Apos implementacao, cada card tera um icone de lixeira que permite exclusao com confirmacao, mantendo a interface limpa e segura.
