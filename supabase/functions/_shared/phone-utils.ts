@@ -5,8 +5,9 @@
 
 /**
  * Normaliza um número de telefone para o formato brasileiro padrão (55XXXXXXXXXXX)
+ * Retorna null se o telefone for inválido
  */
-export function normalizePhone(phone: string): string {
+export function normalizePhone(phone: string): string | null {
   // Remove tudo que não é número
   let cleaned = phone.replace(/\D/g, '');
   
@@ -17,8 +18,8 @@ export function normalizePhone(phone: string): string {
   
   // Valida tamanho (55 + DDD + 8-9 dígitos = 12-13)
   if (cleaned.length < 12 || cleaned.length > 13) {
-    console.warn(`[phone-utils] Número inválido: ${phone} -> ${cleaned} (length: ${cleaned.length})`);
-    // Retorna mesmo assim para não quebrar o fluxo, mas loga o aviso
+    console.warn(`[phone-utils] Número inválido rejeitado: ${phone} -> ${cleaned} (length: ${cleaned.length})`);
+    return null;
   }
   
   return cleaned;
