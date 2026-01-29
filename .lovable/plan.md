@@ -1,120 +1,161 @@
 
 
-# Plano: Implementar Funcionalidade de Filtro no Pipeline
+# Plano: Limpar Oportunidades Existentes ao Adicionar Contato Excluído
 
 ## Problema Identificado
 
-O campo de busca "Buscar oportunidades..." é apenas visual - não está conectado a nenhuma lógica de filtragem. Quando você digita, nada acontece porque:
+Quando um contato é adicionado à lista de exclusão (`excluded_contacts`), o sistema:
+- ✅ Bloqueia a criação de NOVAS oportunidades para esse telefone
+- ❌ **NÃO remove ou marca** oportunidades/clientes que JÁ existiam antes da exclusão
 
-1. Não existe estado para armazenar o termo de busca
-2. O Input não tem `onChange` para capturar a digitação
-3. O `PipelineKanban` não recebe nenhum filtro
-4. O hook `useOpportunities` retorna todos os dados sem filtrar
+### Evidência do problema:
+```
+Oportunidade criada:  2026-01-29 15:30:40 (Felipe, phone: 555191417549)
+Contato excluído:     2026-01-29 18:04:48 (Felipe Peliculas, phone: 555191417549)
+```
+
+A oportunidade continuou aparecendo no pipeline porque foi criada ANTES da exclusão.
+
+---
 
 ## Solução Proposta
 
-Implementar filtro funcional que busca por nome do cliente, título da oportunidade ou cidade.
+Criar uma **trigger function** no banco de dados que, ao inserir um novo contato na `excluded_contacts`:
+
+1. **Deleta oportunidades existentes** no CRM para esse telefone
+2. **Deleta clientes** que ficaram sem oportunidades
+3. **Atualiza vendor_conversations** marcando como `is_internal_contact: true`
 
 ---
 
-## Arquivos a Modificar
+## Implementação Técnica
 
-### 1. `src/modules/crm/pages/Pipeline.tsx`
+### Arquivo: Migration SQL
 
-Adicionar estado de busca e passar para o Kanban:
-
-```tsx
-export default function Pipeline() {
-  const [view, setView] = React.useState<'kanban' | 'list'>('kanban');
-  const [searchTerm, setSearchTerm] = React.useState('');  // NOVO
-
-  // ...
-
-  <Input 
-    placeholder="Buscar oportunidades..." 
-    className="pl-9 bg-background"
-    value={searchTerm}                        // NOVO
-    onChange={(e) => setSearchTerm(e.target.value)}  // NOVO
-  />
-
-  // ...
-
-  <PipelineKanban searchTerm={searchTerm} />  // PASSAR FILTRO
-```
-
-### 2. `src/modules/crm/components/pipeline/PipelineKanban.tsx`
-
-Receber o filtro e aplicar nos dados:
-
-```tsx
-interface PipelineKanbanProps {
-  onValidate?: (opportunity: Opportunity) => void;
-  searchTerm?: string;  // NOVO
-}
-
-export function PipelineKanban({ onValidate, searchTerm = '' }: PipelineKanbanProps) {
-  const { data, isLoading, error } = useOpportunities();
+```sql
+-- Função que limpa dados existentes quando um contato é adicionado à exclusão
+CREATE OR REPLACE FUNCTION cleanup_excluded_contact_data()
+RETURNS TRIGGER AS $$
+DECLARE
+  affected_customer_ids UUID[];
+  deleted_opps INTEGER;
+  deleted_customers INTEGER;
+  updated_convs INTEGER;
+BEGIN
+  -- Só executar em INSERT
+  IF TG_OP = 'INSERT' THEN
+    
+    -- 1. Buscar customer_ids afetados (antes de deletar oportunidades)
+    SELECT ARRAY_AGG(DISTINCT c.id)
+    INTO affected_customer_ids
+    FROM crm_customers c
+    WHERE c.phone = NEW.phone_number;
+    
+    -- 2. Deletar oportunidades do CRM para esse telefone
+    DELETE FROM crm_opportunities
+    WHERE customer_id = ANY(affected_customer_ids);
+    
+    GET DIAGNOSTICS deleted_opps = ROW_COUNT;
+    
+    -- 3. Deletar clientes que não têm mais oportunidades
+    DELETE FROM crm_customers
+    WHERE id = ANY(affected_customer_ids)
+    AND NOT EXISTS (
+      SELECT 1 FROM crm_opportunities WHERE customer_id = crm_customers.id
+    );
+    
+    GET DIAGNOSTICS deleted_customers = ROW_COUNT;
+    
+    -- 4. Marcar vendor_conversations como internas
+    UPDATE vendor_conversations
+    SET 
+      metadata = jsonb_set(
+        COALESCE(metadata, '{}'::jsonb),
+        '{is_internal_contact}',
+        'true'::jsonb
+      ),
+      has_opportunity = true
+    WHERE customer_phone = NEW.phone_number;
+    
+    GET DIAGNOSTICS updated_convs = ROW_COUNT;
+    
+    -- 5. Log da operação
+    IF deleted_opps > 0 OR deleted_customers > 0 OR updated_convs > 0 THEN
+      INSERT INTO system_logs (level, source, message, data)
+      VALUES (
+        'info',
+        'excluded_contacts_trigger',
+        'Dados limpos para contato excluído: ' || NEW.phone_number,
+        jsonb_build_object(
+          'phone_number', NEW.phone_number,
+          'deleted_opportunities', deleted_opps,
+          'deleted_customers', deleted_customers,
+          'updated_conversations', updated_convs
+        )
+      );
+    END IF;
+    
+  END IF;
   
-  // Filtrar oportunidades com base no termo de busca
-  const filteredByStage = React.useMemo(() => {
-    if (!data?.byStage || !searchTerm.trim()) {
-      return data?.byStage;
-    }
-    
-    const lowerSearch = searchTerm.toLowerCase().trim();
-    
-    // Filtrar cada estágio
-    const filtered: typeof data.byStage = {
-      prospecting: [],
-      qualification: [],
-      proposal: [],
-      negotiation: [],
-      closed_won: [],
-      closed_lost: [],
-    };
-    
-    Object.entries(data.byStage).forEach(([stage, opportunities]) => {
-      filtered[stage as keyof typeof filtered] = opportunities.filter(opp => {
-        const customerName = opp.customer?.name?.toLowerCase() || '';
-        const title = opp.title?.toLowerCase() || '';
-        const city = opp.customer?.city?.toLowerCase() || '';
-        
-        return customerName.includes(lowerSearch) || 
-               title.includes(lowerSearch) || 
-               city.includes(lowerSearch);
-      });
-    });
-    
-    return filtered;
-  }, [data?.byStage, searchTerm]);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-  // Usar filteredByStage em vez de data?.byStage
-  // ...
-}
+-- Criar trigger
+DROP TRIGGER IF EXISTS trigger_cleanup_excluded_contact ON excluded_contacts;
+CREATE TRIGGER trigger_cleanup_excluded_contact
+  AFTER INSERT ON excluded_contacts
+  FOR EACH ROW
+  EXECUTE FUNCTION cleanup_excluded_contact_data();
 ```
 
 ---
 
-## Campos que Serão Buscados
+## Fluxo Após Implementação
 
-A busca funcionará nos seguintes campos:
-- **Nome do cliente** (customer.name)
-- **Título da oportunidade** (title)
-- **Cidade do cliente** (customer.city)
+```
+Usuário adiciona contato à lista de exclusão
+          ↓
+     INSERT INTO excluded_contacts
+          ↓
+   TRIGGER dispara automaticamente
+          ↓
+    ┌─────────────────────────────────────┐
+    │ 1. Busca customers pelo telefone     │
+    │ 2. Deleta oportunidades desse cliente│
+    │ 3. Deleta cliente se ficou órfão     │
+    │ 4. Marca conversas como internas     │
+    │ 5. Registra no system_logs           │
+    └─────────────────────────────────────┘
+          ↓
+   Dados limpos automaticamente!
+```
 
 ---
 
 ## Comportamento Esperado
 
-1. Usuário digita no campo de busca
-2. A busca é aplicada em tempo real (sem debounce para resposta imediata)
-3. Apenas os cards que correspondem ao filtro são exibidos em cada coluna
-4. Se nenhum resultado for encontrado em uma coluna, ela mostrará "Nenhuma oportunidade"
-5. Limpar o campo restaura todos os resultados
+Ao adicionar um contato à lista de exclusão:
+- Todas as oportunidades no CRM para esse telefone são **deletadas**
+- O cliente no CRM é **deletado** (se não tiver outras oportunidades)
+- As conversas de vendedores são **marcadas como internas**
+- Um log é registrado para auditoria
 
 ---
 
-## Resultado Final
+## Segurança
 
-O filtro funcionará corretamente, permitindo encontrar negociações pelo nome do cliente, título ou cidade.
+- A função usa `SECURITY DEFINER` para garantir permissões adequadas
+- Só executa em `INSERT` (não em update/delete)
+- Registra todas as operações no `system_logs` para auditoria
+
+---
+
+## Resumo das Mudanças
+
+| Componente | Ação |
+|------------|------|
+| Banco de dados | Criar função `cleanup_excluded_contact_data()` |
+| Banco de dados | Criar trigger `trigger_cleanup_excluded_contact` |
+| Nenhum código frontend | O trigger funciona automaticamente |
 
