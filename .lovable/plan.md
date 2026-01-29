@@ -1,216 +1,190 @@
 
 
-# Diagnóstico: Oportunidades sem Histórico WhatsApp e sem Vendedor Visível
+# Plano: Implementar "Ver Conversa Completa" no CRM
 
-## Problema Identificado
+## Problema Atual
 
-As oportunidades do CRM estão sendo criadas corretamente, mas a interface não está mostrando:
-1. **Histórico de conversas do WhatsApp** - mostra "Nenhuma conversa vinculada"
-2. **Identificação do vendedor** - não aparece em lugar nenhum na tela
+O botao "Ver Conversa Completa" no componente `WhatsAppHistory.tsx` (linha 71-74) nao tem nenhuma acao vinculada - e apenas visual:
+
+```typescript
+<Button variant="link" size="sm" className="gap-1 text-primary">
+  Ver Conversa Completa
+  <ExternalLink className="h-3 w-3" />
+</Button>
+```
+
+## Solucao Proposta
+
+Criar um **Dialog/Modal** que exibe todas as mensagens da conversa, reutilizando componentes existentes do modulo WhatsApp. Isso mantem o usuario no contexto do CRM.
 
 ---
 
-## Causa Raiz
+## Arquivos a Criar
 
-### 1. Histórico WhatsApp Não Aparece
+### 1. `src/modules/crm/components/negotiation/FullConversationDialog.tsx`
 
-O componente `WhatsAppHistory` busca mensagens da tabela `messages` usando `conversation_id`:
+Dialog que exibe a conversa completa usando:
+- `useVendorMessages` hook existente (busca ate 200 mensagens)
+- `VendorMessageBubble` componente existente para renderizar mensagens
+- Suporte para mensagens do bot oficial (conversation_id) e vendor (vendor_conversation_id)
 
-```typescript
-// WhatsAppHistory.tsx - linha 12
-const { data: messages } = useConversationMessages(conversationId);
+Estrutura do componente:
 
-// useOpportunityDetail.ts - linhas 128-134
-const { data, error } = await supabase
-  .from('messages')  // ← Tabela do WhatsApp OFICIAL
-  .select('id, content, sender_type, created_at, sender_name')
-  .eq('conversation_id', conversationId)
-```
-
-**Porém**, as oportunidades criadas via `process-vendor-opportunities` vêm de **WhatsApp individual dos vendedores**, onde:
-- `conversation_id = NULL` (não vinculado ao bot oficial)
-- `vendor_conversation_id = 534` (vinculado à tabela `vendor_conversations`)
-
-Os dados reais estão em:
-- `vendor_conversations` (ID INTEGER)
-- `vendor_messages` (com colunas `content`, `from_me`, `from_name`)
-
-### 2. Vendedor Não Aparece na UI
-
-O hook `useOpportunityDetail` já busca o vendedor:
-
-```typescript
-vendor:vendors(id, name)  // ← Relacionamento existe
-```
-
-Mas **nenhum componente usa** essa informação:
-- `NegotiationHeader` não mostra o vendedor
-- `CustomerInfo` não mostra o vendedor
-- Não existe um componente `VendorInfo`
-
----
-
-## Dados Atuais (Evidência)
-
-Consulta no banco:
 ```text
-crm_opportunities (exemplo: id=16aaccd7...):
-├── vendor_id: bba46988... (Sérgio Nogueira) ✅
-├── vendor_conversation_id: 534 ✅
-├── conversation_id: NULL ❌ (esperado para vendor_whatsapp)
-└── source: 'vendor_whatsapp'
++------------------------------------------+
+|  Conversa com [Nome do Cliente]     [X] |
+|  Vendedor: [Nome do Vendedor]           |
++------------------------------------------+
+|                                          |
+|  [Lista de mensagens em scroll]          |
+|  - Mensagens do cliente (esquerda)       |
+|  - Mensagens do vendedor (direita)       |
+|  - Suporte a imagens, audio, video, docs |
+|                                          |
++------------------------------------------+
+|  Total: X mensagens                      |
++------------------------------------------+
 ```
 
-Mensagens em `vendor_messages` (conversation_id=534):
-```text
-├── "Oi, bjs." - from_me: true (Sérgio Nogueira)
-├── "Lindão ❤️" - from_me: false (Paula - cliente)
-└── ... (mais mensagens existem)
-```
+### 2. Hook de mensagens completas (opcional)
 
----
-
-## Solução Proposta
-
-### Etapa 1: Exibir Nome do Vendedor na UI
-
-**Arquivo:** `src/modules/crm/components/negotiation/NegotiationHeader.tsx`
-
-Adicionar badge com nome do vendedor no cabeçalho:
-
-```typescript
-// Adicionar ao retorno do componente
-{opportunity?.vendor?.name && (
-  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-    <User className="h-3 w-3 mr-1" />
-    {opportunity.vendor.name}
-  </Badge>
-)}
-```
-
-### Etapa 2: Criar Hook para Mensagens do Vendedor
-
-**Arquivo:** `src/modules/crm/hooks/useOpportunityDetail.ts`
-
-Adicionar novo hook:
-
-```typescript
-export function useVendorConversationMessages(vendorConversationId: number | null | undefined) {
-  return useQuery({
-    queryKey: ['vendor-conversation-messages', vendorConversationId],
-    queryFn: async () => {
-      if (!vendorConversationId) return [];
-
-      const { data, error } = await supabase
-        .from('vendor_messages')
-        .select('id, content, from_me, from_name, created_at')
-        .eq('conversation_id', vendorConversationId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!vendorConversationId,
-  });
-}
-```
-
-### Etapa 3: Atualizar WhatsAppHistory para Suportar Ambas as Fontes
-
-**Arquivo:** `src/modules/crm/components/negotiation/WhatsAppHistory.tsx`
-
-```typescript
-interface WhatsAppHistoryProps {
-  conversationId: string | null | undefined;
-  vendorConversationId: number | null | undefined;  // Novo
-}
-
-export function WhatsAppHistory({ conversationId, vendorConversationId }: WhatsAppHistoryProps) {
-  // Mensagens do bot oficial
-  const { data: botMessages, isLoading: loadingBot } = useConversationMessages(conversationId);
-  
-  // Mensagens do WhatsApp do vendedor
-  const { data: vendorMessages, isLoading: loadingVendor } = useVendorConversationMessages(vendorConversationId);
-  
-  // Combinar e ordenar
-  const allMessages = [...(botMessages || []), ...(vendorMessages || [])];
-  // ... resto da lógica
-}
-```
-
-### Etapa 4: Atualizar Tipo OpportunityDetail
-
-**Arquivo:** `src/modules/crm/hooks/useOpportunityDetail.ts`
-
-Adicionar campo:
-
-```typescript
-export interface OpportunityDetail {
-  // ... campos existentes
-  vendor_conversation_id: number | null;  // Novo
-}
-```
-
-E na query:
-
-```typescript
-.select(`
-  ...
-  vendor_conversation_id,  // Adicionar
-  ...
-`)
-```
-
-### Etapa 5: Passar Dados na Página
-
-**Arquivo:** `src/modules/crm/pages/NegotiationDetail.tsx`
-
-```typescript
-<WhatsAppHistory 
-  conversationId={opportunity.conversation_id} 
-  vendorConversationId={opportunity.vendor_conversation_id}  // Novo
-/>
-```
+Reutilizar `useVendorMessages` existente que ja busca 200 mensagens.
 
 ---
 
 ## Arquivos a Modificar
 
-| Arquivo | Modificação |
-|---------|-------------|
-| `src/modules/crm/hooks/useOpportunityDetail.ts` | Adicionar `vendor_conversation_id` e hook `useVendorConversationMessages` |
-| `src/modules/crm/components/negotiation/WhatsAppHistory.tsx` | Suportar mensagens de `vendor_messages` |
-| `src/modules/crm/components/negotiation/NegotiationHeader.tsx` | Mostrar nome do vendedor |
-| `src/modules/crm/pages/NegotiationDetail.tsx` | Passar `vendorConversationId` para o componente |
+### 1. `src/modules/crm/components/negotiation/WhatsAppHistory.tsx`
+
+| Linha | Mudanca |
+|-------|---------|
+| 1-6 | Adicionar imports (useState, Dialog) |
+| 13 | Adicionar props `customerName` e `vendorName` |
+| 71-74 | Adicionar onClick para abrir dialog e passar dados |
+| 103 | Adicionar componente FullConversationDialog |
+
+Mudancas especificas:
+
+```typescript
+// Novos imports
+import { useState } from 'react';
+import { FullConversationDialog } from './FullConversationDialog';
+
+// Novas props
+interface WhatsAppHistoryProps {
+  conversationId: string | null | undefined;
+  vendorConversationId: number | null | undefined;
+  customerName?: string;  // Novo
+  vendorName?: string;    // Novo
+}
+
+// Estado para dialog
+const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+// Botao com onClick
+<Button 
+  variant="link" 
+  size="sm" 
+  className="gap-1 text-primary"
+  onClick={() => setIsDialogOpen(true)}
+>
+  Ver Conversa Completa
+  <ExternalLink className="h-3 w-3" />
+</Button>
+
+// Dialog no final
+<FullConversationDialog
+  open={isDialogOpen}
+  onOpenChange={setIsDialogOpen}
+  vendorConversationId={vendorConversationId}
+  conversationId={conversationId}
+  customerName={customerName}
+  vendorName={vendorName}
+/>
+```
+
+### 2. `src/modules/crm/pages/NegotiationDetail.tsx`
+
+| Linha | Mudanca |
+|-------|---------|
+| 156-159 | Adicionar props customerName e vendorName ao WhatsAppHistory |
+
+```typescript
+<WhatsAppHistory 
+  conversationId={opportunity.conversation_id} 
+  vendorConversationId={opportunity.vendor_conversation_id}
+  customerName={opportunity.customer?.name}  // Novo
+  vendorName={opportunity.vendor?.name}      // Novo
+/>
+```
+
+---
+
+## Reutilizacao de Componentes Existentes
+
+| Componente | Localizacao | Uso |
+|------------|-------------|-----|
+| `VendorMessageBubble` | `src/modules/whatsapp/components/vendor/` | Renderizar cada mensagem |
+| `useVendorMessages` | `src/modules/whatsapp/hooks/` | Buscar mensagens do vendedor |
+| `useConversationMessages` | `src/modules/crm/hooks/useOpportunityDetail.ts` | Buscar mensagens do bot |
+| `Dialog` | `@/components/ui/dialog` | Container do modal |
+| `ScrollArea` | `@/components/ui/scroll-area` | Area scrollavel |
+
+---
+
+## Fluxo de Dados
+
+```text
+NegotiationDetail
+    |
+    +-- opportunity.vendor_conversation_id (INTEGER)
+    +-- opportunity.conversation_id (UUID ou NULL)
+    +-- opportunity.customer?.name
+    +-- opportunity.vendor?.name
+    |
+    v
+WhatsAppHistory
+    |
+    +-- [Clique em "Ver Conversa Completa"]
+    |
+    v
+FullConversationDialog
+    |
+    +-- useVendorMessages(vendor_conversation_id) -> vendor_messages (200 msgs)
+    +-- useConversationMessages(conversation_id) -> messages (bot oficial)
+    |
+    v
+VendorMessageBubble (para cada mensagem)
+```
+
+---
+
+## Comportamento do Dialog
+
+1. **Origem Vendedor** (vendor_conversation_id preenchido):
+   - Busca mensagens de `vendor_messages`
+   - Usa `VendorMessageBubble` para renderizar
+   - Mostra ate 200 mensagens
+
+2. **Origem Bot Oficial** (conversation_id preenchido):
+   - Busca mensagens de `messages`
+   - Adapta para formato do `VendorMessageBubble`
+   - Limite similar
+
+3. **Ambas as origens**:
+   - Combina e ordena por timestamp
+   - Indica visualmente a origem de cada mensagem
 
 ---
 
 ## Resultado Esperado
 
-Após implementação:
+Ao clicar em "Ver Conversa Completa":
 
-1. **Vendedor visível**: Badge "Sérgio Nogueira" no cabeçalho
-2. **Histórico WhatsApp**: Mensagens da conversa do vendedor aparecerão
-3. **Compatibilidade**: Oportunidades do bot oficial (com `conversation_id`) continuam funcionando
-
----
-
-## Diagrama do Fluxo de Dados
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                     crm_opportunities                           │
-├─────────────────────────────────────────────────────────────────┤
-│ Origem: Bot Oficial          │ Origem: WhatsApp Vendedor       │
-├──────────────────────────────┼──────────────────────────────────┤
-│ conversation_id: UUID ✓      │ conversation_id: NULL           │
-│ vendor_conversation_id: NULL │ vendor_conversation_id: INT ✓   │
-│ source: 'whatsapp'           │ source: 'vendor_whatsapp'       │
-├──────────────────────────────┼──────────────────────────────────┤
-│        ↓                     │        ↓                        │
-│  Buscar em: messages         │  Buscar em: vendor_messages     │
-│  (tabela do bot oficial)     │  (tabela dos vendedores)        │
-└──────────────────────────────┴──────────────────────────────────┘
-```
+1. Abre um dialog modal centralizado
+2. Mostra header com nome do cliente e vendedor
+3. Lista todas as mensagens (ate 200) em ordem cronologica
+4. Suporte a todos os tipos de midia (imagem, audio, video, documento)
+5. Scroll automatico e area scrollavel
+6. Botao de fechar no canto superior direito
 
