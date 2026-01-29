@@ -13,6 +13,7 @@ interface KanbanColumnProps {
   opportunities: Opportunity[];
   onOpportunityClick?: (opportunity: Opportunity) => void;
   onValidate?: (opportunity: Opportunity) => void;
+  onDelete?: (opportunity: Opportunity) => void;
 }
 
 function getTimeAgo(dateString: string | null): string {
@@ -49,6 +50,7 @@ export function KanbanColumn({
   opportunities,
   onOpportunityClick,
   onValidate,
+  onDelete,
 }: KanbanColumnProps) {
   const config = STAGE_CONFIG[stage];
   const totalValue = opportunities.reduce((sum, opp) => sum + (opp.value || 0), 0);
@@ -94,6 +96,7 @@ export function KanbanColumn({
                   isClosed={stage === 'closed_won'}
                   onValidate={() => onValidate?.(opp)}
                   onClick={() => onOpportunityClick?.(opp)}
+                  onDelete={() => onDelete?.(opp)}
                 />
               );
             })

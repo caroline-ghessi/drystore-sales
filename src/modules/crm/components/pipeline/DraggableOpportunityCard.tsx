@@ -13,6 +13,7 @@ interface DraggableOpportunityCardProps {
   isClosed: boolean;
   onValidate: () => void;
   onClick: () => void;
+  onDelete: () => void;
 }
 
 export function DraggableOpportunityCard({
@@ -25,6 +26,7 @@ export function DraggableOpportunityCard({
   isClosed,
   onValidate,
   onClick,
+  onDelete,
 }: DraggableOpportunityCardProps) {
   return (
     <KanbanCard
@@ -50,6 +52,7 @@ export function DraggableOpportunityCard({
         isClosed={isClosed}
         onValidate={onValidate}
         onClick={onClick}
+        onDelete={onDelete}
       />
     </KanbanCard>
   );

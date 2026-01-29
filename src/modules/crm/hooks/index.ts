@@ -3,7 +3,7 @@ export { useLeadAnalytics } from './useLeadAnalytics';
 export { useHotLeads, useHotLeadsStats } from './useHotLeads';
 export { useGenerateLeadSummary, useSendLeadToVendor, useVendors, useLeadDistributions } from './useLeadSummary';
 export { useRealQualityMetrics } from './useRealQualityMetrics';
-export { useOpportunities, useUpdateOpportunityStage, useOpportunitiesCount, STAGE_CONFIG } from './useOpportunities';
+export { useOpportunities, useUpdateOpportunityStage, useOpportunitiesCount, useDeleteOpportunity, STAGE_CONFIG } from './useOpportunities';
 export { usePipelineStats, formatCurrency, formatFullCurrency } from './usePipelineStats';
 export { useOpportunityDetail, useUpdateOpportunity, useConversationMessages } from './useOpportunityDetail';
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { KanbanColumn } from './KanbanColumn';
-import { useOpportunities, useUpdateOpportunityStage, STAGE_CONFIG, Opportunity } from '../../hooks/useOpportunities';
+import { useOpportunities, useUpdateOpportunityStage, useDeleteOpportunity, STAGE_CONFIG, Opportunity } from '../../hooks/useOpportunities';
 import { useNavigate } from 'react-router-dom';
 import { KanbanProvider, type DragEndEvent } from '@/components/ui/kanban';
 import { Database } from '@/integrations/supabase/types';
@@ -20,10 +20,22 @@ const VISIBLE_STAGES = ['prospecting', 'qualification', 'proposal', 'negotiation
 export function PipelineKanban({ onValidate }: PipelineKanbanProps) {
   const { data, isLoading, error } = useOpportunities();
   const updateStage = useUpdateOpportunityStage();
+  const deleteOpportunity = useDeleteOpportunity();
   const navigate = useNavigate();
 
   const handleOpportunityClick = (opportunity: Opportunity) => {
     navigate(`/crm/opportunities/${opportunity.id}`);
+  };
+
+  const handleDelete = (opportunity: Opportunity) => {
+    deleteOpportunity.mutate(opportunity.id, {
+      onSuccess: () => {
+        toast.success('Negociação excluída com sucesso');
+      },
+      onError: () => {
+        toast.error('Erro ao excluir negociação');
+      },
+    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -88,6 +100,7 @@ export function PipelineKanban({ onValidate }: PipelineKanbanProps) {
             opportunities={byStage?.[stage] || []}
             onOpportunityClick={handleOpportunityClick}
             onValidate={onValidate}
+            onDelete={handleDelete}
           />
         ))}
       </KanbanProvider>
