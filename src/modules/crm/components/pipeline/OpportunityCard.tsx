@@ -74,22 +74,27 @@ export function OpportunityCard({
       onClick={onClick}
     >
       {/* Line 1: Badge novo (optional) + Customer name + Delete + Time */}
-      <div className="flex items-center gap-2 overflow-hidden">
+      <div className="flex items-center gap-2 w-full">
         {isNew && (
           <Badge className="bg-primary text-primary-foreground text-xs font-medium px-1.5 py-0 h-5 shrink-0">
             Novo
           </Badge>
         )}
         
-        {/* Container para o nome - permite truncar */}
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <span className="font-semibold text-sm text-foreground block truncate">
-            {customerName}
-          </span>
-        </div>
+        {/* Nome do cliente com largura máxima calculada */}
+        <span 
+          className="font-semibold text-sm text-foreground truncate"
+          style={{ 
+            flex: '1 1 0', 
+            minWidth: 0, 
+            maxWidth: isNew ? 'calc(100% - 130px)' : 'calc(100% - 90px)' 
+          }}
+        >
+          {customerName}
+        </span>
         
-        {/* Actions container - SEMPRE visível */}
-        <div className="flex items-center gap-1 shrink-0">
+        {/* Actions container - SEMPRE visível com ml-auto */}
+        <div className="flex items-center gap-1 ml-auto shrink-0">
           {/* Delete button */}
           {onDelete && (
             <AlertDialog>
