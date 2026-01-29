@@ -1,101 +1,156 @@
 
-# Plano: Corrigir Cron Jobs e Quality Analysis
 
-## Problemas Identificados
+# Plano Revisado: Corrigir CRM com Análise de Riscos
 
-### Problema 1: Modelo de IA Inválido (CRÍTICO)
-O agente `quality_monitor` está configurado com o modelo `claude-3-5-sonnet-20241022` que **NÃO EXISTE** na API da Anthropic.
+## Verificações Realizadas
 
-**Erro nos logs:**
-```
-AI API Error: {"type":"error","error":{"type":"not_found_error","message":"model: claude-3-5-sonnet-20241022"}}
-```
+| Item | Resultado |
+|------|-----------|
+| Duplicatas de telefone | ✅ 0 encontradas |
+| Registros com phone NULL | ✅ 0 registros |
+| Total de clientes no CRM | 1 registro |
+| Conversas pendentes | ~2.588 |
 
-**Modelos válidos da Anthropic:**
-- `claude-sonnet-4-20250514` (mais recente)
-- `claude-3-5-sonnet-20241022` → INCORRETO (precisa ser `claude-3-5-sonnet-latest` ou outro)
-
-### Problema 2: Cron Job Inexistente
-O cron job `process-vendor-opportunities` **NÃO EXISTE**. A edge function está pronta mas nunca é executada automaticamente.
-
-### Estado Atual
-| Item | Status |
-|------|--------|
-| Agente `quality_monitor` | ✅ Existe (mas modelo errado) |
-| Cron `daily-quality-analysis` | ✅ Existe (23:00 UTC) |
-| Cron `process-vendor-opportunities` | ❌ **NÃO EXISTE** |
-| Oportunidades criadas | **0** |
-| Análises de qualidade | **13** (de 2.588 conversas) |
+**Conclusão**: É seguro criar a constraint UNIQUE direta.
 
 ---
 
 ## Ações a Executar
 
-### AÇÃO 1: Corrigir Modelo do Agente Quality Monitor (SQL)
-
-Atualizar o agente para usar um modelo válido da Anthropic.
+### AÇÃO 1: Criar Constraint UNIQUE (SQL)
 
 ```sql
-UPDATE agent_configs 
-SET llm_model = 'claude-sonnet-4-20250514',
-    max_tokens = 2000
-WHERE agent_type = 'quality_monitor';
+-- Remover índice parcial existente
+DROP INDEX IF EXISTS idx_crm_customers_phone_unique;
+
+-- Criar constraint UNIQUE direta (necessário para UPSERT)
+ALTER TABLE crm_customers 
+ADD CONSTRAINT crm_customers_phone_unique UNIQUE (phone);
 ```
 
-### AÇÃO 2: Criar Cron Job para process-vendor-opportunities (SQL)
+### AÇÃO 2 (Opcional): Melhorar Validação de Telefone
 
-Criar o cron job que executará a cada 30 minutos.
+Modificar `supabase/functions/_shared/phone-utils.ts` para rejeitar telefones inválidos:
 
-```sql
-SELECT cron.schedule(
-  'process-vendor-opportunities',
-  '*/30 * * * *',
-  $$
-  SELECT net.http_post(
-    url:='https://groqsnnytvjabgeaekkw.supabase.co/functions/v1/process-vendor-opportunities',
-    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdyb3Fzbm55dHZqYWJnZWFla2t3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1OTU3ODcsImV4cCI6MjA2ODE3MTc4N30.HWBJVbSSShx1P8bqa4dvO9jCsCDybt2rhgPPBy8zEVs"}'::jsonb,
-    body:='{}'::jsonb
-  ) as request_id;
-  $$
-);
+```typescript
+export function normalizePhone(phone: string): string | null {
+  let cleaned = phone.replace(/\D/g, '');
+  
+  if (!cleaned.startsWith('55')) {
+    cleaned = '55' + cleaned;
+  }
+  
+  // Rejeitar telefones inválidos ao invés de aceitar
+  if (cleaned.length < 12 || cleaned.length > 13) {
+    console.warn(`[phone-utils] Número inválido rejeitado: ${phone}`);
+    return null; // Retornar null para indicar erro
+  }
+  
+  return cleaned;
+}
 ```
 
-### AÇÃO 3: Testar Edge Functions
+E atualizar `process-vendor-opportunities/index.ts` para tratar o null:
 
-Após as correções, testar manualmente:
-
-1. **process-vendor-opportunities**: Verificar se cria oportunidades no CRM
-2. **quality-analysis**: Verificar se salva análises com o novo modelo
+```typescript
+const normalizedPhone = normalizePhone(conv.customer_phone);
+if (!normalizedPhone) {
+  console.log(`[VendorOpportunities] Conversa ${conv.id} telefone inválido, pulando`);
+  continue;
+}
+```
 
 ---
 
-## Arquivos a Modificar
+## Comandos de Rollback (Se Necessário)
 
-| Arquivo | Mudança |
-|---------|---------|
-| Nenhum arquivo de código | Apenas atualizações no banco de dados |
+```sql
+-- Remover constraint
+ALTER TABLE crm_customers DROP CONSTRAINT IF EXISTS crm_customers_phone_unique;
 
----
-
-## Resultado Esperado
-
-Após as correções:
-- **Modelo IA**: `claude-sonnet-4-20250514` (válido)
-- **Cron Jobs**: 2 ativos (`daily-quality-analysis` + `process-vendor-opportunities`)
-- **Oportunidades**: Criadas automaticamente a cada 30 minutos
-- **Análises**: Executadas com sucesso usando modelo válido
+-- Recriar índice parcial (estado anterior)
+CREATE INDEX idx_crm_customers_phone_unique 
+ON crm_customers(phone) 
+WHERE phone IS NOT NULL;
+```
 
 ---
 
 ## Verificações Pós-Implementação
 
 ```sql
--- Verificar modelo do agente
-SELECT llm_model FROM agent_configs WHERE agent_type = 'quality_monitor';
+-- Confirmar constraint criada
+SELECT constraint_name, constraint_type 
+FROM information_schema.table_constraints 
+WHERE table_name = 'crm_customers' AND constraint_type = 'UNIQUE';
 
--- Verificar cron jobs
-SELECT jobname, schedule FROM cron.job ORDER BY jobname;
+-- Monitorar oportunidades após 30 minutos
+SELECT COUNT(*) as total_opportunities 
+FROM crm_opportunities 
+WHERE created_at > NOW() - INTERVAL '1 hour';
 
--- Verificar oportunidades (após execução)
-SELECT COUNT(*) FROM crm_opportunities WHERE created_at > NOW() - INTERVAL '1 hour';
+-- Verificar logs de processamento
+SELECT level, message, data 
+FROM system_logs 
+WHERE source = 'process-vendor-opportunities' 
+ORDER BY created_at DESC 
+LIMIT 5;
 ```
+
+---
+
+## Estimativa de Tempo
+
+| Etapa | Tempo |
+|-------|-------|
+| Criar constraint | Instantâneo (1 registro) |
+| Primeira execução do cron | Próximo ciclo de 30min |
+| Processar 2.588 conversas | ~6 execuções = **~3 horas** |
+| Validação completa | ~4 horas após início |
+
+---
+
+## Arquivos a Modificar
+
+| Arquivo | Mudança | Prioridade |
+|---------|---------|------------|
+| Banco de dados | Criar constraint UNIQUE | Alta (obrigatório) |
+| `supabase/functions/_shared/phone-utils.ts` | Rejeitar telefones inválidos | Média (opcional) |
+| `supabase/functions/process-vendor-opportunities/index.ts` | Tratar null de normalizePhone | Média (opcional) |
+
+---
+
+## Resumo Técnico
+
+O CRM não está criando oportunidades porque:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  PROBLEMA: UPSERT falha em ON CONFLICT                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Código atual:                                              │
+│  .upsert({ phone: normalizedPhone, ... },                  │
+│    { onConflict: 'phone' })                                │
+│           │                                                 │
+│           ▼                                                 │
+│  PostgreSQL: "phone" não tem UNIQUE constraint válida       │
+│  (índice parcial WHERE phone IS NOT NULL ≠ constraint)      │
+│           │                                                 │
+│           ▼                                                 │
+│  ERRO: there is no unique or exclusion constraint          │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│  SOLUÇÃO: Criar constraint UNIQUE direta                    │
+│                                                             │
+│  ALTER TABLE crm_customers                                  │
+│  ADD CONSTRAINT crm_customers_phone_unique UNIQUE (phone);  │
+│           │                                                 │
+│           ▼                                                 │
+│  PostgreSQL: UPSERT funciona corretamente                   │
+│           │                                                 │
+│           ▼                                                 │
+│  CRM popula oportunidades automaticamente                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
