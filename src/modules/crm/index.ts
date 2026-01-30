@@ -10,6 +10,7 @@ export { default as Opportunities } from './pages/Opportunities';
 export { default as Tasks } from './pages/Tasks';
 export { default as Settings } from './pages/Settings';
 export { default as AgentManagement } from './pages/AgentManagement';
+export { default as Duplicates } from './pages/Duplicates';
 
 // Hooks
 export * from './hooks';
