@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0';
 import { normalizePhone } from '../_shared/phone-utils.ts';
+import { checkOpportunityDuplicate, logMatchDecision } from '../_shared/opportunity-matcher.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -105,7 +106,7 @@ serve(async (req) => {
       console.error('Erro ao registrar distribuição:', distError);
     }
 
-    // 7. NOVO: Criar/atualizar crm_customers e crm_opportunities
+    // 7. NOVO: Criar/atualizar crm_customers e crm_opportunities com verificação de duplicação
     let customerId: string | null = null;
     let opportunityId: string | null = null;
 
@@ -138,30 +139,79 @@ serve(async (req) => {
         customerId = customer?.id;
         console.log(`Cliente CRM criado/atualizado: ${customerId}`);
 
-        // 7.2 Criar oportunidade no CRM vinculada ao vendedor
-        const { data: opportunity, error: oppError } = await supabase
-          .from('crm_opportunities')
-          .insert({
-            customer_id: customerId,
-            conversation_id: conversationId,
-            vendor_id: vendorId, // IMPORTANTE: Vincular ao vendedor que recebeu o lead
-            title: `Oportunidade - ${conversation?.product_group || 'Nova'}`,
-            source: 'whatsapp',
-            product_category: conversation?.product_group,
-            stage: 'prospecting',
-            probability: 20,
-            value: 0,
-            validation_status: 'ai_generated',
-            temperature: conversation?.lead_temperature || 'cold',
-          })
-          .select('id')
-          .single();
+        // 7.2 NOVO: Verificar duplicação antes de criar oportunidade
+        const matchResult = await checkOpportunityDuplicate(supabase, {
+          customer_phone: normalizedPhone,
+          vendor_id: vendorId,
+          product_category: conversation?.product_group,
+          conversation_id: conversationId,
+          source: 'whatsapp'
+        });
 
-        if (oppError) {
-          console.error('Erro ao criar oportunidade CRM:', oppError);
+        if (matchResult.action === 'merge' && matchResult.existing_opportunity_id) {
+          // Atualizar oportunidade existente ao invés de criar nova
+          const { error: updateError } = await supabase
+            .from('crm_opportunities')
+            .update({
+              conversation_id: conversationId,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', matchResult.existing_opportunity_id);
+          
+          if (updateError) {
+            console.error('Erro ao atualizar oportunidade existente:', updateError);
+          } else {
+            opportunityId = matchResult.existing_opportunity_id;
+            console.log(`[CRM] Oportunidade existente atualizada: ${opportunityId} (${matchResult.reasoning})`);
+          }
+          
+          // Registrar decisão no log
+          await logMatchDecision(supabase, {
+            customer_phone: normalizedPhone,
+            vendor_id: vendorId,
+            product_category: conversation?.product_group,
+            conversation_id: conversationId,
+            source: 'whatsapp'
+          }, matchResult);
+          
         } else {
-          opportunityId = opportunity?.id;
-          console.log(`Oportunidade CRM criada: ${opportunityId}`);
+          // Criar nova oportunidade
+          const validationStatus = matchResult.action === 'needs_review' ? 'needs_review' : 'ai_generated';
+          
+          const { data: opportunity, error: oppError } = await supabase
+            .from('crm_opportunities')
+            .insert({
+              customer_id: customerId,
+              conversation_id: conversationId,
+              vendor_id: vendorId,
+              title: `Oportunidade - ${conversation?.product_group || 'Nova'}`,
+              source: 'whatsapp',
+              product_category: conversation?.product_group,
+              stage: 'prospecting',
+              probability: 20,
+              value: 0,
+              validation_status: validationStatus,
+              temperature: conversation?.lead_temperature || 'cold',
+              match_confidence: matchResult.confidence,
+            })
+            .select('id')
+            .single();
+
+          if (oppError) {
+            console.error('Erro ao criar oportunidade CRM:', oppError);
+          } else {
+            opportunityId = opportunity?.id;
+            console.log(`[CRM] Nova oportunidade criada: ${opportunityId}`);
+            
+            // Registrar decisão no log
+            await logMatchDecision(supabase, {
+              customer_phone: normalizedPhone,
+              vendor_id: vendorId,
+              product_category: conversation?.product_group,
+              conversation_id: conversationId,
+              source: 'whatsapp'
+            }, matchResult, opportunityId);
+          }
         }
       }
 

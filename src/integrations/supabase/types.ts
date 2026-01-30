@@ -806,6 +806,9 @@ export type Database = {
           first_contact_at: string | null
           id: string
           last_ai_analysis_at: string | null
+          match_confidence: number | null
+          merge_reason: string | null
+          merged_from_id: string | null
           next_follow_up_date: string | null
           next_step: string | null
           objection_handling_score: number | null
@@ -863,6 +866,9 @@ export type Database = {
           first_contact_at?: string | null
           id?: string
           last_ai_analysis_at?: string | null
+          match_confidence?: number | null
+          merge_reason?: string | null
+          merged_from_id?: string | null
           next_follow_up_date?: string | null
           next_step?: string | null
           objection_handling_score?: number | null
@@ -920,6 +926,9 @@ export type Database = {
           first_contact_at?: string | null
           id?: string
           last_ai_analysis_at?: string | null
+          match_confidence?: number | null
+          merge_reason?: string | null
+          merged_from_id?: string | null
           next_follow_up_date?: string | null
           next_step?: string | null
           objection_handling_score?: number | null
@@ -953,6 +962,13 @@ export type Database = {
           visits_done?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_opportunities_merged_from_id_fkey"
+            columns: ["merged_from_id"]
+            isOneToOne: false
+            referencedRelation: "crm_opportunities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "crm_opportunities_validated_by_fkey"
             columns: ["validated_by"]
@@ -1007,6 +1023,69 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customer_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_opportunity_match_log: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          customer_phone: string
+          decided_by: string
+          decision: string
+          existing_opportunity_id: string | null
+          id: string
+          metadata: Json | null
+          new_opportunity_id: string | null
+          product_category: string | null
+          reasoning: string | null
+          source: string
+          vendor_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          customer_phone: string
+          decided_by: string
+          decision: string
+          existing_opportunity_id?: string | null
+          id?: string
+          metadata?: Json | null
+          new_opportunity_id?: string | null
+          product_category?: string | null
+          reasoning?: string | null
+          source: string
+          vendor_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          customer_phone?: string
+          decided_by?: string
+          decision?: string
+          existing_opportunity_id?: string | null
+          id?: string
+          metadata?: Json | null
+          new_opportunity_id?: string | null
+          product_category?: string | null
+          reasoning?: string | null
+          source?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_opportunity_match_log_existing_opportunity_id_fkey"
+            columns: ["existing_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "crm_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_opportunity_match_log_new_opportunity_id_fkey"
+            columns: ["new_opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "crm_opportunities"
             referencedColumns: ["id"]
           },
         ]
