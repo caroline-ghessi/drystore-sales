@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
+import { callLLM, normalizeModel, type LLMMessage } from '../_shared/llm-client.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,10 +63,23 @@ serve(async (req) => {
 Mensagem do cliente: "${message}"
 Categoria atual: ${currentProductGroup || 'indefinido'}`;
 
-    // Try multiple providers with automatic rotation
-    const classification = await classifyWithProviderRotation(fullPrompt);
+    // Usar cliente LLM unificado com fallback automático
+    const configuredModel = classifierAgent.llm_model || 'claude-3-haiku-20240307';
+    const { model: normalizedModel, provider } = normalizeModel(configuredModel);
+    
+    console.log(`🔄 Trying ${provider} (${normalizedModel}) for classification...`);
+    
+    const llmMessages: LLMMessage[] = [
+      { role: 'user', content: fullPrompt }
+    ];
 
-    console.log(`Classification result: ${classification}`);
+    const llmResponse = await callLLM(normalizedModel, llmMessages, {
+      maxTokens: classifierAgent.max_tokens || 1000,
+      temperature: classifierAgent.temperature || 0.3,
+    });
+
+    const classification = llmResponse.content.trim().toLowerCase();
+    console.log(`✅ ${llmResponse.provider} classification successful: ${classification}`);
 
     console.log(`Classification result: ${classification}`);
     console.log(`Current product group: ${currentProductGroup}`);
@@ -168,19 +182,22 @@ Categoria atual: ${currentProductGroup || 'indefinido'}`;
           classified_category: finalProductGroup,
           confidence_score: confidenceScore,
           status: 'success',
-        metadata: {
-          current_product_group: currentProductGroup,
-          llm_response: classification,
-          mapped_category: finalProductGroup,
-          providers_attempted: 'multiple'
-        }
+          metadata: {
+            current_product_group: currentProductGroup,
+            llm_response: classification,
+            mapped_category: finalProductGroup,
+            model_used: llmResponse.model,
+            provider_used: llmResponse.provider
+          }
         });
     }
 
     return new Response(JSON.stringify({
       productGroup: finalProductGroup,
       confidence: confidenceScore,
-      rawClassification: classification
+      rawClassification: classification,
+      modelUsed: llmResponse.model,
+      providerUsed: llmResponse.provider
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -218,95 +235,3 @@ Categoria atual: ${currentProductGroup || 'indefinido'}`;
     });
   }
 });
-
-// Função para classificação com rotação automática de provedores
-async function classifyWithProviderRotation(prompt: string): Promise<string> {
-  const providers = [
-    {
-      name: 'Claude',
-      model: 'claude-3-5-sonnet-20241022',
-      apiKey: Deno.env.get('ANTHROPIC_API_KEY'),
-      url: 'https://api.anthropic.com/v1/messages',
-      headers: (key: string) => ({
-        'Content-Type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01'
-      }),
-      body: (model: string, prompt: string) => ({
-        model,
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      }),
-      extractResponse: (data: any) => data.content[0].text.trim().toLowerCase()
-    },
-    {
-      name: 'OpenAI',
-      model: 'gpt-4o-mini',
-      apiKey: Deno.env.get('OPENAI_API_KEY'),
-      url: 'https://api.openai.com/v1/chat/completions',
-      headers: (key: string) => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`
-      }),
-      body: (model: string, prompt: string) => ({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1000,
-        temperature: 0.7
-      }),
-      extractResponse: (data: any) => data.choices[0].message.content.trim().toLowerCase()
-    },
-    {
-      name: 'xAI',
-      model: 'grok-beta',
-      apiKey: Deno.env.get('XAI_API_KEY'),
-      url: 'https://api.x.ai/v1/chat/completions',
-      headers: (key: string) => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`
-      }),
-      body: (model: string, prompt: string) => ({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1000,
-        temperature: 0.7
-      }),
-      extractResponse: (data: any) => data.choices[0].message.content.trim().toLowerCase()
-    }
-  ];
-
-  for (const provider of providers) {
-    if (!provider.apiKey) {
-      console.log(`⚠️ ${provider.name} API key not configured, skipping...`);
-      continue;
-    }
-
-    try {
-      console.log(`🔄 Trying ${provider.name} for classification...`);
-      
-      const response = await fetch(provider.url, {
-        method: 'POST',
-        headers: provider.headers(provider.apiKey),
-        body: JSON.stringify(provider.body(provider.model, prompt))
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ ${provider.name} failed:`, response.status, errorText);
-        continue; // Try next provider
-      }
-
-      const data = await response.json();
-      const result = provider.extractResponse(data);
-      
-      console.log(`✅ ${provider.name} classification successful: ${result}`);
-      return result;
-      
-    } catch (error: any) {
-      console.error(`❌ ${provider.name} error:`, error.message);
-      continue; // Try next provider
-    }
-  }
-
-  throw new Error('All classification providers failed');
-}

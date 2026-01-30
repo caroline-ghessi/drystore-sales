@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
+import { callLLM, normalizeModel, type LLMMessage } from '../_shared/llm-client.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,99 +16,6 @@ function sanitize(input: string | null): string {
     .replace(/["\n\r\\<>]/g, ' ')
     .substring(0, 200)
     .trim();
-}
-
-// Função para extrair dados com rotação automática de provedores
-async function extractWithProviderRotation(
-  prompt: string,
-  maxTokens: number = 2000
-): Promise<any> {
-  const providers = [
-    {
-      name: 'Claude',
-      model: 'claude-3-5-sonnet-20241022',
-      apiKey: Deno.env.get('ANTHROPIC_API_KEY'),
-      url: 'https://api.anthropic.com/v1/messages',
-      headers: (key: string) => ({
-        'Content-Type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01'
-      }),
-      body: (model: string, prompt: string, tokens: number) => ({
-        model,
-        max_tokens: tokens,
-        messages: [{ role: 'user', content: prompt }]
-      }),
-      extractResponse: (data: any) => data.content[0].text
-    },
-    {
-      name: 'OpenAI',
-      model: 'gpt-4o-mini',
-      apiKey: Deno.env.get('OPENAI_API_KEY'),
-      url: 'https://api.openai.com/v1/chat/completions',
-      headers: (key: string) => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`
-      }),
-      body: (model: string, prompt: string, tokens: number) => ({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: tokens
-      }),
-      extractResponse: (data: any) => data.choices[0].message.content
-    },
-    {
-      name: 'xAI',
-      model: 'grok-beta',
-      apiKey: Deno.env.get('XAI_API_KEY'),
-      url: 'https://api.x.ai/v1/chat/completions',
-      headers: (key: string) => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`
-      }),
-      body: (model: string, prompt: string, tokens: number) => ({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: tokens
-      }),
-      extractResponse: (data: any) => data.choices[0].message.content
-    }
-  ];
-
-  for (const provider of providers) {
-    if (!provider.apiKey) {
-      console.log(`⚠️ ${provider.name} API key not configured, skipping...`);
-      continue;
-    }
-
-    try {
-      console.log(`🔄 Trying ${provider.name} for data extraction...`);
-      
-      const response = await fetch(provider.url, {
-        method: 'POST',
-        headers: provider.headers(provider.apiKey),
-        body: JSON.stringify(provider.body(provider.model, prompt, maxTokens))
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ ${provider.name} failed:`, response.status, errorText);
-        continue; // Try next provider
-      }
-
-      const data = await response.json();
-      const result = provider.extractResponse(data);
-      
-      console.log(`✅ ${provider.name} data extraction successful`);
-      return result;
-      
-    } catch (error: any) {
-      console.error(`❌ ${provider.name} error:`, error.message);
-      continue; // Try next provider
-    }
-  }
-
-  throw new Error('All data extraction providers failed');
 }
 
 serve(async (req) => {
@@ -166,22 +74,37 @@ ${conversationHistory}
 
 Última mensagem: "${message}"`;
 
-    // Call LLM with provider rotation (fixes 404 error)
-    console.log('🔄 Calling LLM with provider rotation for data extraction...');
-    const extractedDataText = await extractWithProviderRotation(fullPrompt, 2000);
+    // Usar cliente LLM unificado com fallback automático
+    const configuredModel = extractorAgent.llm_model || 'claude-3-5-sonnet-20241022';
+    const { model: normalizedModel, provider } = normalizeModel(configuredModel);
+    
+    console.log(`🔄 Calling LLM (${provider}: ${normalizedModel}) for data extraction...`);
+    
+    const llmMessages: LLMMessage[] = [
+      { role: 'user', content: fullPrompt }
+    ];
 
+    const llmResponse = await callLLM(normalizedModel, llmMessages, {
+      maxTokens: extractorAgent.max_tokens || 2000,
+      temperature: extractorAgent.temperature || 0.3,
+    });
+
+    const extractedDataText = llmResponse.content;
+    console.log(`✅ ${llmResponse.provider} data extraction successful`);
     console.log('Raw extraction result:', extractedDataText);
 
     // Try to parse as JSON
     let extractedData: Record<string, any> = {};
     try {
-      extractedData = JSON.parse(extractedDataText);
+      const jsonMatch = extractedDataText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        extractedData = JSON.parse(jsonMatch[0]);
+      } else {
+        extractedData = { raw_response: extractedDataText };
+      }
     } catch (parseError) {
       console.warn('Failed to parse extracted data as JSON:', parseError);
-      // Try to extract basic information even if not JSON
-      extractedData = {
-        raw_response: extractedDataText
-      };
+      extractedData = { raw_response: extractedDataText };
     }
 
     console.log('Parsed extracted data:', extractedData);
@@ -207,7 +130,7 @@ ${conversationHistory}
         onConflict: 'conversation_id'
       });
 
-    // CORREÇÃO: Salvar também em extracted_contexts para uso do RAG e agentes
+    // Salvar também em extracted_contexts para uso do RAG e agentes
     const { error: extractedContextError } = await supabase
       .from('extracted_contexts')
       .insert({
@@ -253,7 +176,8 @@ ${conversationHistory}
     return new Response(JSON.stringify({
       customerData: extractedData,
       contextUpdated: true,
-      providersUsed: 'rotation'
+      modelUsed: llmResponse.model,
+      providerUsed: llmResponse.provider
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
