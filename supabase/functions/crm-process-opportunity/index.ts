@@ -115,9 +115,10 @@ serve(async (req) => {
       throw new Error("Oportunidade não tem conversa de vendedor vinculada");
     }
 
+    // Buscar mensagens incluindo conteúdo processado de mídia
     const { data: messages, error: msgError } = await supabase
       .from("vendor_conversation_messages")
-      .select("id, content, from_me, timestamp, sender_name")
+      .select("id, content, from_me, timestamp, sender_name, message_type, processed_content")
       .eq("conversation_id", vendorConversationId)
       .order("timestamp", { ascending: true })
       .limit(200);
@@ -138,6 +139,8 @@ serve(async (req) => {
       from_me: m.from_me,
       timestamp: m.timestamp,
       sender_name: m.sender_name,
+      message_type: m.message_type,
+      processed_content: m.processed_content,
     }));
 
     // 3. Buscar configurações dos agentes ativos
