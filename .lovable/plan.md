@@ -1,107 +1,64 @@
 
-
-# Plano: Atualizar mapToOpportunityFields para Pipeline Classifier v1.0
+# Plano: Atualizar mapToOpportunityFields para Coaching Generator v1.0
 
 ## Resumo
 
-Atualizar a função `mapToOpportunityFields()` no `crm-agent-executor.ts` para processar a estrutura rica do novo prompt Pipeline Classifier v1.0, incluindo mapeamento de estágios e armazenamento de dados analíticos.
+Atualizar a função `mapToOpportunityFields()` no `crm-agent-executor.ts` para processar a estrutura rica do novo prompt Coaching Generator v1.0, capturando diagnósticos, análises de dimensão, alertas de risco e coaching do vendedor.
 
 ---
 
-## Incompatibilidade Crítica: Estágios
+## Incompatibilidade Identificada
 
-O prompt usa nomenclatura diferente do banco de dados. Precisamos criar um mapeamento:
+O prompt v1.0 gera uma estrutura extremamente rica, mas o mapeador atual só captura 3 campos:
 
-```text
-PROMPT (pipeline_stage)       →  BANCO (stage enum)
-─────────────────────────────────────────────────────
-new_lead                      →  prospecting
-qualifying                    →  qualification
-need_identified               →  qualification (merge)
-proposal_sent                 →  proposal
-negotiating                   →  negotiation
-verbal_commitment             →  negotiation (merge)
-won                           →  closed_won
-lost                          →  closed_lost
+```typescript
+// Código atual (linhas 728-736) - MUITO LIMITADO
+const coaching = extractions.coaching_generator;
+if (coaching) {
+  if (coaching.recommended_actions) fields.recommended_actions = coaching.recommended_actions;
+  if (coaching.coaching_priority) fields.coaching_priority = coaching.coaching_priority;
+  if (coaching.next_follow_up_date) fields.next_follow_up_date = coaching.next_follow_up_date;
+}
 ```
 
-**Nota:** `need_identified` e `verbal_commitment` não existem no enum do banco, então são mapeados para o estágio mais próximo. O detalhe granular fica no `sub_status`.
+**~80% dos dados gerados pelo prompt v1.0 são perdidos!**
 
 ---
 
 ## Estrutura do Novo Prompt vs Banco
 
 ```text
-PROMPT (aninhado)                        →  BANCO (plano)
-─────────────────────────────────────────────────────────────────
-pipeline_stage                           →  stage (normalizado)
-pipeline_stage_label                     →  stage_label (novo)
-previous_stage                           →  previous_stage (novo)
-stage_confidence                         →  stage_confidence (novo)
-sub_status                               →  sub_status (novo)
-win_probability                          →  probability (existente)
-probability_factors                      →  probability_factors (JSONB novo)
-stage_evidence                           →  stage_evidence (JSONB novo)
-time_in_stage.estimated_days             →  days_in_negotiation (existente)
-time_in_stage.is_stuck                   →  is_stuck (novo)
-next_stage                               →  next_stage_analysis (JSONB novo)
-regression_risk                          →  regression_risk (JSONB novo)
-stage_history                            →  stage_history (JSONB novo)
-loss_analysis                            →  loss_analysis (JSONB novo)
-classification_summary                   →  classification_summary (novo)
-recommended_actions (do next_stage)      →  recommended_actions (JSONB existente - merge)
+PROMPT (aninhado)                              →  BANCO (plano/JSONB)
+─────────────────────────────────────────────────────────────────────────
+opportunity_diagnosis (objeto)                 →  opportunity_diagnosis (JSONB novo)
+opportunity_diagnosis.overall_score            →  opportunity_score (novo)
+opportunity_diagnosis.overall_status           →  opportunity_status (novo)
+opportunity_diagnosis.win_probability          →  probability (existente - override)
+dimension_analysis (objeto)                    →  dimension_analysis (JSONB novo)
+priority_actions[] (com scripts)               →  recommended_actions (existente - enriquecido)
+approach_adjustments[]                         →  approach_adjustments (JSONB novo)
+risk_alerts[]                                  →  risk_alerts (JSONB novo)
+seller_coaching (objeto)                       →  seller_coaching (JSONB novo)
+seller_coaching.overall_performance            →  seller_performance_score (novo)
+next_steps_summary (objeto)                    →  next_steps_summary (JSONB novo)
+win_probability_analysis (objeto)              →  win_probability_analysis (JSONB novo)
+coaching_summary                               →  coaching_summary (novo)
+coaching_priority (legado)                     →  coaching_priority (existente)
+next_follow_up_date (legado)                   →  next_follow_up_date (existente)
 ```
 
 ---
 
 ## Mudanças no crm-agent-executor.ts
 
-### 1. Adicionar Mapeamento de Estágios
-
-```typescript
-/**
- * Mapeamento de estágios do prompt para o enum do banco
- * Pipeline Classifier v1.0 → opportunity_stage enum
- */
-const PIPELINE_STAGE_MAP: Record<string, string> = {
-  // Estágios principais
-  'new_lead': 'prospecting',
-  'qualifying': 'qualification',
-  'need_identified': 'qualification',  // Merge - detalhe vai para sub_status
-  'proposal_sent': 'proposal',
-  'negotiating': 'negotiation',
-  'verbal_commitment': 'negotiation',   // Merge - detalhe vai para sub_status
-  'won': 'closed_won',
-  'lost': 'closed_lost',
-  
-  // Fallbacks para compatibilidade com formato antigo
-  'prospecting': 'prospecting',
-  'qualification': 'qualification',
-  'proposal': 'proposal',
-  'negotiation': 'negotiation',
-  'closing': 'negotiation',  // closing → negotiation
-  'closed_won': 'closed_won',
-  'closed_lost': 'closed_lost',
-};
-
-/**
- * Normaliza estágio do prompt para o enum do banco
- */
-function normalizeStage(promptStage: string): string {
-  return PIPELINE_STAGE_MAP[promptStage] || promptStage;
-}
-```
-
-### 2. Atualizar Seção do Pipeline Classifier
-
-Substituir linhas 528-536 por:
+### Substituir Seção do Coaching Generator (linhas 728-736)
 
 ```typescript
 // ========================================
-// PIPELINE CLASSIFIER (v1.0)
+// COACHING GENERATOR (v1.0)
 // ========================================
-const pipeline = extractions.pipeline_classifier;
-if (pipeline) {
+const coaching = extractions.coaching_generator;
+if (coaching) {
   // Helper para acessar dados aninhados
   const get = (obj: unknown, ...paths: string[]): unknown => {
     for (const path of paths) {
@@ -120,166 +77,166 @@ if (pipeline) {
     return undefined;
   };
 
-  // === 1. ESTÁGIO NORMALIZADO ===
-  // Suporta: pipeline_stage (novo) ou stage (legado)
-  const promptStage = get(pipeline, 'pipeline_stage', 'stage') as string | undefined;
-  if (promptStage) {
-    fields.stage = normalizeStage(promptStage);
+  // === 1. DIAGNÓSTICO DA OPORTUNIDADE ===
+  const diagnosis = get(coaching, 'opportunity_diagnosis') as Record<string, unknown> | undefined;
+  if (diagnosis && typeof diagnosis === 'object') {
+    // Armazenar objeto completo
+    fields.opportunity_diagnosis = diagnosis;
     
-    // Armazenar o estágio original do prompt para granularidade
-    // Se need_identified ou verbal_commitment, colocar em sub_status
-    if (promptStage === 'need_identified') {
-      fields.sub_status = 'need_identified';
-    } else if (promptStage === 'verbal_commitment') {
-      fields.sub_status = 'verbal_commitment';
+    // Extrair campos específicos para colunas dedicadas
+    if (typeof diagnosis.overall_score === 'number') {
+      fields.opportunity_score = diagnosis.overall_score;
+    }
+    if (diagnosis.overall_status) {
+      fields.opportunity_status = diagnosis.overall_status;
+    }
+    // Win probability do coaching pode sobrescrever o do pipeline se mais recente
+    if (typeof diagnosis.win_probability === 'number') {
+      fields.probability = diagnosis.win_probability;
+    }
+    // Armazenar strengths e weaknesses
+    if (Array.isArray(diagnosis.strengths)) {
+      fields.opportunity_strengths = diagnosis.strengths;
+    }
+    if (Array.isArray(diagnosis.weaknesses)) {
+      fields.opportunity_weaknesses = diagnosis.weaknesses;
+    }
+    if (Array.isArray(diagnosis.critical_issues)) {
+      fields.critical_issues = diagnosis.critical_issues;
     }
   }
 
-  // === 2. SUB-STATUS ===
-  // Suporta: sub_status (novo)
-  const subStatus = get(pipeline, 'sub_status') as string | undefined;
-  if (subStatus && subStatus !== null) {
-    fields.sub_status = subStatus;
+  // === 2. ANÁLISE DE DIMENSÕES ===
+  const dimensionAnalysis = get(coaching, 'dimension_analysis');
+  if (dimensionAnalysis && typeof dimensionAnalysis === 'object') {
+    fields.dimension_analysis = dimensionAnalysis;
   }
 
-  // === 3. ESTÁGIO ANTERIOR ===
-  const previousStage = get(pipeline, 'previous_stage') as string | undefined;
-  if (previousStage) {
-    fields.previous_stage = normalizeStage(previousStage);
-  }
-
-  // === 4. PROBABILIDADE ===
-  // Suporta: win_probability (novo) ou probability (legado)
-  const winProbability = get(pipeline, 'win_probability', 'probability');
-  if (typeof winProbability === 'number') {
-    fields.probability = winProbability;
-  }
-
-  // === 5. CONFIANÇA DO ESTÁGIO ===
-  const stageConfidence = get(pipeline, 'stage_confidence');
-  if (typeof stageConfidence === 'number') {
-    fields.stage_confidence = stageConfidence;
-  }
-
-  // === 6. TEMPERATURA (sobrescreve Deal Extractor se presente) ===
-  const temperature = get(pipeline, 'temperature');
-  if (temperature) {
-    fields.temperature = temperature;
-  }
-
-  // === 7. FATORES DE PROBABILIDADE ===
-  const probabilityFactors = get(pipeline, 'probability_factors');
-  if (probabilityFactors && typeof probabilityFactors === 'object') {
-    fields.probability_factors = probabilityFactors;
-  }
-
-  // === 8. EVIDÊNCIAS DO ESTÁGIO ===
-  const stageEvidence = get(pipeline, 'stage_evidence');
-  if (stageEvidence && typeof stageEvidence === 'object') {
-    fields.stage_evidence = stageEvidence;
-  }
-
-  // === 9. TEMPO NO ESTÁGIO ===
-  const timeInStage = get(pipeline, 'time_in_stage') as Record<string, unknown> | undefined;
-  if (timeInStage && typeof timeInStage === 'object') {
-    // Mapear para campo existente
-    if (typeof timeInStage.estimated_days === 'number') {
-      fields.days_in_negotiation = timeInStage.estimated_days;
-    }
-    // Novos campos
-    if (typeof timeInStage.is_stuck === 'boolean') {
-      fields.is_stuck = timeInStage.is_stuck;
-    }
-    if (timeInStage.stuck_reason) {
-      fields.stuck_reason = timeInStage.stuck_reason;
-    }
-  }
-  // Fallback legado
-  const daysInCurrentStage = get(pipeline, 'days_in_current_stage');
-  if (typeof daysInCurrentStage === 'number' && !fields.days_in_negotiation) {
-    fields.days_in_negotiation = daysInCurrentStage;
-  }
-
-  // === 10. ANÁLISE DO PRÓXIMO ESTÁGIO ===
-  const nextStage = get(pipeline, 'next_stage') as Record<string, unknown> | undefined;
-  if (nextStage && typeof nextStage === 'object') {
-    fields.next_stage_analysis = nextStage;
+  // === 3. AÇÕES PRIORITÁRIAS (enriquecido) ===
+  // Suporta: priority_actions[] (novo) ou recommended_actions (legado)
+  const priorityActions = get(coaching, 'priority_actions');
+  if (Array.isArray(priorityActions) && priorityActions.length > 0) {
+    // Novo formato com scripts completos
+    fields.recommended_actions = priorityActions;
     
-    // Extrair recommended_actions para o campo existente (merge)
-    const recommendedActions = nextStage.recommended_actions;
-    if (Array.isArray(recommendedActions)) {
-      // Merge com coaching actions se existir, ou usar direto
-      if (fields.recommended_actions) {
-        // Pipeline actions têm prioridade mais alta, colocar primeiro
-        fields.recommended_actions = [
-          ...recommendedActions,
-          ...(fields.recommended_actions as unknown[])
-        ];
-      } else {
-        fields.recommended_actions = recommendedActions;
-      }
+    // Derivar coaching_priority da primeira ação se não definido
+    const firstAction = priorityActions[0] as Record<string, unknown>;
+    if (firstAction?.priority_level && !fields.coaching_priority) {
+      fields.coaching_priority = firstAction.priority_level;
     }
+  } else if (coaching.recommended_actions) {
+    // Fallback legado
+    fields.recommended_actions = coaching.recommended_actions;
+  }
+
+  // === 4. AJUSTES DE ABORDAGEM ===
+  const approachAdjustments = get(coaching, 'approach_adjustments');
+  if (Array.isArray(approachAdjustments) && approachAdjustments.length > 0) {
+    fields.approach_adjustments = approachAdjustments;
+  }
+
+  // === 5. ALERTAS DE RISCO ===
+  const riskAlerts = get(coaching, 'risk_alerts');
+  if (Array.isArray(riskAlerts) && riskAlerts.length > 0) {
+    fields.risk_alerts = riskAlerts;
     
-    // Extrair blockers para campo dedicado
-    if (Array.isArray(nextStage.blockers)) {
-      fields.stage_blockers = nextStage.blockers;
+    // Calcular nível de risco geral baseado nos alertas
+    const hasHighRisk = riskAlerts.some((r: Record<string, unknown>) => r.probability === 'high');
+    const hasMediumRisk = riskAlerts.some((r: Record<string, unknown>) => r.probability === 'medium');
+    if (hasHighRisk) {
+      fields.overall_risk_level = 'high';
+    } else if (hasMediumRisk) {
+      fields.overall_risk_level = 'medium';
+    } else {
+      fields.overall_risk_level = 'low';
     }
   }
 
-  // === 11. RISCO DE REGRESSÃO ===
-  const regressionRisk = get(pipeline, 'regression_risk') as Record<string, unknown> | undefined;
-  if (regressionRisk && typeof regressionRisk === 'object') {
-    fields.regression_risk = regressionRisk;
+  // === 6. COACHING DO VENDEDOR ===
+  const sellerCoaching = get(coaching, 'seller_coaching') as Record<string, unknown> | undefined;
+  if (sellerCoaching && typeof sellerCoaching === 'object') {
+    fields.seller_coaching = sellerCoaching;
     
-    // Extrair risk_level para campo separado
-    if (regressionRisk.risk_level) {
-      fields.risk_level = regressionRisk.risk_level;
+    // Extrair campos específicos
+    if (typeof sellerCoaching.overall_performance === 'number') {
+      fields.seller_performance_score = sellerCoaching.overall_performance;
+    }
+    if (sellerCoaching.performance_level) {
+      fields.seller_performance_level = sellerCoaching.performance_level;
+    }
+    if (Array.isArray(sellerCoaching.quick_wins)) {
+      fields.seller_quick_wins = sellerCoaching.quick_wins;
+    }
+    if (sellerCoaching.recognition) {
+      fields.seller_recognition = sellerCoaching.recognition;
     }
   }
 
-  // === 12. HISTÓRICO DE ESTÁGIOS ===
-  const stageHistory = get(pipeline, 'stage_history');
-  if (stageHistory && typeof stageHistory === 'object') {
-    fields.stage_history = stageHistory;
+  // === 7. RESUMO DE PRÓXIMOS PASSOS ===
+  const nextStepsSummary = get(coaching, 'next_steps_summary');
+  if (nextStepsSummary && typeof nextStepsSummary === 'object') {
+    fields.next_steps_summary = nextStepsSummary;
   }
 
-  // === 13. ANÁLISE DE PERDA (só se lost) ===
-  const lossAnalysis = get(pipeline, 'loss_analysis') as Record<string, unknown> | undefined;
-  if (lossAnalysis && typeof lossAnalysis === 'object') {
-    fields.loss_analysis = lossAnalysis;
+  // === 8. ANÁLISE DE PROBABILIDADE ===
+  const winProbAnalysis = get(coaching, 'win_probability_analysis') as Record<string, unknown> | undefined;
+  if (winProbAnalysis && typeof winProbAnalysis === 'object') {
+    fields.win_probability_analysis = winProbAnalysis;
     
-    // Mapear campos específicos de perda
-    if (lossAnalysis.reason) {
-      fields.lost_reason = lossAnalysis.reason;
+    // Extrair delta se disponível
+    if (typeof winProbAnalysis.probability_delta === 'number') {
+      fields.probability_delta = winProbAnalysis.probability_delta;
     }
-    if (lossAnalysis.competitor) {
-      fields.lost_to_competitor = lossAnalysis.competitor;
+    if (typeof winProbAnalysis.if_actions_executed === 'number') {
+      fields.probability_if_actions_executed = winProbAnalysis.if_actions_executed;
     }
   }
 
-  // === 14. RESUMO DA CLASSIFICAÇÃO ===
-  const classificationSummary = get(pipeline, 'classification_summary');
-  if (classificationSummary) {
-    fields.classification_summary = classificationSummary;
+  // === 9. RESUMO DO COACHING ===
+  const coachingSummary = get(coaching, 'coaching_summary');
+  if (coachingSummary) {
+    fields.coaching_summary = coachingSummary;
   }
 
-  // === 15. METADADOS LEGADOS ===
-  // stage_reasoning (legado) → manter compatibilidade
-  const stageReasoning = get(pipeline, 'stage_reasoning');
-  if (stageReasoning) {
-    fields.stage_reasoning = stageReasoning;
+  // === 10. CAMPOS LEGADOS (manter compatibilidade) ===
+  // coaching_priority
+  const coachingPriority = get(coaching, 'coaching_priority');
+  if (coachingPriority && !fields.coaching_priority) {
+    fields.coaching_priority = coachingPriority;
   }
 
-  // blockers (legado - array simples)
-  const blockers = get(pipeline, 'blockers');
-  if (Array.isArray(blockers) && !fields.stage_blockers) {
-    fields.stage_blockers = blockers;
+  // next_follow_up_date
+  const nextFollowUp = get(coaching, 'next_follow_up_date');
+  if (nextFollowUp) {
+    fields.next_follow_up_date = nextFollowUp;
   }
 
-  // risk_factors (legado)
-  const riskFactors = get(pipeline, 'risk_factors');
-  if (Array.isArray(riskFactors)) {
-    fields.risk_factors = riskFactors;
+  // follow_up_message (legado)
+  const followUpMessage = get(coaching, 'follow_up_message');
+  if (followUpMessage) {
+    fields.follow_up_message = followUpMessage;
+  }
+
+  // risk_alerts do formato legado
+  const legacyRiskAlerts = get(coaching, 'risk_alerts');
+  if (Array.isArray(legacyRiskAlerts) && !fields.risk_alerts) {
+    fields.risk_alerts = legacyRiskAlerts;
+  }
+
+  // strengths/improvements do formato legado
+  const legacyStrengths = get(coaching, 'strengths');
+  if (Array.isArray(legacyStrengths) && !fields.opportunity_strengths) {
+    fields.opportunity_strengths = legacyStrengths;
+  }
+  const legacyImprovements = get(coaching, 'improvements');
+  if (Array.isArray(legacyImprovements)) {
+    fields.improvements = legacyImprovements;
+  }
+
+  // win_probability_factors do formato legado
+  const legacyProbFactors = get(coaching, 'win_probability_factors');
+  if (legacyProbFactors && typeof legacyProbFactors === 'object' && !fields.win_probability_analysis) {
+    fields.probability_factors = legacyProbFactors;
   }
 }
 ```
@@ -290,31 +247,31 @@ if (pipeline) {
 
 | Aspecto | Antes | Depois |
 |---------|-------|--------|
-| Estágios | Passados direto | Normalizados via mapeamento |
-| Estágios granulares | Perdidos | Preservados em `sub_status` |
-| Estágio anterior | Não rastreado | `previous_stage` |
-| Confiança | Não capturada | `stage_confidence` |
-| Tempo no estágio | Só dias | + `is_stuck`, `stuck_reason` |
-| Próximo estágio | Não capturado | `next_stage_analysis` (JSONB) |
-| Risco de regressão | Não capturado | `regression_risk` (JSONB) |
-| Histórico | Não capturado | `stage_history` (JSONB) |
-| Análise de perda | Não capturada | `loss_analysis` (JSONB) |
-| Ações recomendadas | Só coaching | Merge pipeline + coaching |
+| Campos mapeados | 3 | 20+ |
+| Diagnóstico | Não capturado | Score, status, strengths, weaknesses, critical issues |
+| Dimensões | Não capturado | Análise completa por área (qualificação, metodologia, etc.) |
+| Ações | Array simples | Objetos ricos com scripts, timing, expected outcome |
+| Ajustes de abordagem | Não capturado | Array de mudanças recomendadas |
+| Riscos | Não capturado | Alertas com probabilidade, triggers, mitigação |
+| Coaching vendedor | Não capturado | Performance score, quick wins, áreas de desenvolvimento |
+| Próximos passos | Não capturado | Estruturado por timing (imediato, antes/durante/após visita) |
+| Análise de probabilidade | Não capturado | Delta, fatores de aumento/diminuição |
 
 ---
 
 ## Campos Novos (JSONB)
 
-Estes campos serão armazenados em colunas JSONB genéricas (não precisam de colunas dedicadas):
+Os seguintes campos serão armazenados via JSONB:
 
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
-| `probability_factors` | JSONB | Fatores positivos e negativos |
-| `stage_evidence` | JSONB | Sinais e mensagens-chave |
-| `next_stage_analysis` | JSONB | Target, requirements, blockers, actions |
-| `regression_risk` | JSONB | Nível de risco e fatores |
-| `stage_history` | JSONB | Progressão inferida de estágios |
-| `loss_analysis` | JSONB | Análise detalhada de perda |
+| `opportunity_diagnosis` | JSONB | Diagnóstico completo da oportunidade |
+| `dimension_analysis` | JSONB | Análise por dimensão (qualificação, metodologia, etc.) |
+| `approach_adjustments` | JSONB | Ajustes de abordagem recomendados |
+| `risk_alerts` | JSONB | Alertas de risco com mitigações |
+| `seller_coaching` | JSONB | Coaching completo do vendedor |
+| `next_steps_summary` | JSONB | Próximos passos estruturados |
+| `win_probability_analysis` | JSONB | Análise de probabilidade de ganho |
 
 ---
 
@@ -322,17 +279,17 @@ Estes campos serão armazenados em colunas JSONB genéricas (não precisam de co
 
 | Arquivo | Ação |
 |---------|------|
-| `supabase/functions/_shared/crm-agent-executor.ts` | 1. Adicionar `PIPELINE_STAGE_MAP` e `normalizeStage()` <br> 2. Substituir seção Pipeline Classifier (linhas 528-536) |
+| `supabase/functions/_shared/crm-agent-executor.ts` | Substituir seção Coaching Generator (linhas 728-736) |
 
 ---
 
 ## Benefícios
 
-1. **Compatibilidade de estágios**: Prompt pode usar nomenclatura rica, banco recebe valores válidos
-2. **Granularidade preservada**: Estados como `need_identified` e `verbal_commitment` vão para `sub_status`
-3. **Análise de progressão**: Histórico de estágios e evidências armazenados
-4. **Gestão de risco**: Regressão e blockers rastreados
-5. **Ações priorizadas**: Merge de ações do pipeline + coaching
-6. **Análise de perda**: Motivos e lições aprendidas documentados
-7. **Retrocompatibilidade**: Formato legado continua funcionando
-
+1. **Diagnóstico completo**: Score geral, status, forças/fraquezas capturados
+2. **Análise dimensional**: Scores por área permitem identificar gaps específicos
+3. **Ações com scripts**: Vendedor recebe textos prontos para usar
+4. **Gestão de risco**: Alertas com probabilidade e plano de mitigação
+5. **Coaching do vendedor**: Performance tracking, quick wins, reconhecimento
+6. **Probabilidade projetada**: Delta mostra impacto potencial das ações
+7. **Próximos passos estruturados**: Por timing (imediato, antes/durante/após)
+8. **Retrocompatibilidade**: Formato legado continua funcionando
