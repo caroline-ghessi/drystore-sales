@@ -1,275 +1,307 @@
 
-# Plano Revisado: Implementar Agentes de IA do CRM
 
-## Análise do Estado Atual
+# Plano: Sistema de Processamento Multimídia para Agentes de IA do CRM
 
-### O que JÁ EXISTE (confirmado por consultas)
+## Situação Atual
 
-#### Tabela `crm_opportunities` - Campos SPIN/BANT/Negociação
-| Campo | Tipo | Status |
-|-------|------|--------|
-| `spin_stage` | text | Existe |
-| `spin_score` | integer | Existe |
-| `bant_score` | integer | Existe |
-| `bant_qualified` | boolean | Existe |
-| `proposal_requested` | boolean | Existe |
-| `proposal_sent` | boolean | Existe |
-| `proposal_value` | numeric | Existe |
-| `client_mentioned_value` | numeric | Existe |
-| `budget_range` | text | Existe |
-| `competitors` | jsonb | Existe |
-| `discount_requested` | numeric | Existe |
-| `discount_offered` | numeric | Existe |
-| `visit_offered` | boolean | Existe |
-| `visits_done` | integer | Existe |
-| `objections` | text[] | Existe |
-| `recommended_actions` | jsonb | Existe |
-| `last_ai_analysis_at` | timestamptz | Existe |
+### Recursos JÁ Implementados
 
-#### Tabela `crm_customers` - Campos de Perfil
-| Campo | Tipo | Status |
-|-------|------|--------|
-| `profile_type` | text | Existe |
-| `profession` | text | Existe |
-| `is_technical` | boolean | Existe |
-| `origin_channel` | text | Existe |
-| `referred_by` | text | Existe |
-| `main_motivation` | text | Existe |
-| `pain_points` | jsonb | Existe |
-| `decision_makers` | jsonb | Existe |
-| `profile_extracted_at` | timestamptz | Existe |
+| Recurso | Função | Status |
+|---------|--------|--------|
+| **Transcrição de Áudio** | `transcribe-audio` | ✅ Usando ElevenLabs API |
+| **Extração de PDF** | `process-knowledge-file` | ✅ Usando GPT-4o para limpeza |
+| **Download de Mídia** | `download-whatsapp-media` | ✅ Salva no Storage |
+| **Cliente LLM Unificado** | `_shared/llm-client.ts` | ✅ Claude/GPT/Grok |
 
-#### Tabela `project_contexts` - Campos de Projeto
-| Campo | Tipo | Status |
-|-------|------|--------|
-| `project_type_detailed` | text | Existe |
-| `project_phase` | text | Existe |
-| `has_professional` | boolean | Existe |
-| `professional_name` | text | Existe |
-| `location_neighborhood` | text | Existe |
-| `technical_specs` | jsonb | Existe |
-| `products_needed` | jsonb | Existe |
-| `estimated_quantities` | jsonb | Existe |
-| `deadline_urgency` | text | Existe |
-| `start_date` | date | Existe |
+### APIs Disponíveis
 
-#### Tabela `crm_agent_extractions` - Histórico
-| Campo | Tipo | Status |
-|-------|------|--------|
-| `opportunity_id` | uuid | Existe |
-| `agent_type` | text | Existe |
-| `extraction_data` | jsonb | Existe |
-| `confidence` | numeric | Existe |
-| `model_used` | text | Existe |
-| `tokens_used` | integer | Existe |
-| `processing_time_ms` | integer | Existe |
-| `version` | integer | Existe |
+| API | Chave | Capacidade |
+|-----|-------|------------|
+| **ElevenLabs** | `ELEVENLABS_API_KEY` | Transcrição de áudio (Speech-to-Text) |
+| **OpenAI** | `OPENAI_API_KEY` | GPT-4o Vision (imagens) + extração texto |
+| **Anthropic** | `ANTHROPIC_API_KEY` | Claude Vision (imagens) |
 
-#### Cliente LLM Unificado
-- `supabase/functions/_shared/llm-client.ts` - COMPLETO
-- Suporta Claude, GPT, Grok com fallback automático
-- Funções: `callLLM`, `generateCompletion`, `generateJSONCompletion`
-
-#### Hooks Frontend
-- `useCRMAgentConfigs` - Pronto
-- `useCRMAgentExtractions` - Pronto
-- `useProcessOpportunityWithAgents` - Pronto (chama `crm-process-opportunity`)
-- `useLatestExtractionsMap` - Pronto
-
-#### Agentes Configurados
-- `SPIN Analyzer` (is_active: false, modelo: claude-3-5-sonnet-20241022)
-- `BANT Qualifier` (is_active: false, modelo: claude-3-5-sonnet-20241022)
-- **Faltam 6 agentes!**
-
----
-
-## Decisão de Arquitetura: Abordagem Híbrida
-
-Concordo com a sua proposta de abordagem híbrida:
+### Dados de Mídia nas Conversas de Vendedores
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│  crm_opportunities (DADOS ATUAIS - leitura rápida na UI)        │
+│  vendor_messages - Mídias Armazenadas                            │
 │                                                                  │
-│  • spin_stage, spin_score                                        │
-│  • bant_score, bant_qualified                                    │
-│  • objections, recommended_actions                               │
-│  • probability, temperature                                      │
-│  • last_ai_analysis_at                                           │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              │ Atualizado após cada análise
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  crm_agent_extractions (HISTÓRICO - cada execução registrada)   │
+│  • 13.857 áudios de voz  → Precisam transcrição                  │
+│  • 6.238 imagens         → Precisam descrição                    │
+│  • 4.976 documentos      → PDFs precisam extração                │
+│  • 680 vídeos            → Podem ter caption/descrição           │
 │                                                                  │
-│  • opportunity_id                                                │
-│  • agent_type (spin_analyzer, bant_qualifier, etc.)              │
-│  • extraction_data (JSON completo)                               │
-│  • confidence, tokens_used                                       │
-│  • created_at, version                                           │
+│  Campos disponíveis:                                             │
+│  • media_url             → URL do arquivo (WHAPI/S3)             │
+│  • media_metadata        → { mime_type, file_size, filename }    │
+│  • message_type          → 'voice', 'image', 'document', etc.    │
+│  • content               → Placeholder atual ([Áudio], etc.)     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Benefícios:**
-- UI lê de `crm_opportunities` (rápido, sem JOINs)
-- Histórico preservado em `crm_agent_extractions`
-- Pode comparar análises ao longo do tempo
-- Evolução da negociação rastreável
+### O que FALTA
+
+1. **Campo `transcription`** na tabela `vendor_messages` - não existe
+2. **Função de descrição de imagens** - não existe
+3. **Integração no orquestrador CRM** - `crm-process-opportunity` não processa mídia
+4. **Processamento assíncrono de mídia** em conversas de vendedor
 
 ---
 
-## Campos Faltantes (Migração Necessária)
+## Arquitetura Proposta
 
-A maioria dos campos já existe. Precisamos adicionar:
-
-### Em `crm_opportunities`
-```sql
--- Campos SPIN detalhados
-spin_progress JSONB, -- Progresso em cada fase SPIN
-
--- Campos BANT detalhados
-bant_details JSONB, -- Budget/Authority/Need/Timeline detalhados
-
--- Campos de Objeção
-objections_analysis JSONB, -- Análise detalhada de cada objeção
-objection_handling_score INTEGER, -- Score de tratamento (0-100)
-
--- Campos de Coaching
-coaching_priority TEXT, -- high/medium/low
-next_follow_up_date DATE,
-analysis_version TEXT DEFAULT '1.0'
-```
-
-### Em `crm_customers`
-```sql
--- Perfil expandido
-knowledge_level TEXT, -- leigo/basico/intermediario/avancado
-origin_source TEXT, -- Fonte específica dentro do canal
-trigger_event TEXT, -- O que motivou o contato
-is_decision_maker BOOLEAN DEFAULT true,
-decision_process TEXT -- Descrição do processo de decisão
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     FLUXO DE PROCESSAMENTO MULTIMÍDIA                        │
+│                                                                              │
+│   vendor_messages                                                            │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  [Áudio]  →  transcribe-vendor-audio  →  "Cliente disse que..."     │   │
+│   │  [Imagem] →  describe-vendor-image    →  "Foto de um telhado..."    │   │
+│   │  [PDF]    →  extract-vendor-document  →  "Orçamento: R$ 50.000..."  │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                              │                                               │
+│                              ▼                                               │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  vendor_messages.processed_content                                   │   │
+│   │  "Transcrição/Descrição/Extração armazenada"                         │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                              │                                               │
+│                              ▼                                               │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  crm-process-opportunity                                             │   │
+│   │  Usa processed_content no lugar de [Áudio], [Imagem], [PDF]         │   │
+│   │  Agentes de IA conseguem "entender" o conteúdo                      │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Implementação
 
-### Fase 1: Criar Edge Function Orquestradora
+### Fase 1: Migração SQL - Adicionar Campos
 
-**Arquivo:** `supabase/functions/crm-process-opportunity/index.ts`
+```sql
+-- Campos para armazenar conteúdo processado de mídia
+ALTER TABLE vendor_messages ADD COLUMN IF NOT EXISTS
+  processed_content TEXT,           -- Transcrição/Descrição/Extração
+  processing_status VARCHAR(20),    -- pending/processing/completed/failed
+  processing_error TEXT,            -- Mensagem de erro se falhou
+  processed_at TIMESTAMPTZ;         -- Quando foi processado
+
+-- Índice para buscar mensagens pendentes
+CREATE INDEX IF NOT EXISTS idx_vendor_messages_processing 
+ON vendor_messages(processing_status, message_type) 
+WHERE processing_status = 'pending';
+```
+
+### Fase 2: Criar Utilitário de Processamento de Mídia
+
+**Arquivo:** `supabase/functions/_shared/media-processor.ts`
+
+Funções:
+- `transcribeAudio(mediaUrl)` - Usa ElevenLabs
+- `describeImage(mediaUrl, context?)` - Usa GPT-4o Vision
+- `extractPDFContent(mediaUrl)` - Reutiliza lógica de `process-knowledge-file`
+- `processMediaMessage(message)` - Orquestra baseado no tipo
+
+```typescript
+export async function transcribeAudio(mediaUrl: string): Promise<string> {
+  // Baixar áudio
+  const audioResponse = await fetch(mediaUrl);
+  const audioBuffer = await audioResponse.arrayBuffer();
+  
+  // Enviar para ElevenLabs
+  const formData = new FormData();
+  formData.append('file', new Blob([audioBuffer]), 'audio.ogg');
+  formData.append('model_id', 'scribe_v1');
+  
+  const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+    method: 'POST',
+    headers: { 'xi-api-key': Deno.env.get('ELEVENLABS_API_KEY')! },
+    body: formData
+  });
+  
+  const result = await response.json();
+  return result.text || '';
+}
+
+export async function describeImage(
+  mediaUrl: string, 
+  context?: string
+): Promise<string> {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [{
+        role: 'user',
+        content: [
+          { 
+            type: 'text', 
+            text: `Descreva esta imagem de forma objetiva para contexto de vendas.
+                   ${context ? `Contexto: ${context}` : ''}
+                   Foque em: produtos, medidas, condições, documentos visíveis.` 
+          },
+          { 
+            type: 'image_url', 
+            image_url: { url: mediaUrl } 
+          }
+        ]
+      }],
+      max_tokens: 500
+    })
+  });
+  
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+```
+
+### Fase 3: Criar Edge Function de Processamento
+
+**Arquivo:** `supabase/functions/process-vendor-media/index.ts`
 
 Responsabilidades:
-1. Receber `opportunityId`
-2. Buscar conversa completa (`vendor_conversations` + `vendor_conversation_messages`)
-3. Buscar configurações dos agentes ativos em `agent_configs`
-4. Executar agentes em ordem otimizada:
-   - **Paralelo 1 (Extração):** client_profiler, project_extractor, deal_extractor
-   - **Paralelo 2 (Análise):** spin_analyzer, bant_qualifier, objection_analyzer
-   - **Sequencial (Decisão):** pipeline_classifier → coaching_generator
-5. Salvar extrações em `crm_agent_extractions`
-6. Atualizar campos em `crm_opportunities`, `crm_customers`, `project_contexts`
+1. Receber `messageId` ou processar em lote
+2. Identificar tipo de mídia
+3. Chamar processador apropriado
+4. Salvar `processed_content` no banco
+5. Atualizar status de processamento
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│               crm-process-opportunity                            │
+│  process-vendor-media                                            │
 │                                                                  │
-│   opportunityId ──► Buscar vendor_conversation_messages         │
-│         │                                                        │
-│         ▼                                                        │
-│   ┌──────────────────────────────────────────────────────────┐  │
-│   │  PARALELO 1: Extração de Dados                           │  │
-│   │                                                          │  │
-│   │  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐  │  │
-│   │  │Client Profiler│ │Project Extract│ │ Deal Extractor│  │  │
-│   │  └───────────────┘ └───────────────┘ └───────────────┘  │  │
-│   │         │                 │                 │            │  │
-│   │         ▼                 ▼                 ▼            │  │
-│   │   crm_customers    project_contexts  crm_opportunities   │  │
-│   └──────────────────────────────────────────────────────────┘  │
-│         │                                                        │
-│         ▼                                                        │
-│   ┌──────────────────────────────────────────────────────────┐  │
-│   │  PARALELO 2: Análise de Vendas                           │  │
-│   │                                                          │  │
-│   │  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐  │  │
-│   │  │SPIN Analyzer  │ │BANT Qualifier │ │Objection Anlyz│  │  │
-│   │  └───────────────┘ └───────────────┘ └───────────────┘  │  │
-│   │         │                 │                 │            │  │
-│   │         ▼                 ▼                 ▼            │  │
-│   │   spin_stage/score   bant_score/qual    objections      │  │
-│   └──────────────────────────────────────────────────────────┘  │
-│         │                                                        │
-│         ▼                                                        │
-│   ┌──────────────────────────────────────────────────────────┐  │
-│   │  SEQUENCIAL: Decisão (depende dos anteriores)            │  │
-│   │                                                          │  │
-│   │  Pipeline Classifier ──► Coaching Generator              │  │
-│   │         │                       │                        │  │
-│   │         ▼                       ▼                        │  │
-│   │   stage/probability    recommended_actions               │  │
-│   └──────────────────────────────────────────────────────────┘  │
-│         │                                                        │
-│         ▼                                                        │
-│   Salvar histórico em crm_agent_extractions                      │
-│   Retornar resultado consolidado                                 │
+│  Entrada: messageId OU batch (últimas N mensagens pendentes)    │
+│                                                                  │
+│  1. Buscar mensagem(s) com mídia                                │
+│  2. Identificar tipo:                                           │
+│     • audio/voice → transcribeAudio()                           │
+│     • image → describeImage()                                   │
+│     • document (PDF) → extractPDFContent()                      │
+│     • video → extrair caption se disponível                     │
+│  3. Salvar processed_content                                    │
+│  4. Atualizar processing_status = 'completed'                   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Fase 2: Criar Utilitários Compartilhados
+### Fase 4: Atualizar crm-process-opportunity
 
-**Arquivo:** `supabase/functions/_shared/crm-agent-executor.ts`
+Modificar `crm-process-opportunity` para usar `processed_content`:
+
+**Mudança em:** `supabase/functions/crm-process-opportunity/index.ts`
 
 ```typescript
-interface AgentExecutionResult {
-  agentType: string;
-  extractionData: Record<string, unknown>;
-  confidence: number;
-  tokensUsed: number;
-  processingTimeMs: number;
-}
-
-async function executeAgent(
-  agentConfig: AgentConfig,
-  conversationMessages: Message[],
-  contextData?: Record<string, unknown>
-): Promise<AgentExecutionResult>
+// ANTES: Busca apenas content
+const { data: messages } = await supabase
+  .from("vendor_messages")
+  .select("id, content, from_me, timestamp_whatsapp, from_name")
+  
+// DEPOIS: Incluir processed_content
+const { data: messages } = await supabase
+  .from("vendor_messages")
+  .select("id, content, from_me, timestamp_whatsapp, from_name, message_type, processed_content")
 ```
 
-**Arquivo:** `supabase/functions/_shared/crm-prompts.ts`
+**Mudança em:** `supabase/functions/_shared/crm-agent-executor.ts`
 
-Prompts otimizados para cada um dos 8 agentes, com:
-- Output schemas JSON esperados
-- Exemplos de entrada/saída
-- Instruções de contexto
+```typescript
+// Atualizar interface ConversationMessage
+export interface ConversationMessage {
+  id: number;
+  content: string;
+  from_me: boolean;
+  timestamp: string;
+  sender_name?: string;
+  message_type?: string;      // NOVO
+  processed_content?: string; // NOVO
+}
 
-### Fase 3: Criar os 6 Agentes Faltantes
+// Atualizar formatConversationForPrompt
+export function formatConversationForPrompt(messages: ConversationMessage[]): string {
+  return messages.map(msg => {
+    const sender = msg.from_me ? '🧑‍💼 VENDEDOR' : '👤 CLIENTE';
+    const time = new Date(msg.timestamp).toLocaleString('pt-BR');
+    
+    // NOVO: Usar conteúdo processado quando disponível
+    let messageContent = msg.content;
+    if (msg.processed_content) {
+      const typeLabel = getMediaTypeLabel(msg.message_type);
+      messageContent = `${typeLabel}: ${msg.processed_content}`;
+    }
+    
+    return `[${time}] ${sender}: ${messageContent}`;
+  }).join('\n\n');
+}
 
-Migração SQL para inserir em `agent_configs`:
+function getMediaTypeLabel(type?: string): string {
+  switch (type) {
+    case 'audio':
+    case 'voice': return '[Áudio Transcrito]';
+    case 'image': return '[Imagem Descrita]';
+    case 'document': return '[Documento Extraído]';
+    case 'video': return '[Vídeo]';
+    default: return '';
+  }
+}
+```
 
-| Agent Key | Nome | Tipo | Descrição |
-|-----------|------|------|-----------|
-| `objection_analyzer` | Objection Analyzer | crm_analyzer | Identifica e analisa objeções |
-| `client_profiler` | Client Profiler | crm_extractor | Extrai perfil da pessoa |
-| `project_extractor` | Project Extractor | crm_extractor | Extrai dados da obra |
-| `deal_extractor` | Deal Extractor | crm_extractor | Extrai dados da negociação |
-| `pipeline_classifier` | Pipeline Classifier | crm_classifier | Classifica estágio do pipeline |
-| `coaching_generator` | Coaching Generator | crm_coach | Gera recomendações |
+### Fase 5: Trigger de Processamento Automático
 
-### Fase 4: Criar Componente de Análise na UI
+**Opção A: Processamento no Webhook** (Recomendado para tempo real)
 
-**Arquivo:** `src/modules/crm/components/negotiation/AgentAnalysisPanel.tsx`
+Modificar `vendor-whatsapp-webhook/index.ts` para disparar processamento:
 
-Componente que:
-- Mostra botão "Analisar com IA" 
-- Exibe status de cada agente (não executado/executando/concluído)
-- Mostra extrações por categoria (Pessoa/Obra/Negociação/Análise/Coaching)
-- Indica confiança de cada extração
-- Permite ver histórico de análises
+```typescript
+// Após salvar mensagem de mídia
+if (['audio', 'voice', 'image', 'document'].includes(type)) {
+  // Disparar processamento assíncrono
+  supabase.functions.invoke('process-vendor-media', {
+    body: { messageId: savedMessage.id }
+  }).catch(err => console.error('Media processing trigger failed:', err));
+}
+```
 
-**Integração em:** `NegotiationDetail.tsx`
+**Opção B: Cron Job** (Para processar backlog)
 
-Substituir o `AIInsights` estático por `AgentAnalysisPanel` dinâmico.
+Adicionar job que processa mensagens pendentes:
+
+```sql
+-- Buscar mensagens com mídia não processadas
+SELECT id, message_type, media_url 
+FROM vendor_messages 
+WHERE message_type IN ('audio', 'voice', 'image', 'document')
+  AND (processing_status IS NULL OR processing_status = 'pending')
+  AND media_url IS NOT NULL
+ORDER BY created_at DESC
+LIMIT 50;
+```
+
+### Fase 6: UI de Monitoramento (Opcional)
+
+Adicionar na página `/crm/agentes` uma seção de monitoramento de processamento de mídia:
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  Processamento de Mídia                                          │
+│                                                                  │
+│  📊 Estatísticas                                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  Áudios:  8.500 ✅  |  5.357 ⏳  |  0 ❌                   │  │
+│  │  Imagens: 4.200 ✅  |  2.038 ⏳  |  0 ❌                   │  │
+│  │  PDFs:    3.800 ✅  |  1.176 ⏳  |  0 ❌                   │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  [ Processar Pendentes ] [ Reprocessar Falhas ]                  │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -277,168 +309,52 @@ Substituir o `AIInsights` estático por `AgentAnalysisPanel` dinâmico.
 
 | Arquivo | Ação | Descrição |
 |---------|------|-----------|
-| `supabase/functions/crm-process-opportunity/index.ts` | **Criar** | Orquestrador principal |
-| `supabase/functions/_shared/crm-agent-executor.ts` | **Criar** | Executor de agentes |
-| `supabase/functions/_shared/crm-prompts.ts` | **Criar** | Prompts dos 8 agentes |
-| Migração SQL | **Criar** | Campos faltantes + 6 agentes |
-| `src/modules/crm/components/negotiation/AgentAnalysisPanel.tsx` | **Criar** | Painel de análise IA |
-| `src/modules/crm/pages/NegotiationDetail.tsx` | **Modificar** | Integrar AgentAnalysisPanel |
+| Migração SQL | **Criar** | Adicionar campos de processamento |
+| `_shared/media-processor.ts` | **Criar** | Utilitário de processamento multimídia |
+| `process-vendor-media/index.ts` | **Criar** | Edge Function de processamento |
+| `crm-process-opportunity/index.ts` | **Modificar** | Incluir processed_content |
+| `_shared/crm-agent-executor.ts` | **Modificar** | Usar processed_content no prompt |
+| `vendor-whatsapp-webhook/index.ts` | **Modificar** | Trigger de processamento automático |
 | `supabase/config.toml` | **Modificar** | Registrar nova função |
 
 ---
 
-## Dados que Cada Agente Extrai e Armazena
+## Fluxo Completo
 
-### 1. Client Profiler → `crm_customers`
-```json
-{
-  "profile_type": "cliente_final",
-  "profession": "Empresário",
-  "is_technical": false,
-  "knowledge_level": "basico",
-  "origin_channel": "instagram",
-  "origin_source": "anuncio_solar",
-  "referred_by": null,
-  "trigger_event": "Conta de luz alta",
-  "main_motivation": "Economia na conta de luz",
-  "pain_points": [
-    { "pain": "Conta de luz alta", "intensity": "high", "impact": "Margem do negócio" }
-  ],
-  "is_decision_maker": true,
-  "decision_makers": ["Esposa"],
-  "decision_process": "Precisa consultar a esposa"
-}
+```text
+1. WEBHOOK RECEBE MÍDIA
+   vendor-whatsapp-webhook → Salva mensagem → Dispara process-vendor-media
+
+2. PROCESSAMENTO DE MÍDIA
+   process-vendor-media → Identifica tipo → Chama API apropriada → Salva resultado
+
+3. ANÁLISE CRM
+   crm-process-opportunity → Carrega mensagens com processed_content → 
+   Agentes de IA "entendem" áudios, imagens e PDFs
+
+4. RESULTADO
+   Agentes extraem insights de toda a conversa, incluindo conteúdo multimídia
 ```
 
-### 2. Project Extractor → `project_contexts`
-```json
-{
-  "location": { "city": "São Paulo", "neighborhood": "Morumbi" },
-  "project_type_detailed": "Residencial alto padrão",
-  "project_phase": "planejamento",
-  "has_professional": true,
-  "professional_name": "Arq. Maria Silva",
-  "technical_specs": { "roof_m2": 150, "consumption_kwh": 800, "roof_type": "cerâmica" },
-  "products_needed": ["Módulos solares", "Inversor", "Estrutura"],
-  "estimated_quantities": { "modulos": 20, "potencia_kwp": 10 },
-  "deadline_urgency": "medium",
-  "start_date": "2025-03-01"
-}
-```
+---
 
-### 3. Deal Extractor → `crm_opportunities`
-```json
-{
-  "proposal_requested": true,
-  "proposal_sent": false,
-  "proposal_value": null,
-  "client_mentioned_value": 50000,
-  "budget_range": "40k-60k",
-  "competitors": [
-    { "name": "Solar X", "value": 45000, "pros": ["Preço"], "cons": ["Garantia menor"] }
-  ],
-  "discount_requested": 10,
-  "discount_offered": 5,
-  "payment_preference": "parcelado",
-  "visit_offered": true,
-  "visits_done": 0,
-  "first_contact_at": "2025-01-15",
-  "total_interactions": 12
-}
-```
+## Custo Estimado por API
 
-### 4. SPIN Analyzer → `crm_opportunities`
-```json
-{
-  "spin_stage": "implication",
-  "spin_score": 65,
-  "spin_progress": {
-    "situation": { "completed": true, "score": 90 },
-    "problem": { "completed": true, "score": 85 },
-    "implication": { "completed": false, "score": 40 },
-    "need_payoff": { "completed": false, "score": 0 }
-  },
-  "indicators": [
-    "Cliente identificou conta alta",
-    "Mencionou impacto no negócio",
-    "Ainda não visualizou solução"
-  ]
-}
-```
-
-### 5. BANT Qualifier → `crm_opportunities`
-```json
-{
-  "bant_score": 70,
-  "bant_qualified": true,
-  "bant_details": {
-    "budget": { "identified": true, "value": 50000, "confidence": 0.8 },
-    "authority": { "identified": true, "decision_maker": "Sim, com esposa", "confidence": 0.7 },
-    "need": { "identified": true, "urgency": "medium", "confidence": 0.9 },
-    "timeline": { "identified": true, "expected_date": "2025-03", "confidence": 0.6 }
-  }
-}
-```
-
-### 6. Objection Analyzer → `crm_opportunities`
-```json
-{
-  "objections": [
-    {
-      "type": "price",
-      "description": "Cliente achou caro comparado a concorrente",
-      "treatment_status": "partially_addressed",
-      "vendor_response": "Explicou qualidade superior"
-    }
-  ],
-  "objections_analysis": {...},
-  "objection_handling_score": 60
-}
-```
-
-### 7. Pipeline Classifier → `crm_opportunities`
-```json
-{
-  "stage": "qualification",
-  "probability": 45,
-  "stage_reasoning": "Cliente qualificado mas ainda não recebeu proposta formal",
-  "recommended_next_stage": "proposal",
-  "blockers": ["Precisa agendar visita técnica"]
-}
-```
-
-### 8. Coaching Generator → `crm_opportunities`
-```json
-{
-  "recommended_actions": [
-    {
-      "priority": "high",
-      "action": "Agendar visita técnica",
-      "reasoning": "Cliente está pronto para próxima etapa",
-      "script": "Olá João, que tal agendarmos uma visita..."
-    }
-  ],
-  "coaching_priority": "high",
-  "next_follow_up_date": "2025-02-01",
-  "risk_alerts": [
-    {
-      "type": "competition",
-      "severity": "medium",
-      "mitigation": "Destacar diferenciais de garantia"
-    }
-  ]
-}
-```
+| Mídia | API | Custo Estimado |
+|-------|-----|----------------|
+| **Áudio (1 min)** | ElevenLabs STT | ~$0.0001 |
+| **Imagem** | GPT-4o Vision | ~$0.01 (baixa res) |
+| **PDF (10 pág)** | GPT-4o | ~$0.03 |
 
 ---
 
 ## Ordem de Implementação
 
-1. **Migração SQL** - Adicionar campos faltantes + inserir 6 agentes
-2. **Criar `crm-agent-executor.ts`** - Utilitário de execução
-3. **Criar `crm-prompts.ts`** - Prompts dos 8 agentes
-4. **Criar `crm-process-opportunity/index.ts`** - Orquestrador
-5. **Criar `AgentAnalysisPanel.tsx`** - Componente UI
-6. **Atualizar `NegotiationDetail.tsx`** - Integrar painel
-7. **Ativar agentes no banco** - is_active = true
-8. **Testar com oportunidade real**
+1. **Migração SQL** - Adicionar campos `processed_content`, `processing_status`
+2. **Criar `media-processor.ts`** - Utilitário compartilhado
+3. **Criar `process-vendor-media/index.ts`** - Edge Function principal
+4. **Atualizar `crm-agent-executor.ts`** - Usar conteúdo processado
+5. **Atualizar `crm-process-opportunity/index.ts`** - Incluir campos de mídia
+6. **Atualizar `vendor-whatsapp-webhook`** - Trigger automático
+7. **Testar com oportunidade real**
+
