@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0';
+import { callLLM, normalizeModel, type LLMMessage } from '../_shared/llm-client.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -131,207 +132,53 @@ serve(async (req) => {
 
     const llmPrompt = `${promptWithData}\n\nCONTEXTO ADICIONAL:\n${additionalContext}\n\nGere um resumo completo e estruturado baseado nos dados acima.`;
 
-    // 9. Gerar resumo usando LLM com sistema robusto de fallback
-    const modelName = summarizerAgent.llm_model || 'gpt-4o-mini';
+    // 9. Gerar resumo usando cliente LLM unificado com fallback automático
+    const configuredModel = summarizerAgent.llm_model || 'gpt-4o-mini';
+    const { model: normalizedModel, provider } = normalizeModel(configuredModel);
     
     console.log('🤖 INICIANDO GERAÇÃO DE RESUMO:', {
       conversationId,
-      modelName,
+      configuredModel,
+      normalizedModel,
+      provider,
       maxTokens: summarizerAgent.max_tokens,
       temperature: summarizerAgent.temperature,
       promptLength: llmPrompt.length
     });
     
-    let llmResponse;
-    let llmData;
     let summary = 'Erro ao gerar resumo';
-    let attemptedApis: string[] = [];
+    let usedProvider = provider;
     
-    // Função para tentar Claude API
-    const tryClaudeApi = async () => {
-      const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY');
-      if (!anthropicApiKey) {
-        throw new Error('Anthropic API key não configurada');
-      }
-      
-      console.log('🔮 Tentando Claude API com modelo:', modelName);
-      attemptedApis.push('claude');
-      
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key': anthropicApiKey,
-          'anthropic-version': '2023-06-01',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: modelName,
-          max_tokens: summarizerAgent.max_tokens || 2000,
-          temperature: summarizerAgent.temperature || 0.3,
-          messages: [{ role: 'user', content: llmPrompt }],
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Claude API Error:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorText
-        });
-        throw new Error(`Claude API Error: ${response.status} - ${errorText}`);
-      }
-      
-      const data = await response.json();
-      console.log('✅ Claude API Response:', {
-        hasContent: !!data.content,
-        contentLength: data.content?.[0]?.text?.length || 0,
-        usage: data.usage
-      });
-      
-      return data.content?.[0]?.text || null;
-    };
-    
-    // Função para tentar OpenAI API
-    const tryOpenAiApi = async () => {
-      const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-      if (!openaiApiKey) {
-        throw new Error('OpenAI API key não configurada');
-      }
-      
-      console.log('🧠 Tentando OpenAI API como fallback');
-      attemptedApis.push('openai');
-      
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: llmPrompt },
-            { role: 'user', content: 'Gere o resumo baseado nos dados fornecidos.' }
-          ],
-          max_tokens: 2000,
-          temperature: 0.3,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ OpenAI API Error:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorText
-        });
-        throw new Error(`OpenAI API Error: ${response.status} - ${errorText}`);
-      }
-      
-      const data = await response.json();
-      console.log('✅ OpenAI API Response:', {
-        hasChoices: !!data.choices,
-        contentLength: data.choices?.[0]?.message?.content?.length || 0,
-        usage: data.usage
-      });
-      
-      return data.choices?.[0]?.message?.content || null;
-    };
-    
-    // Função para tentar xAI API
-    const tryXaiApi = async () => {
-      const xaiApiKey = Deno.env.get('XAI_API_KEY');
-      if (!xaiApiKey) {
-        throw new Error('xAI API key não configurada');
-      }
-      
-      console.log('🚀 Tentando xAI API como último recurso');
-      attemptedApis.push('xai');
-      
-      const response = await fetch('https://api.x.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${xaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'grok-beta',
-          messages: [
-            { role: 'system', content: llmPrompt },
-            { role: 'user', content: 'Gere o resumo baseado nos dados fornecidos.' }
-          ],
-          max_tokens: 2000,
-          temperature: 0.3,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ xAI API Error:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorText
-        });
-        throw new Error(`xAI API Error: ${response.status} - ${errorText}`);
-      }
-      
-      const data = await response.json();
-      console.log('✅ xAI API Response:', {
-        hasChoices: !!data.choices,
-        contentLength: data.choices?.[0]?.message?.content?.length || 0,
-        usage: data.usage
-      });
-      
-      return data.choices?.[0]?.message?.content || null;
-    };
-    
-    // Sistema robusto de fallback
     try {
-      // 1. Tentar a API configurada primeiro
-      if (modelName.startsWith('claude')) {
-        try {
-          summary = await tryClaudeApi();
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.warn('⚠️ Claude falhou, tentando OpenAI:', errorMessage);
-          summary = await tryOpenAiApi();
-        }
-      } else if (modelName.startsWith('grok')) {
-        try {
-          summary = await tryXaiApi();
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.warn('⚠️ xAI falhou, tentando OpenAI:', errorMessage);
-          summary = await tryOpenAiApi();
-        }
-      } else {
-        // OpenAI como primeiro
-        try {
-          summary = await tryOpenAiApi();
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.warn('⚠️ OpenAI falhou, tentando Claude:', errorMessage);
-          summary = await tryClaudeApi();
-        }
-      }
+      const messages: LLMMessage[] = [
+        { role: 'system', content: llmPrompt },
+        { role: 'user', content: 'Gere o resumo baseado nos dados fornecidos.' }
+      ];
+
+      const llmResponse = await callLLM(normalizedModel, messages, {
+        maxTokens: summarizerAgent.max_tokens || 2000,
+        temperature: summarizerAgent.temperature || 0.3,
+      });
+
+      summary = llmResponse.content;
+      usedProvider = llmResponse.provider;
       
-      // Validação final da resposta
+      // Validação da resposta
       if (!summary || summary.trim().length < 50) {
         throw new Error('Resposta muito curta ou vazia');
       }
       
       console.log('🎉 RESUMO GERADO COM SUCESSO:', {
         length: summary.length,
-        apiUsadas: attemptedApis,
+        provider: usedProvider,
+        model: llmResponse.model,
         timestamp: new Date().toISOString()
       });
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('💥 FALHA TOTAL EM TODAS AS APIs:', {
+      console.error('💥 FALHA NA GERAÇÃO:', {
         error: errorMessage,
-        attemptedApis,
         conversationId
       });
       
@@ -351,19 +198,18 @@ ${contextData.principais_pontos_discutidos.substring(0, 500)}...
 Este resumo foi gerado automaticamente devido a falha na IA. 
 Revise a conversa completa antes de enviar ao vendedor.
 
-APIs testadas: ${attemptedApis.join(', ')}
 Erro: ${errorMessage}`;
       
       // Log detalhado do erro
       await supabase.from('system_logs').insert({
         level: 'error',
         source: 'generate-lead-summary-api-failure',
-        message: 'Falha em todas as APIs de IA',
+        message: 'Falha na geração de resumo',
         data: {
           conversationId,
-          attemptedApis,
           error: errorMessage,
-          modelName,
+          configuredModel,
+          normalizedModel,
           promptLength: llmPrompt.length
         }
       });
@@ -378,8 +224,8 @@ Erro: ${errorMessage}`;
         conversation_id: conversationId,
         summary_length: summary.length,
         media_files_count: mediaFiles.length,
-        model_used: modelName,
-        apis_attempted: attemptedApis,
+        model_used: normalizedModel,
+        provider_used: usedProvider,
         prompt_length: llmPrompt.length,
         generation_success: true
       }
@@ -401,8 +247,8 @@ Erro: ${errorMessage}`;
         mediaFiles: mediaLinks,
         contextData,
         metadata: {
-          modelUsed: modelName,
-          apisAttempted: attemptedApis,
+          modelUsed: normalizedModel,
+          providerUsed: usedProvider,
           generatedAt: new Date().toISOString()
         }
       }),
