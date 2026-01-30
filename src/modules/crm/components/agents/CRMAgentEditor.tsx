@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -22,7 +22,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Save } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, Save, RotateCcw, AlertCircle, Check } from 'lucide-react';
 import { 
   useCRMAgentConfig, 
   useCreateCRMAgent, 
@@ -145,6 +146,11 @@ export function CRMAgentEditor({ definition, configId, open, onClose }: CRMAgent
   const createAgent = useCreateCRMAgent();
   const updateAgent = useUpdateCRMAgent();
   
+  const defaultOutputSchema = useMemo(() => 
+    JSON.stringify(definition.outputSchema, null, 2), 
+    [definition.outputSchema]
+  );
+  
   const [formData, setFormData] = useState({
     agent_name: definition.name,
     description: definition.description,
@@ -153,10 +159,30 @@ export function CRMAgentEditor({ definition, configId, open, onClose }: CRMAgent
     temperature: 0.3,
     max_tokens: 2000,
     is_active: true,
+    output_schema: defaultOutputSchema,
   });
+
+  const [schemaError, setSchemaError] = useState<string | null>(null);
+
+  // Validate JSON on schema change
+  const validateSchema = (value: string): boolean => {
+    try {
+      JSON.parse(value);
+      setSchemaError(null);
+      return true;
+    } catch (e) {
+      setSchemaError('JSON inválido: ' + (e instanceof Error ? e.message : 'Erro de sintaxe'));
+      return false;
+    }
+  };
 
   useEffect(() => {
     if (existingConfig) {
+      // Use stored output_schema if it exists and is not empty, otherwise use default
+      const storedSchema = existingConfig.output_schema && Object.keys(existingConfig.output_schema).length > 0
+        ? JSON.stringify(existingConfig.output_schema, null, 2)
+        : defaultOutputSchema;
+      
       setFormData({
         agent_name: existingConfig.agent_name,
         description: existingConfig.description || definition.description,
@@ -165,20 +191,43 @@ export function CRMAgentEditor({ definition, configId, open, onClose }: CRMAgent
         temperature: existingConfig.temperature ?? 0.3,
         max_tokens: existingConfig.max_tokens ?? 2000,
         is_active: existingConfig.is_active ?? true,
+        output_schema: storedSchema,
       });
+      
+      // Validate loaded schema
+      validateSchema(storedSchema);
     }
-  }, [existingConfig, definition]);
+  }, [existingConfig, definition, defaultOutputSchema]);
+
+  const handleSchemaChange = (value: string) => {
+    setFormData(prev => ({ ...prev, output_schema: value }));
+    validateSchema(value);
+  };
+
+  const handleRestoreDefaultSchema = () => {
+    setFormData(prev => ({ ...prev, output_schema: defaultOutputSchema }));
+    setSchemaError(null);
+  };
 
   const handleSave = async () => {
+    // Validate schema before saving
+    if (!validateSchema(formData.output_schema)) {
+      return;
+    }
+
+    const outputSchemaObject = JSON.parse(formData.output_schema);
+
     if (configId && existingConfig) {
       await updateAgent.mutateAsync({
         id: configId,
         ...formData,
+        output_schema: outputSchemaObject,
       });
     } else {
       await createAgent.mutateAsync({
         ...formData,
         agent_type: definition.type,
+        output_schema: outputSchemaObject,
       });
     }
     onClose();
@@ -333,13 +382,43 @@ export function CRMAgentEditor({ definition, configId, open, onClose }: CRMAgent
             </TabsContent>
 
             <TabsContent value="output" className="space-y-4 mt-4">
-              <div className="bg-muted rounded-lg p-4">
-                <h4 className="font-medium mb-2">Estrutura de Output Esperada</h4>
-                <pre className="text-xs overflow-auto bg-background p-3 rounded border">
-                  {JSON.stringify(definition.outputSchema, null, 2)}
-                </pre>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Esta é a estrutura JSON que o agente deve retornar. O output será validado contra este schema.
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="schema">Output Schema (JSON)</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRestoreDefaultSchema}
+                  >
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Restaurar padrão
+                  </Button>
+                </div>
+                
+                {schemaError ? (
+                  <Alert variant="destructive" className="py-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-xs">{schemaError}</AlertDescription>
+                  </Alert>
+                ) : formData.output_schema && (
+                  <Alert className="py-2 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
+                    <Check className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-xs text-green-700 dark:text-green-400">
+                      JSON válido
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                <Textarea
+                  id="schema"
+                  value={formData.output_schema}
+                  onChange={(e) => handleSchemaChange(e.target.value)}
+                  className={`min-h-[400px] font-mono text-sm ${schemaError ? 'border-destructive' : ''}`}
+                  placeholder="Insira o schema JSON esperado..."
+                />
+                
+                <p className="text-xs text-muted-foreground">
+                  Este é o formato JSON que o agente deve retornar. O output será validado contra este schema durante a execução.
                 </p>
               </div>
             </TabsContent>

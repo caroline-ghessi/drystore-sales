@@ -13,6 +13,7 @@ export interface CRMAgentConfig {
   max_tokens: number | null;
   is_active: boolean | null;
   product_category: string | null;
+  output_schema: Record<string, unknown> | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -27,6 +28,7 @@ export interface CRMAgentConfigInput {
   max_tokens?: number;
   is_active?: boolean;
   product_category?: string;
+  output_schema?: Record<string, unknown>;
 }
 
 // Definição dos 8 agentes do sistema CRM
@@ -223,6 +225,7 @@ export function useCreateCRMAgent() {
         temperature: input.temperature ?? 0.3,
         max_tokens: input.max_tokens ?? 2000,
         is_active: input.is_active ?? true,
+        output_schema: input.output_schema || {},
       };
       
       // Only add product_category if provided and valid
@@ -266,6 +269,7 @@ export function useUpdateCRMAgent() {
       if (updates.temperature !== undefined) updateData.temperature = updates.temperature;
       if (updates.max_tokens !== undefined) updateData.max_tokens = updates.max_tokens;
       if (updates.is_active !== undefined) updateData.is_active = updates.is_active;
+      if (updates.output_schema !== undefined) updateData.output_schema = updates.output_schema;
 
       const { data, error } = await supabase
         .from('agent_configs')
