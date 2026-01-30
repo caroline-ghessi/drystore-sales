@@ -335,6 +335,33 @@ async function processMessage(supabase: any, vendor: any, message: WhapiMessage)
   if (from_me) {
     await calculateQualityMetrics(supabase, vendor.id, conversation.id, savedMessage);
   }
+
+  // Disparar processamento de mídia assíncrono para áudios, imagens e documentos
+  const mediaTypes = ['audio', 'voice', 'ptt', 'image', 'document'];
+  if (mediaTypes.includes(type) && savedMessage?.id && messageContent.mediaUrl) {
+    console.log(`WHAPI: Triggering media processing for message ${savedMessage.id} (${type})`);
+    
+    // Marcar como pendente de processamento
+    await supabase
+      .from('vendor_messages')
+      .update({ processing_status: 'pending' })
+      .eq('id', savedMessage.id);
+
+    // Disparar processamento assíncrono (fire-and-forget)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    fetch(`${supabaseUrl}/functions/v1/process-vendor-media`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messageId: savedMessage.id }),
+    }).catch(err => {
+      console.error('Failed to trigger media processing:', err);
+    });
+  }
 }
 
 async function processMessageStatus(supabase: any, vendor: any, status: any) {

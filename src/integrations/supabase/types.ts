@@ -2743,6 +2743,10 @@ export type Database = {
           media_url: string | null
           message_type: string
           metadata: Json | null
+          processed_at: string | null
+          processed_content: string | null
+          processing_error: string | null
+          processing_status: string | null
           reply_to_message_id: string | null
           status: string | null
           timestamp_whatsapp: string
@@ -2763,6 +2767,10 @@ export type Database = {
           media_url?: string | null
           message_type: string
           metadata?: Json | null
+          processed_at?: string | null
+          processed_content?: string | null
+          processing_error?: string | null
+          processing_status?: string | null
           reply_to_message_id?: string | null
           status?: string | null
           timestamp_whatsapp: string
@@ -2783,6 +2791,10 @@ export type Database = {
           media_url?: string | null
           message_type?: string
           metadata?: Json | null
+          processed_at?: string | null
+          processed_content?: string | null
+          processing_error?: string | null
+          processing_status?: string | null
           reply_to_message_id?: string | null
           status?: string | null
           timestamp_whatsapp?: string

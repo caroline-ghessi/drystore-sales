@@ -28,6 +28,8 @@ export interface ConversationMessage {
   from_me: boolean;
   timestamp: string;
   sender_name?: string;
+  message_type?: string;      // Tipo de mídia: text, audio, image, document
+  processed_content?: string; // Conteúdo processado (transcrição/descrição)
 }
 
 export interface AgentExecutionResult {
@@ -52,6 +54,31 @@ export interface ExecutionContext {
 /**
  * Formata mensagens da conversa para o prompt
  */
+/**
+ * Retorna label do tipo de mídia para exibição no prompt
+ */
+function getMediaTypeLabel(type?: string): string {
+  switch (type) {
+    case 'audio':
+    case 'voice':
+    case 'ptt':
+      return '🎤 [Áudio Transcrito]';
+    case 'image':
+      return '📷 [Imagem Descrita]';
+    case 'document':
+      return '📄 [Documento Extraído]';
+    case 'video':
+      return '🎬 [Vídeo]';
+    case 'sticker':
+      return '😀 [Figurinha]';
+    default:
+      return '';
+  }
+}
+
+/**
+ * Formata mensagens da conversa para o prompt, incluindo conteúdo processado de mídia
+ */
 export function formatConversationForPrompt(messages: ConversationMessage[]): string {
   if (!messages || messages.length === 0) {
     return '[Nenhuma mensagem disponível]';
@@ -68,7 +95,15 @@ export function formatConversationForPrompt(messages: ConversationMessage[]): st
   return recent.map(msg => {
     const sender = msg.from_me ? '🧑‍💼 VENDEDOR' : '👤 CLIENTE';
     const time = new Date(msg.timestamp).toLocaleString('pt-BR');
-    return `[${time}] ${sender}: ${msg.content}`;
+    
+    // Usar conteúdo processado quando disponível para mídia
+    let messageContent = msg.content;
+    if (msg.processed_content && msg.message_type && msg.message_type !== 'text') {
+      const typeLabel = getMediaTypeLabel(msg.message_type);
+      messageContent = `${typeLabel}: ${msg.processed_content}`;
+    }
+    
+    return `[${time}] ${sender}: ${messageContent}`;
   }).join('\n\n');
 }
 
