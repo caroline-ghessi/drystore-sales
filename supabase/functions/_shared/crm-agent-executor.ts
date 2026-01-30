@@ -20,6 +20,7 @@ export interface AgentConfig {
   temperature: number;
   max_tokens: number;
   is_active: boolean;
+  output_schema?: Record<string, unknown> | null;
 }
 
 export interface ConversationMessage {
@@ -114,7 +115,8 @@ function buildAgentPrompt(
   agentType: AgentType,
   conversationText: string,
   context?: ExecutionContext,
-  previousExtractions?: Record<AgentType, Record<string, unknown>>
+  previousExtractions?: Record<AgentType, Record<string, unknown>>,
+  customOutputSchema?: Record<string, unknown> | null
 ): string {
   const promptConfig = CRM_AGENT_PROMPTS[agentType];
   if (!promptConfig) {
@@ -135,7 +137,13 @@ function buildAgentPrompt(
   }
 
   prompt += `## INSTRUÇÕES\n\n${promptConfig.instructions}\n\n`;
-  prompt += `## FORMATO DE SAÍDA ESPERADO\n\nRetorne APENAS um JSON válido seguindo este schema:\n\`\`\`json\n${JSON.stringify(promptConfig.outputSchema, null, 2)}\n\`\`\``;
+  
+  // Use custom output schema from DB if provided and not empty, otherwise use default from prompts
+  const effectiveSchema = (customOutputSchema && Object.keys(customOutputSchema).length > 0)
+    ? customOutputSchema
+    : promptConfig.outputSchema;
+    
+  prompt += `## FORMATO DE SAÍDA ESPERADO\n\nRetorne APENAS um JSON válido seguindo este schema:\n\`\`\`json\n${JSON.stringify(effectiveSchema, null, 2)}\n\`\`\``;
 
   return prompt;
 }
@@ -156,12 +164,13 @@ export async function executeAgent(
     // Formatar conversa
     const conversationText = formatConversationForPrompt(conversationMessages);
     
-    // Montar prompt
+    // Montar prompt - use output_schema from agent config if available
     const userPrompt = buildAgentPrompt(
       agentType, 
       conversationText, 
       context,
-      previousExtractions
+      previousExtractions,
+      agentConfig.output_schema // Pass custom schema from database
     );
 
     // Preparar mensagens para LLM

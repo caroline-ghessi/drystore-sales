@@ -25,6 +25,7 @@ export type Database = {
           is_spy: boolean | null
           llm_model: string | null
           max_tokens: number | null
+          output_schema: Json | null
           product_category:
             | Database["public"]["Enums"]["product_category"]
             | null
@@ -42,6 +43,7 @@ export type Database = {
           is_spy?: boolean | null
           llm_model?: string | null
           max_tokens?: number | null
+          output_schema?: Json | null
           product_category?:
             | Database["public"]["Enums"]["product_category"]
             | null
@@ -59,6 +61,7 @@ export type Database = {
           is_spy?: boolean | null
           llm_model?: string | null
           max_tokens?: number | null
+          output_schema?: Json | null
           product_category?:
             | Database["public"]["Enums"]["product_category"]
             | null

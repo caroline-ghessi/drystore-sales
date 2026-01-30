@@ -143,10 +143,10 @@ serve(async (req) => {
       processed_content: m.processed_content,
     }));
 
-    // 3. Buscar configurações dos agentes ativos
+    // 3. Buscar configurações dos agentes ativos (incluindo output_schema)
     const { data: agentConfigs, error: agentError } = await supabase
       .from("agent_configs")
-      .select("*")
+      .select("id, agent_name, agent_type, system_prompt, llm_model, temperature, max_tokens, is_active, output_schema")
       .in("agent_type", ["crm_extractor", "crm_analyzer", "crm_classifier", "crm_coach"])
       .eq("is_active", true);
 
