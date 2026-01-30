@@ -8,12 +8,14 @@ interface DuplicateGroup {
   vendor_id: string;
   vendor_name: string;
   product_category: string | null;
+  categories: string[]; // All categories in the group
   opportunities: Array<{
     id: string;
     title: string;
     value: number;
     created_at: string;
     stage: string;
+    product_category: string | null;
   }>;
 }
 
@@ -119,7 +121,7 @@ export function useDuplicateGroups() {
 
       if (error) throw error;
 
-      // Group by phone + vendor_id + category
+      // Group by phone + vendor_id only (ignoring category for duplicate detection)
       const groups = new Map<string, DuplicateGroup>();
 
       for (const opp of opportunities || []) {
@@ -129,7 +131,8 @@ export function useDuplicateGroups() {
         
         if (!phone || !opp.vendor_id) continue;
 
-        const key = `${phone}|${opp.vendor_id}|${opp.product_category || 'null'}`;
+        // KEY CHANGE: Ignore product_category in grouping
+        const key = `${phone}|${opp.vendor_id}`;
 
         if (!groups.has(key)) {
           groups.set(key, {
@@ -138,16 +141,26 @@ export function useDuplicateGroups() {
             vendor_id: opp.vendor_id,
             vendor_name: vendorName,
             product_category: opp.product_category,
+            categories: [],
             opportunities: []
           });
         }
 
-        groups.get(key)!.opportunities.push({
+        const group = groups.get(key)!;
+        
+        // Track all categories in the group
+        const categoryLabel = opp.product_category || 'Indefinido';
+        if (!group.categories.includes(categoryLabel)) {
+          group.categories.push(categoryLabel);
+        }
+
+        group.opportunities.push({
           id: opp.id,
           title: opp.title,
           value: opp.value,
           created_at: opp.created_at,
-          stage: opp.stage
+          stage: opp.stage,
+          product_category: opp.product_category
         });
       }
 
