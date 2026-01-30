@@ -3431,6 +3431,7 @@ export type Database = {
         | "crm_extractor"
         | "crm_classifier"
         | "crm_coach"
+        | "crm_validator"
       app_role: "admin" | "supervisor" | "atendente" | "vendedor"
       contact_type:
         | "employee"
@@ -3655,6 +3656,7 @@ export const Constants = {
         "crm_extractor",
         "crm_classifier",
         "crm_coach",
+        "crm_validator",
       ],
       app_role: ["admin", "supervisor", "atendente", "vendedor"],
       contact_type: [
