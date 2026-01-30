@@ -117,10 +117,10 @@ serve(async (req) => {
 
     // Buscar mensagens incluindo conteúdo processado de mídia
     const { data: messages, error: msgError } = await supabase
-      .from("vendor_conversation_messages")
-      .select("id, content, from_me, timestamp, sender_name, message_type, processed_content")
+      .from("vendor_messages")
+      .select("id, content, from_me, timestamp_whatsapp, from_name, message_type, processed_content")
       .eq("conversation_id", vendorConversationId)
-      .order("timestamp", { ascending: true })
+      .order("timestamp_whatsapp", { ascending: true })
       .limit(200);
 
     if (msgError) {
@@ -137,8 +137,8 @@ serve(async (req) => {
       id: m.id,
       content: m.content || "",
       from_me: m.from_me,
-      timestamp: m.timestamp,
-      sender_name: m.sender_name,
+      timestamp: m.timestamp_whatsapp,
+      sender_name: m.from_name,
       message_type: m.message_type,
       processed_content: m.processed_content,
     }));
