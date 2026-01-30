@@ -80,19 +80,19 @@ export default function AgentManagement() {
           <div>
             <h1 className="text-2xl font-bold">Agentes de IA do CRM</h1>
             <p className="text-muted-foreground">
-              Gerencie os 8 agentes especializados para análise e extração de dados
+              Gerencie os {CRM_AGENT_DEFINITIONS.length} agentes especializados para análise, extração e validação de dados
             </p>
           </div>
         </div>
       </div>
 
       {/* Status Banner */}
-      {configuredCount < 8 && (
+      {configuredCount < CRM_AGENT_DEFINITIONS.length && (
         <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg p-4 flex items-center gap-3">
           <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0" />
           <div>
             <p className="font-medium text-amber-800 dark:text-amber-200">
-              {8 - configuredCount} agente(s) ainda não configurado(s)
+              {CRM_AGENT_DEFINITIONS.length - configuredCount} agente(s) ainda não configurado(s)
             </p>
             <p className="text-sm text-amber-700 dark:text-amber-300">
               Configure todos os agentes para habilitar a análise completa de oportunidades
@@ -104,7 +104,7 @@ export default function AgentManagement() {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-card border rounded-lg p-4">
-          <div className="text-2xl font-bold">{configuredCount}/8</div>
+          <div className="text-2xl font-bold">{configuredCount}/{CRM_AGENT_DEFINITIONS.length}</div>
           <div className="text-sm text-muted-foreground">Agentes Configurados</div>
         </div>
         <div className="bg-card border rounded-lg p-4">
