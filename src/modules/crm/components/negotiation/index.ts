@@ -9,5 +9,6 @@ export { WhatsAppMessage } from './WhatsAppMessage';
 export { CustomerInfo } from './CustomerInfo';
 export { ContactInfo } from './ContactInfo';
 export { AIInsights } from './AIInsights';
+export { AgentAnalysisPanel } from './AgentAnalysisPanel';
 export { NextActions } from './NextActions';
 export { StagePipeline } from './StagePipeline';

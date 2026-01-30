@@ -21,6 +21,7 @@ export interface OpportunityDetail {
   next_step: string | null;
   objections: string[] | null;
   ai_confidence: number | null;
+  last_ai_analysis_at?: string | null;
   conversation_id: string | null;
   vendor_conversation_id: number | null;
   customer: {
