@@ -53,7 +53,8 @@ serve(async (req) => {
       `)
       .is('duplicate_of_id', null)
       .not('stage', 'in', '("closed_won","closed_lost")')
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .limit(10000);
 
     if (fetchError) {
       throw new Error(`Failed to fetch opportunities: ${fetchError.message}`);
