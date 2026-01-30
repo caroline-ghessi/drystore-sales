@@ -802,6 +802,7 @@ export type Database = {
           description: string | null
           discount_offered: number | null
           discount_requested: number | null
+          duplicate_of_id: string | null
           expected_close_date: string | null
           first_contact_at: string | null
           id: string
@@ -862,6 +863,7 @@ export type Database = {
           description?: string | null
           discount_offered?: number | null
           discount_requested?: number | null
+          duplicate_of_id?: string | null
           expected_close_date?: string | null
           first_contact_at?: string | null
           id?: string
@@ -922,6 +924,7 @@ export type Database = {
           description?: string | null
           discount_offered?: number | null
           discount_requested?: number | null
+          duplicate_of_id?: string | null
           expected_close_date?: string | null
           first_contact_at?: string | null
           id?: string
@@ -962,6 +965,13 @@ export type Database = {
           visits_done?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_opportunities_duplicate_of_id_fkey"
+            columns: ["duplicate_of_id"]
+            isOneToOne: false
+            referencedRelation: "crm_opportunities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "crm_opportunities_merged_from_id_fkey"
             columns: ["merged_from_id"]

@@ -11,7 +11,8 @@ import {
   Home,
   Brain,
   ChevronRight,
-  Bot
+  Bot,
+  Copy
 } from 'lucide-react';
 import {
   Sidebar,
@@ -46,6 +47,7 @@ const managementItems = [
 
 const adminItems = [
   { title: 'Agentes IA', url: '/crm/agentes', icon: Bot },
+  { title: 'Duplicatas', url: '/crm/duplicatas', icon: Copy },
 ];
 
 export function CRMSidebar() {
