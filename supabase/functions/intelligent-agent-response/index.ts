@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
+import { callLLM, normalizeModel, type LLMMessage } from '../_shared/llm-client.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -438,12 +439,23 @@ INFORMAÇÕES DA EMPRESA:
 
 RESPOSTA: Responda de forma natural e personalizada, considerando todo o contexto acima.`;
 
-    // Gerar resposta usando rotação automática de provedores
-    const response = await generateResponseWithProviderRotation(
-      finalPrompt,
-      finalAgent.temperature || 0.7,
-      finalAgent.max_tokens || 500
-    );
+    // Gerar resposta usando cliente LLM unificado
+    const configuredModel = finalAgent.llm_model || 'claude-3-5-sonnet-20241022';
+    const { model: normalizedModel, provider } = normalizeModel(configuredModel);
+    
+    console.log(`🔄 Using LLM (${provider}: ${normalizedModel}) for response generation...`);
+    
+    const llmMessages: LLMMessage[] = [
+      { role: 'user', content: finalPrompt }
+    ];
+
+    const llmResponse = await callLLM(normalizedModel, llmMessages, {
+      maxTokens: finalAgent.max_tokens || 500,
+      temperature: finalAgent.temperature || 0.7,
+    });
+
+    const response = llmResponse.content;
+    console.log(`✅ ${llmResponse.provider} response generation successful`);
 
     // Salvar a resposta no banco
     const { data: messageData } = await supabase
@@ -504,102 +516,7 @@ RESPOSTA: Responda de forma natural e personalizada, considerando todo o context
   }
 });
 
-// Função para gerar resposta com rotação automática de provedores
-async function generateResponseWithProviderRotation(
-  prompt: string,
-  temperature: number = 0.7,
-  maxTokens: number = 500
-): Promise<string> {
-  const providers = [
-    {
-      name: 'Claude',
-      model: 'claude-3-5-sonnet-20241022',
-      apiKey: Deno.env.get('ANTHROPIC_API_KEY'),
-      url: 'https://api.anthropic.com/v1/messages',
-      headers: (key: string) => ({
-        'Content-Type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01'
-      }),
-      body: (model: string, prompt: string, temp: number, tokens: number) => ({
-        model,
-        max_tokens: tokens,
-        temperature: temp,
-        messages: [{ role: 'user', content: prompt }]
-      }),
-      extractResponse: (data: any) => data.content[0].text
-    },
-    {
-      name: 'OpenAI',
-      model: 'gpt-4o-mini',
-      apiKey: Deno.env.get('OPENAI_API_KEY'),
-      url: 'https://api.openai.com/v1/chat/completions',
-      headers: (key: string) => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`
-      }),
-      body: (model: string, prompt: string, temp: number, tokens: number) => ({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: tokens,
-        temperature: temp
-      }),
-      extractResponse: (data: any) => data.choices[0].message.content
-    },
-    {
-      name: 'xAI',
-      model: 'grok-beta',
-      apiKey: Deno.env.get('XAI_API_KEY'),
-      url: 'https://api.x.ai/v1/chat/completions',
-      headers: (key: string) => ({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`
-      }),
-      body: (model: string, prompt: string, temp: number, tokens: number) => ({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: tokens,
-        temperature: temp
-      }),
-      extractResponse: (data: any) => data.choices[0].message.content
-    }
-  ];
-
-  for (const provider of providers) {
-    if (!provider.apiKey) {
-      console.log(`⚠️ ${provider.name} API key not configured, skipping...`);
-      continue;
-    }
-
-    try {
-      console.log(`🔄 Trying ${provider.name} for response generation...`);
-      
-      const response = await fetch(provider.url, {
-        method: 'POST',
-        headers: provider.headers(provider.apiKey),
-        body: JSON.stringify(provider.body(provider.model, prompt, temperature, maxTokens))
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ ${provider.name} failed:`, response.status, errorText);
-        continue; // Try next provider
-      }
-
-      const data = await response.json();
-      const result = provider.extractResponse(data);
-      
-      console.log(`✅ ${provider.name} response generation successful`);
-      return result;
-      
-    } catch (error: any) {
-      console.error(`❌ ${provider.name} error:`, error.message);
-      continue; // Try next provider
-    }
-  }
-
-  throw new Error('All response generation providers failed');
-}
+// Função removida - agora usa cliente LLM unificado em _shared/llm-client.ts
 
 // Função auxiliar para detectar queries sobre produtos
 function isProductQuery(message: string): boolean {
