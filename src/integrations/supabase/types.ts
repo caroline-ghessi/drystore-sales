@@ -661,13 +661,17 @@ export type Database = {
           conversation_id: string | null
           created_at: string | null
           decision_makers: Json | null
+          decision_process: string | null
           email: string | null
           id: string
+          is_decision_maker: boolean | null
           is_technical: boolean | null
+          knowledge_level: string | null
           last_interaction_at: string | null
           main_motivation: string | null
           name: string
           origin_channel: string | null
+          origin_source: string | null
           pain_points: Json | null
           phone: string
           priority: Database["public"]["Enums"]["customer_priority"] | null
@@ -680,6 +684,7 @@ export type Database = {
           state: string | null
           status: Database["public"]["Enums"]["customer_status"] | null
           total_value: number | null
+          trigger_event: string | null
           updated_at: string | null
         }
         Insert: {
@@ -689,13 +694,17 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           decision_makers?: Json | null
+          decision_process?: string | null
           email?: string | null
           id?: string
+          is_decision_maker?: boolean | null
           is_technical?: boolean | null
+          knowledge_level?: string | null
           last_interaction_at?: string | null
           main_motivation?: string | null
           name: string
           origin_channel?: string | null
+          origin_source?: string | null
           pain_points?: Json | null
           phone: string
           priority?: Database["public"]["Enums"]["customer_priority"] | null
@@ -708,6 +717,7 @@ export type Database = {
           state?: string | null
           status?: Database["public"]["Enums"]["customer_status"] | null
           total_value?: number | null
+          trigger_event?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -717,13 +727,17 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           decision_makers?: Json | null
+          decision_process?: string | null
           email?: string | null
           id?: string
+          is_decision_maker?: boolean | null
           is_technical?: boolean | null
+          knowledge_level?: string | null
           last_interaction_at?: string | null
           main_motivation?: string | null
           name?: string
           origin_channel?: string | null
+          origin_source?: string | null
           pain_points?: Json | null
           phone?: string
           priority?: Database["public"]["Enums"]["customer_priority"] | null
@@ -736,6 +750,7 @@ export type Database = {
           state?: string | null
           status?: Database["public"]["Enums"]["customer_status"] | null
           total_value?: number | null
+          trigger_event?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -768,11 +783,14 @@ export type Database = {
           ai_confidence: number | null
           ai_extracted_at: string | null
           ai_model: string | null
+          analysis_version: string | null
           assigned_to: string | null
+          bant_details: Json | null
           bant_qualified: boolean | null
           bant_score: number | null
           budget_range: string | null
           client_mentioned_value: number | null
+          coaching_priority: string | null
           competitors: Json | null
           conversation_id: string | null
           created_at: string | null
@@ -785,8 +803,11 @@ export type Database = {
           first_contact_at: string | null
           id: string
           last_ai_analysis_at: string | null
+          next_follow_up_date: string | null
           next_step: string | null
+          objection_handling_score: number | null
           objections: string[] | null
+          objections_analysis: Json | null
           payment_preference: string | null
           probability: number | null
           product_category:
@@ -797,6 +818,7 @@ export type Database = {
           proposal_value: number | null
           recommended_actions: Json | null
           source: string | null
+          spin_progress: Json | null
           spin_score: number | null
           spin_stage: string | null
           stage: Database["public"]["Enums"]["opportunity_stage"] | null
@@ -818,11 +840,14 @@ export type Database = {
           ai_confidence?: number | null
           ai_extracted_at?: string | null
           ai_model?: string | null
+          analysis_version?: string | null
           assigned_to?: string | null
+          bant_details?: Json | null
           bant_qualified?: boolean | null
           bant_score?: number | null
           budget_range?: string | null
           client_mentioned_value?: number | null
+          coaching_priority?: string | null
           competitors?: Json | null
           conversation_id?: string | null
           created_at?: string | null
@@ -835,8 +860,11 @@ export type Database = {
           first_contact_at?: string | null
           id?: string
           last_ai_analysis_at?: string | null
+          next_follow_up_date?: string | null
           next_step?: string | null
+          objection_handling_score?: number | null
           objections?: string[] | null
+          objections_analysis?: Json | null
           payment_preference?: string | null
           probability?: number | null
           product_category?:
@@ -847,6 +875,7 @@ export type Database = {
           proposal_value?: number | null
           recommended_actions?: Json | null
           source?: string | null
+          spin_progress?: Json | null
           spin_score?: number | null
           spin_stage?: string | null
           stage?: Database["public"]["Enums"]["opportunity_stage"] | null
@@ -868,11 +897,14 @@ export type Database = {
           ai_confidence?: number | null
           ai_extracted_at?: string | null
           ai_model?: string | null
+          analysis_version?: string | null
           assigned_to?: string | null
+          bant_details?: Json | null
           bant_qualified?: boolean | null
           bant_score?: number | null
           budget_range?: string | null
           client_mentioned_value?: number | null
+          coaching_priority?: string | null
           competitors?: Json | null
           conversation_id?: string | null
           created_at?: string | null
@@ -885,8 +917,11 @@ export type Database = {
           first_contact_at?: string | null
           id?: string
           last_ai_analysis_at?: string | null
+          next_follow_up_date?: string | null
           next_step?: string | null
+          objection_handling_score?: number | null
           objections?: string[] | null
+          objections_analysis?: Json | null
           payment_preference?: string | null
           probability?: number | null
           product_category?:
@@ -897,6 +932,7 @@ export type Database = {
           proposal_value?: number | null
           recommended_actions?: Json | null
           source?: string | null
+          spin_progress?: Json | null
           spin_score?: number | null
           spin_stage?: string | null
           stage?: Database["public"]["Enums"]["opportunity_stage"] | null

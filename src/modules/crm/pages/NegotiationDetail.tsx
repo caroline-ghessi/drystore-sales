@@ -14,7 +14,7 @@ import {
   WhatsAppHistory,
   CustomerInfo,
   ContactInfo,
-  AIInsights,
+  AgentAnalysisPanel,
   NextActions,
 } from '../components/negotiation';
 import { Database } from '@/integrations/supabase/types';
@@ -165,7 +165,10 @@ export default function NegotiationDetail() {
         <div className="lg:col-span-2 space-y-6">
           <CustomerInfo customer={opportunity.customer} />
           <ContactInfo customer={opportunity.customer} />
-          <AIInsights opportunity={opportunity} />
+          <AgentAnalysisPanel 
+            opportunityId={id!} 
+            lastAnalysisAt={opportunity.last_ai_analysis_at}
+          />
           <NextActions opportunity={opportunity} />
         </div>
       </div>

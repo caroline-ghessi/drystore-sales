@@ -174,19 +174,31 @@ export function useAgentMetrics() {
   });
 }
 
+export interface ProcessOpportunityOptions {
+  opportunityId: string;
+  agentTypes?: AgentType[];
+  forceReprocess?: boolean;
+}
+
 export function useProcessOpportunityWithAgents() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (opportunityId: string) => {
+    mutationFn: async (options: ProcessOpportunityOptions | string) => {
+      // Suporta tanto string (retrocompatibilidade) quanto objeto de opções
+      const body = typeof options === 'string' 
+        ? { opportunityId: options }
+        : options;
+
       const { data, error } = await supabase.functions.invoke('crm-process-opportunity', {
-        body: { opportunityId },
+        body,
       });
 
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, opportunityId) => {
+    onSuccess: (_, options) => {
+      const opportunityId = typeof options === 'string' ? options : options.opportunityId;
       queryClient.invalidateQueries({ queryKey: ['crm-extractions', opportunityId] });
       queryClient.invalidateQueries({ queryKey: ['crm-extractions-map', opportunityId] });
       queryClient.invalidateQueries({ queryKey: ['crm-agent-metrics'] });
