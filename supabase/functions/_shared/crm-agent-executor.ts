@@ -526,13 +526,203 @@ export function mapToOpportunityFields(
   }
 
   // ========================================
-  // PIPELINE CLASSIFIER (sem mudanças)
+  // PIPELINE CLASSIFIER (v1.0)
   // ========================================
   const pipeline = extractions.pipeline_classifier;
   if (pipeline) {
-    if (pipeline.stage) fields.stage = pipeline.stage;
-    if (typeof pipeline.probability === 'number') fields.probability = pipeline.probability;
-    if (pipeline.temperature) fields.temperature = pipeline.temperature;
+    /**
+     * Mapeamento de estágios do prompt para o enum do banco
+     * Pipeline Classifier v1.0 → opportunity_stage enum
+     */
+    const PIPELINE_STAGE_MAP: Record<string, string> = {
+      // Estágios principais do novo prompt
+      'new_lead': 'prospecting',
+      'qualifying': 'qualification',
+      'need_identified': 'qualification',  // Merge - detalhe vai para sub_status
+      'proposal_sent': 'proposal',
+      'negotiating': 'negotiation',
+      'verbal_commitment': 'negotiation',   // Merge - detalhe vai para sub_status
+      'won': 'closed_won',
+      'lost': 'closed_lost',
+      
+      // Fallbacks para compatibilidade com formato antigo
+      'prospecting': 'prospecting',
+      'qualification': 'qualification',
+      'proposal': 'proposal',
+      'negotiation': 'negotiation',
+      'closing': 'negotiation',  // closing → negotiation
+      'closed_won': 'closed_won',
+      'closed_lost': 'closed_lost',
+    };
+
+    /**
+     * Normaliza estágio do prompt para o enum do banco
+     */
+    const normalizeStage = (promptStage: string): string => {
+      return PIPELINE_STAGE_MAP[promptStage] || promptStage;
+    };
+
+    // === 1. ESTÁGIO NORMALIZADO ===
+    // Suporta: pipeline_stage (novo) ou stage (legado)
+    const promptStage = get(pipeline, 'pipeline_stage', 'stage') as string | undefined;
+    if (promptStage) {
+      fields.stage = normalizeStage(promptStage);
+      
+      // Armazenar o estágio original do prompt para granularidade
+      // Se need_identified ou verbal_commitment, colocar em sub_status
+      if (promptStage === 'need_identified') {
+        fields.sub_status = 'need_identified';
+      } else if (promptStage === 'verbal_commitment') {
+        fields.sub_status = 'verbal_commitment';
+      }
+    }
+
+    // === 2. SUB-STATUS ===
+    // Suporta: sub_status (novo) - sobrescreve se definido
+    const subStatus = get(pipeline, 'sub_status') as string | undefined;
+    if (subStatus && subStatus !== null) {
+      fields.sub_status = subStatus;
+    }
+
+    // === 3. ESTÁGIO ANTERIOR ===
+    const previousStage = get(pipeline, 'previous_stage') as string | undefined;
+    if (previousStage) {
+      fields.previous_stage = normalizeStage(previousStage);
+    }
+
+    // === 4. PROBABILIDADE ===
+    // Suporta: win_probability (novo) ou probability (legado)
+    const winProbability = get(pipeline, 'win_probability', 'probability');
+    if (typeof winProbability === 'number') {
+      fields.probability = winProbability;
+    }
+
+    // === 5. CONFIANÇA DO ESTÁGIO ===
+    const stageConfidence = get(pipeline, 'stage_confidence');
+    if (typeof stageConfidence === 'number') {
+      fields.stage_confidence = stageConfidence;
+    }
+
+    // === 6. TEMPERATURA (sobrescreve Deal Extractor se presente) ===
+    const temperature = get(pipeline, 'temperature');
+    if (temperature) {
+      fields.temperature = temperature;
+    }
+
+    // === 7. FATORES DE PROBABILIDADE ===
+    const probabilityFactors = get(pipeline, 'probability_factors');
+    if (probabilityFactors && typeof probabilityFactors === 'object') {
+      fields.probability_factors = probabilityFactors;
+    }
+
+    // === 8. EVIDÊNCIAS DO ESTÁGIO ===
+    const stageEvidence = get(pipeline, 'stage_evidence');
+    if (stageEvidence && typeof stageEvidence === 'object') {
+      fields.stage_evidence = stageEvidence;
+    }
+
+    // === 9. TEMPO NO ESTÁGIO ===
+    const timeInStage = get(pipeline, 'time_in_stage') as Record<string, unknown> | undefined;
+    if (timeInStage && typeof timeInStage === 'object') {
+      // Mapear para campo existente
+      if (typeof timeInStage.estimated_days === 'number') {
+        fields.days_in_negotiation = timeInStage.estimated_days;
+      }
+      // Novos campos
+      if (typeof timeInStage.is_stuck === 'boolean') {
+        fields.is_stuck = timeInStage.is_stuck;
+      }
+      if (timeInStage.stuck_reason) {
+        fields.stuck_reason = timeInStage.stuck_reason;
+      }
+    }
+    // Fallback legado
+    const daysInCurrentStage = get(pipeline, 'days_in_current_stage');
+    if (typeof daysInCurrentStage === 'number' && !fields.days_in_negotiation) {
+      fields.days_in_negotiation = daysInCurrentStage;
+    }
+
+    // === 10. ANÁLISE DO PRÓXIMO ESTÁGIO ===
+    const nextStage = get(pipeline, 'next_stage') as Record<string, unknown> | undefined;
+    if (nextStage && typeof nextStage === 'object') {
+      fields.next_stage_analysis = nextStage;
+      
+      // Extrair recommended_actions para o campo existente (merge)
+      const recommendedActions = nextStage.recommended_actions;
+      if (Array.isArray(recommendedActions)) {
+        // Merge com coaching actions se existir, ou usar direto
+        if (fields.recommended_actions) {
+          // Pipeline actions têm prioridade mais alta, colocar primeiro
+          fields.recommended_actions = [
+            ...recommendedActions,
+            ...(fields.recommended_actions as unknown[])
+          ];
+        } else {
+          fields.recommended_actions = recommendedActions;
+        }
+      }
+      
+      // Extrair blockers para campo dedicado
+      if (Array.isArray(nextStage.blockers)) {
+        fields.stage_blockers = nextStage.blockers;
+      }
+    }
+
+    // === 11. RISCO DE REGRESSÃO ===
+    const regressionRisk = get(pipeline, 'regression_risk') as Record<string, unknown> | undefined;
+    if (regressionRisk && typeof regressionRisk === 'object') {
+      fields.regression_risk = regressionRisk;
+      
+      // Extrair risk_level para campo separado
+      if (regressionRisk.risk_level) {
+        fields.risk_level = regressionRisk.risk_level;
+      }
+    }
+
+    // === 12. HISTÓRICO DE ESTÁGIOS ===
+    const stageHistory = get(pipeline, 'stage_history');
+    if (stageHistory && typeof stageHistory === 'object') {
+      fields.stage_history = stageHistory;
+    }
+
+    // === 13. ANÁLISE DE PERDA (só se lost) ===
+    const lossAnalysis = get(pipeline, 'loss_analysis') as Record<string, unknown> | undefined;
+    if (lossAnalysis && typeof lossAnalysis === 'object') {
+      fields.loss_analysis = lossAnalysis;
+      
+      // Mapear campos específicos de perda
+      if (lossAnalysis.reason) {
+        fields.lost_reason = lossAnalysis.reason;
+      }
+      if (lossAnalysis.competitor) {
+        fields.lost_to_competitor = lossAnalysis.competitor;
+      }
+    }
+
+    // === 14. RESUMO DA CLASSIFICAÇÃO ===
+    const classificationSummary = get(pipeline, 'classification_summary');
+    if (classificationSummary) {
+      fields.classification_summary = classificationSummary;
+    }
+
+    // === 15. METADADOS LEGADOS ===
+    // stage_reasoning (legado) → manter compatibilidade
+    const stageReasoning = get(pipeline, 'stage_reasoning');
+    if (stageReasoning) {
+      fields.stage_reasoning = stageReasoning;
+    }
+
+    // blockers (legado - array simples)
+    const blockers = get(pipeline, 'blockers');
+    if (Array.isArray(blockers) && !fields.stage_blockers) {
+      fields.stage_blockers = blockers;
+    }
+
+    // risk_factors (legado)
+    const riskFactors = get(pipeline, 'risk_factors');
+    if (Array.isArray(riskFactors)) {
+      fields.risk_factors = riskFactors;
+    }
   }
 
   // ========================================
