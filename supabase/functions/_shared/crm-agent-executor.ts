@@ -329,7 +329,39 @@ export function mapToOpportunityFields(
 }
 
 /**
+ * Helper para extrair valor de estrutura aninhada ou flat
+ * Suporta paths como "profile.profession" ou campos diretos como "profession"
+ */
+function getNestedValue(obj: Record<string, unknown>, ...paths: string[]): unknown {
+  for (const path of paths) {
+    const keys = path.split('.');
+    let value: unknown = obj;
+    for (const key of keys) {
+      if (value && typeof value === 'object' && key in (value as Record<string, unknown>)) {
+        value = (value as Record<string, unknown>)[key];
+      } else {
+        value = undefined;
+        break;
+      }
+    }
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+/**
  * Mapeia dados extraídos para campos da tabela crm_customers
+ * Suporta tanto estrutura flat (legado) quanto aninhada (novo prompt v1.0)
+ * 
+ * Estrutura aninhada esperada:
+ * {
+ *   identification: { name, email, city, state, neighborhood },
+ *   profile: { profile_type, profession, is_technical, knowledge_level },
+ *   origin: { channel, source, referred_by, campaign },
+ *   motivation: { main_motivation, trigger_event, buying_stage, urgency_level },
+ *   pain_points: [...],
+ *   decision: { is_decision_maker, decision_type, other_stakeholders, decision_process }
+ * }
  */
 export function mapToCustomerFields(
   extractions: Record<AgentType, Record<string, unknown>>
@@ -337,23 +369,121 @@ export function mapToCustomerFields(
   const fields: Record<string, unknown> = {};
 
   const profile = extractions.client_profiler;
-  if (profile) {
-    if (profile.profile_type) fields.profile_type = profile.profile_type;
-    if (profile.profession) fields.profession = profile.profession;
-    if (typeof profile.is_technical === 'boolean') fields.is_technical = profile.is_technical;
-    if (profile.knowledge_level) fields.knowledge_level = profile.knowledge_level;
-    if (profile.origin_channel) fields.origin_channel = profile.origin_channel;
-    if (profile.origin_source) fields.origin_source = profile.origin_source;
-    if (profile.referred_by) fields.referred_by = profile.referred_by;
-    if (profile.trigger_event) fields.trigger_event = profile.trigger_event;
-    if (profile.main_motivation) fields.main_motivation = profile.main_motivation;
-    if (profile.pain_points) fields.pain_points = profile.pain_points;
-    if (typeof profile.is_decision_maker === 'boolean') fields.is_decision_maker = profile.is_decision_maker;
-    if (profile.decision_makers) fields.decision_makers = profile.decision_makers;
-    if (profile.decision_process) fields.decision_process = profile.decision_process;
-    
-    fields.profile_extracted_at = new Date().toISOString();
+  if (!profile) return fields;
+
+  // === IDENTIFICATION ===
+  // Suporta: identification.name (novo) ou name (legado)
+  const name = getNestedValue(profile, 'identification.name', 'name');
+  if (name) fields.name = name;
+
+  const email = getNestedValue(profile, 'identification.email', 'email');
+  if (email) fields.email = email;
+
+  const city = getNestedValue(profile, 'identification.city', 'city');
+  if (city) fields.city = city;
+
+  const state = getNestedValue(profile, 'identification.state', 'state');
+  if (state) fields.state = state;
+
+  // Novo campo - apenas estrutura aninhada
+  const neighborhood = getNestedValue(profile, 'identification.neighborhood');
+  if (neighborhood) fields.neighborhood = neighborhood;
+
+  // === PROFILE ===
+  // Suporta: profile.profile_type (novo) ou profile_type (legado)
+  const profileType = getNestedValue(profile, 'profile.profile_type', 'profile_type');
+  if (profileType) fields.profile_type = profileType;
+
+  const profession = getNestedValue(profile, 'profile.profession', 'profession');
+  if (profession) fields.profession = profession;
+
+  const company = getNestedValue(profile, 'profile.company_name', 'company');
+  if (company) fields.company = company;
+
+  const isTechnical = getNestedValue(profile, 'profile.is_technical', 'is_technical');
+  if (typeof isTechnical === 'boolean') fields.is_technical = isTechnical;
+
+  const knowledgeLevel = getNestedValue(profile, 'profile.knowledge_level', 'knowledge_level');
+  if (knowledgeLevel) fields.knowledge_level = knowledgeLevel;
+
+  // === ORIGIN ===
+  // Suporta: origin.channel (novo) ou origin_channel (legado)
+  const originChannel = getNestedValue(profile, 'origin.channel', 'origin_channel');
+  if (originChannel) fields.origin_channel = originChannel;
+
+  const originSource = getNestedValue(profile, 'origin.source', 'origin_source');
+  if (originSource) fields.origin_source = originSource;
+
+  const referredBy = getNestedValue(profile, 'origin.referred_by', 'referred_by');
+  if (referredBy) fields.referred_by = referredBy;
+
+  // Novo campo - campanha
+  const campaign = getNestedValue(profile, 'origin.campaign');
+  if (campaign) fields.campaign = campaign;
+
+  // === MOTIVATION ===
+  // Suporta: motivation.main_motivation (novo) ou main_motivation (legado)
+  const mainMotivation = getNestedValue(profile, 'motivation.main_motivation', 'main_motivation');
+  if (mainMotivation) fields.main_motivation = mainMotivation;
+
+  const triggerEvent = getNestedValue(profile, 'motivation.trigger_event', 'trigger_event');
+  if (triggerEvent) fields.trigger_event = triggerEvent;
+
+  // Novos campos de motivação
+  const buyingStage = getNestedValue(profile, 'motivation.buying_stage');
+  if (buyingStage) fields.buying_stage = buyingStage;
+
+  const urgencyLevel = getNestedValue(profile, 'motivation.urgency_level');
+  if (urgencyLevel) fields.urgency_level = urgencyLevel;
+
+  // === PAIN POINTS ===
+  // Suporta: pain_points (array) em ambos formatos
+  const painPoints = getNestedValue(profile, 'pain_points');
+  if (painPoints && Array.isArray(painPoints)) {
+    fields.pain_points = painPoints;
   }
+
+  // === DECISION ===
+  // Suporta: decision.is_decision_maker (novo) ou is_decision_maker (legado)
+  const isDecisionMaker = getNestedValue(profile, 'decision.is_decision_maker', 'is_decision_maker');
+  if (typeof isDecisionMaker === 'boolean') fields.is_decision_maker = isDecisionMaker;
+
+  // Suporta: decision.other_stakeholders (novo) ou decision_makers (legado)
+  const decisionMakers = getNestedValue(profile, 'decision.other_stakeholders', 'decision_makers');
+  if (decisionMakers && Array.isArray(decisionMakers)) {
+    fields.decision_makers = decisionMakers;
+  }
+
+  const decisionProcess = getNestedValue(profile, 'decision.decision_process', 'decision_process');
+  if (decisionProcess) fields.decision_process = decisionProcess;
+
+  // Novo campo - decision_type (couple_consensus, individual, etc.)
+  const decisionType = getNestedValue(profile, 'decision.decision_type');
+  if (decisionType) fields.decision_type = decisionType;
+
+  // Novos campos - blockers e timeline
+  const decisionBlockers = getNestedValue(profile, 'decision.decision_blockers');
+  if (decisionBlockers && Array.isArray(decisionBlockers)) {
+    fields.decision_blockers = decisionBlockers;
+  }
+
+  const decisionTimeline = getNestedValue(profile, 'decision.decision_timeline');
+  if (decisionTimeline) fields.decision_timeline = decisionTimeline;
+
+  // === ADDITIONAL INSIGHTS ===
+  // Novos campos do prompt enriquecido
+  const insights = profile.additional_insights as Record<string, unknown> | undefined;
+  if (insights) {
+    if (insights.communication_style) fields.communication_style = insights.communication_style;
+    if (insights.engagement_level) fields.engagement_level = insights.engagement_level;
+    if (insights.price_sensitivity) fields.price_sensitivity = insights.price_sensitivity;
+    if (insights.trust_signals) fields.trust_signals = insights.trust_signals;
+    if (insights.concern_signals) fields.concern_signals = insights.concern_signals;
+    if (insights.notes) fields.profile_notes = insights.notes;
+  }
+
+  // Metadados
+  fields.profile_extracted_at = new Date().toISOString();
 
   return fields;
 }
