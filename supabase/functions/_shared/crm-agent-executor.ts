@@ -490,28 +490,196 @@ export function mapToCustomerFields(
 
 /**
  * Mapeia dados extraídos para campos da tabela project_contexts
+ * Suporta tanto estrutura flat (legado) quanto aninhada (novo prompt v1.0)
+ * 
+ * Estrutura aninhada esperada (Project Extractor v1.0):
+ * {
+ *   location: { city, neighborhood, address, ... },
+ *   property: { category, subtype, description },
+ *   project: { nature, phase, has_architectural_project },
+ *   professionals: { has_professionals, professionals_list: [...] },
+ *   technical_data: { category, energy_solar/telhas_shingle/etc... },
+ *   products_needed: [...],
+ *   timeline: { deadline_urgency, desired_start_date, ... }
+ * }
  */
 export function mapToProjectContextFields(
   extractions: Record<AgentType, Record<string, unknown>>
 ): Partial<Record<string, unknown>> {
   const fields: Record<string, unknown> = {};
-
   const project = extractions.project_extractor;
-  if (project) {
-    if (project.location) {
-      const loc = project.location as Record<string, string>;
-      if (loc.neighborhood) fields.location_neighborhood = loc.neighborhood;
-      // city e state já existem na conversation
+  
+  if (!project) return fields;
+
+  // Reutilizar helper getNestedValue já existente
+  const get = (obj: unknown, ...paths: string[]): unknown => {
+    for (const path of paths) {
+      const keys = path.split('.');
+      let value: unknown = obj;
+      for (const key of keys) {
+        if (value && typeof value === 'object' && key in (value as Record<string, unknown>)) {
+          value = (value as Record<string, unknown>)[key];
+        } else {
+          value = undefined;
+          break;
+        }
+      }
+      if (value !== undefined) return value;
     }
-    if (project.project_type_detailed) fields.project_type_detailed = project.project_type_detailed;
-    if (project.project_phase) fields.project_phase = project.project_phase;
-    if (typeof project.has_professional === 'boolean') fields.has_professional = project.has_professional;
-    if (project.professional_name) fields.professional_name = project.professional_name;
-    if (project.technical_specs) fields.technical_specs = project.technical_specs;
-    if (project.products_needed) fields.products_needed = project.products_needed;
-    if (project.estimated_quantities) fields.estimated_quantities = project.estimated_quantities;
-    if (project.deadline_urgency) fields.deadline_urgency = project.deadline_urgency;
-    if (project.start_date) fields.start_date = project.start_date;
+    return undefined;
+  };
+
+  // === 1. LOCALIZAÇÃO ===
+  const neighborhood = get(project, 'location.neighborhood', 'neighborhood');
+  if (neighborhood) fields.location_neighborhood = neighborhood;
+
+  // === 2. TIPO DE PROJETO (combinar category + nature) ===
+  const propCategory = get(project, 'property.category');
+  const projNature = get(project, 'project.nature');
+  const propSubtype = get(project, 'property.subtype');
+  if (propCategory || projNature) {
+    const parts = [propCategory, propSubtype, projNature].filter(Boolean);
+    fields.project_type_detailed = parts.join(' - ');
+  }
+  // Fallback para formato antigo
+  const oldType = get(project, 'project_type_detailed');
+  if (oldType && !fields.project_type_detailed) {
+    fields.project_type_detailed = oldType;
+  }
+
+  // === 3. FASE DO PROJETO ===
+  const phase = get(project, 'project.phase', 'project_phase');
+  if (phase) fields.project_phase = phase;
+
+  // === 4. PROJETO ARQUITETÔNICO ===
+  const hasArchProject = get(project, 'project.has_architectural_project', 'has_architectural_project');
+  if (typeof hasArchProject === 'boolean') {
+    fields.has_architectural_project = hasArchProject;
+  }
+
+  // === 5. PROFISSIONAIS ===
+  const hasPro = get(project, 'professionals.has_professionals', 'has_professional');
+  if (typeof hasPro === 'boolean') fields.has_professional = hasPro;
+
+  const professionals = get(project, 'professionals.professionals_list');
+  if (Array.isArray(professionals) && professionals.length > 0) {
+    const first = professionals[0] as Record<string, unknown>;
+    const name = first?.name || first?.company;
+    const role = first?.role;
+    if (name) {
+      fields.professional_name = role ? `${name} (${role})` : String(name);
+    }
+  }
+  // Fallback para formato antigo
+  const oldProName = get(project, 'professional_name');
+  if (oldProName && !fields.professional_name) {
+    fields.professional_name = oldProName;
+  }
+
+  // === 6. DADOS TÉCNICOS (JSONB completo) ===
+  const techData = get(project, 'technical_data') as Record<string, unknown> | undefined;
+  if (techData && typeof techData === 'object') {
+    fields.technical_specs = techData;
+
+    // Extrair campos específicos para colunas dedicadas
+    const category = techData.category as string | undefined;
+    
+    // Solar
+    if (category === 'energia_solar' || techData.energy_solar) {
+      const solar = (techData.energy_solar || techData) as Record<string, unknown>;
+      const consumption = solar.energy_consumption as Record<string, unknown> | undefined;
+      
+      if (consumption?.monthly_kwh) {
+        fields.energy_consumption = String(consumption.monthly_kwh);
+      }
+      if (consumption?.monthly_value_brl) {
+        fields.energy_bill_value = consumption.monthly_value_brl;
+      }
+      const roof = solar.roof as Record<string, unknown> | undefined;
+      if (roof?.area_m2) {
+        fields.roof_size_m2 = roof.area_m2;
+      }
+      if (roof?.condition) {
+        fields.roof_status = roof.condition;
+      }
+    }
+    
+    // Shingle
+    if (category === 'telhas_shingle' || techData.telhas_shingle) {
+      const shingle = (techData.telhas_shingle || techData) as Record<string, unknown>;
+      const roof = shingle.roof as Record<string, unknown> | undefined;
+      if (roof?.area_m2) {
+        fields.roof_size_m2 = roof.area_m2;
+      }
+      if (roof?.current_condition) {
+        fields.roof_status = roof.current_condition;
+      }
+    }
+    
+    // Light Steel Frame
+    if (category === 'light_steel_frame' || techData.light_steel_frame) {
+      const lsf = (techData.light_steel_frame || techData) as Record<string, unknown>;
+      const construction = lsf.construction as Record<string, unknown> | undefined;
+      if (construction?.total_area_m2) {
+        fields.construction_size_m2 = construction.total_area_m2;
+      }
+    }
+  }
+  // Fallback para formato antigo
+  const oldTechSpecs = get(project, 'technical_specs');
+  if (oldTechSpecs && !fields.technical_specs) {
+    fields.technical_specs = oldTechSpecs;
+  }
+
+  // === 7. PRODUTOS NECESSÁRIOS ===
+  const products = get(project, 'products_needed') as Array<Record<string, unknown>> | undefined;
+  if (Array.isArray(products) && products.length > 0) {
+    fields.products_needed = products;
+    // Também popular materials_list (array de strings)
+    fields.materials_list = products.map(p => 
+      typeof p === 'string' ? p : (p.product || p.name || JSON.stringify(p)) as string
+    );
+  }
+
+  // === 8. QUANTIDADES ESTIMADAS (derivar de products se não existir) ===
+  const quantities = get(project, 'estimated_quantities');
+  if (quantities) {
+    fields.estimated_quantities = quantities;
+  } else if (Array.isArray(products)) {
+    const derived: Record<string, string> = {};
+    products.forEach(p => {
+      if (p.product && p.quantity) {
+        derived[p.product as string] = `${p.quantity} ${p.unit || 'un'}`;
+      }
+    });
+    if (Object.keys(derived).length > 0) {
+      fields.estimated_quantities = derived;
+    }
+  }
+
+  // === 9. TIMELINE ===
+  const timeline = get(project, 'timeline') as Record<string, unknown> | undefined;
+  if (timeline) {
+    if (timeline.deadline_urgency) {
+      fields.deadline_urgency = timeline.deadline_urgency;
+      fields.urgency = timeline.deadline_urgency;
+    }
+    if (timeline.desired_start_date) {
+      fields.start_date = timeline.desired_start_date;
+    }
+    if (timeline.desired_completion_date) {
+      fields.timeline = timeline.desired_completion_date;
+    }
+  }
+  // Fallbacks para formato antigo
+  const oldUrgency = get(project, 'deadline_urgency');
+  if (oldUrgency && !fields.deadline_urgency) {
+    fields.deadline_urgency = oldUrgency;
+    fields.urgency = oldUrgency;
+  }
+  const oldStartDate = get(project, 'start_date');
+  if (oldStartDate && !fields.start_date) {
+    fields.start_date = oldStartDate;
   }
 
   return fields;
