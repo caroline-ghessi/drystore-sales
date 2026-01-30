@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0';
 import { normalizePhone, isExcludedContact } from '../_shared/phone-utils.ts';
+import { checkOpportunityDuplicate, logMatchDecision } from '../_shared/opportunity-matcher.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -66,6 +67,7 @@ serve(async (req) => {
     console.log(`[VendorOpportunities] ${validConversations.length} conversas para processar (${conversations.length - validConversations.length} ignoradas como internas)`);
 
     let processed = 0;
+    let merged = 0;
     let failed = 0;
     const errors: string[] = [];
 
@@ -119,7 +121,7 @@ serve(async (req) => {
           console.log(`[VendorOpportunities] Cliente ${normalizedPhone} veio do bot oficial (conversa ${botConversation.id})`);
         }
 
-        // 3.2 Criar/atualizar cliente no CRM
+        // 3.3 Criar/atualizar cliente no CRM
         const { data: customer, error: customerError } = await supabase
           .from('crm_customers')
           .upsert({
@@ -143,31 +145,87 @@ serve(async (req) => {
           continue;
         }
 
-        // 3.3 Criar oportunidade no CRM
-        const { error: oppError } = await supabase
-          .from('crm_opportunities')
-          .insert({
-            customer_id: customer.id,
-            vendor_conversation_id: conv.id,
-            vendor_id: conv.vendor_id,
-            conversation_id: botConversationId,
-            title: `Oportunidade - ${conv.product_category || 'Nova'}`,
-            source: opportunitySource,
-            product_category: conv.product_category,
-            stage: 'prospecting',
-            probability: isFromBot ? 20 : 10,
-            value: 0,
-            validation_status: 'ai_generated',
-          });
+        // 3.4 NOVO: Verificar duplicação antes de criar oportunidade
+        const matchResult = await checkOpportunityDuplicate(supabase, {
+          customer_phone: normalizedPhone,
+          vendor_id: conv.vendor_id,
+          product_category: conv.product_category || undefined,
+          vendor_conversation_id: conv.id,
+          source: 'vendor_whatsapp'
+        });
 
-        if (oppError) {
-          console.error(`[VendorOpportunities] Erro ao criar oportunidade para conversa ${conv.id}:`, oppError);
-          failed++;
-          errors.push(`Conv ${conv.id} opp: ${oppError.message}`);
-          continue;
+        if (matchResult.action === 'merge' && matchResult.existing_opportunity_id) {
+          // Atualizar oportunidade existente com vendor_conversation_id
+          const { error: updateError } = await supabase
+            .from('crm_opportunities')
+            .update({
+              vendor_conversation_id: conv.id,
+              conversation_id: botConversationId || undefined,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', matchResult.existing_opportunity_id);
+          
+          if (updateError) {
+            console.error(`[VendorOpportunities] Erro ao atualizar oportunidade:`, updateError);
+            failed++;
+            errors.push(`Conv ${conv.id} merge: ${updateError.message}`);
+            continue;
+          }
+          
+          console.log(`[VendorOpportunities] Oportunidade ${matchResult.existing_opportunity_id} atualizada com vendor_conversation ${conv.id}`);
+          
+          // Registrar decisão
+          await logMatchDecision(supabase, {
+            customer_phone: normalizedPhone,
+            vendor_id: conv.vendor_id,
+            product_category: conv.product_category || undefined,
+            vendor_conversation_id: conv.id,
+            source: 'vendor_whatsapp'
+          }, matchResult);
+          
+          merged++;
+          
+        } else {
+          // 3.5 Criar nova oportunidade
+          const validationStatus = matchResult.action === 'needs_review' ? 'needs_review' : 'ai_generated';
+          
+          const { data: newOpp, error: oppError } = await supabase
+            .from('crm_opportunities')
+            .insert({
+              customer_id: customer.id,
+              vendor_conversation_id: conv.id,
+              vendor_id: conv.vendor_id,
+              conversation_id: botConversationId,
+              title: `Oportunidade - ${conv.product_category || 'Nova'}`,
+              source: opportunitySource,
+              product_category: conv.product_category,
+              stage: 'prospecting',
+              probability: isFromBot ? 20 : 10,
+              value: 0,
+              validation_status: validationStatus,
+              match_confidence: matchResult.confidence,
+            })
+            .select('id')
+            .single();
+
+          if (oppError) {
+            console.error(`[VendorOpportunities] Erro ao criar oportunidade para conversa ${conv.id}:`, oppError);
+            failed++;
+            errors.push(`Conv ${conv.id} opp: ${oppError.message}`);
+            continue;
+          }
+          
+          // Registrar decisão
+          await logMatchDecision(supabase, {
+            customer_phone: normalizedPhone,
+            vendor_id: conv.vendor_id,
+            product_category: conv.product_category || undefined,
+            vendor_conversation_id: conv.id,
+            source: 'vendor_whatsapp'
+          }, matchResult, newOpp?.id);
         }
 
-        // 3.3 Marcar conversa como processada
+        // 3.6 Marcar conversa como processada
         const { error: updateError } = await supabase
           .from('vendor_conversations')
           .update({ 
@@ -201,18 +259,19 @@ serve(async (req) => {
     await supabase.from('system_logs').insert({
       level: failed > 0 ? 'warning' : 'info',
       source: 'process-vendor-opportunities',
-      message: `Processamento concluído: ${processed} sucesso, ${failed} falhas`,
+      message: `Processamento concluído: ${processed} sucesso (${merged} merges), ${failed} falhas`,
       data: {
         total_found: conversations.length,
         valid_conversations: validConversations.length,
         processed,
+        merged,
         failed,
         duration_ms: duration,
         errors: errors.slice(0, 10) // Limitar erros no log
       }
     });
 
-    console.log(`[VendorOpportunities] Concluído em ${duration}ms: ${processed} processados, ${failed} falhas`);
+    console.log(`[VendorOpportunities] Concluído em ${duration}ms: ${processed} processados (${merged} merges), ${failed} falhas`);
 
     return new Response(
       JSON.stringify({ 
@@ -222,6 +281,7 @@ serve(async (req) => {
           total_found: conversations.length,
           valid_conversations: validConversations.length,
           processed,
+          merged,
           failed,
           duration_ms: duration
         }

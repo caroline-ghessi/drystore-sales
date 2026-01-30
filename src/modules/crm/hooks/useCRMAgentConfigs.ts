@@ -20,7 +20,7 @@ export interface CRMAgentConfig {
 
 export interface CRMAgentConfigInput {
   agent_name: string;
-  agent_type: 'crm_analyzer' | 'crm_extractor' | 'crm_classifier' | 'crm_coach';
+  agent_type: 'crm_analyzer' | 'crm_extractor' | 'crm_classifier' | 'crm_coach' | 'crm_validator';
   description?: string;
   system_prompt: string;
   llm_model?: string;
@@ -173,6 +173,24 @@ export const CRM_AGENT_DEFINITIONS = [
       risk_alerts: [{ type: 'string', severity: 'low | medium | high', mitigation: 'string' }],
       confidence: '0.0-1.0'
     }
+  },
+  {
+    key: 'opportunity_matcher',
+    name: 'Opportunity Matcher',
+    category: 'validation',
+    categoryLabel: 'Validação de Dados',
+    type: 'crm_validator' as const,
+    description: 'Detecta oportunidades duplicadas e decide se é continuação, cross-sell ou recompra',
+    icon: '🔍',
+    outputSchema: {
+      decision: 'merge | new | review',
+      existing_opportunity_id: 'string | null',
+      confidence: '0.0-1.0',
+      reasoning: 'string',
+      is_same_subject: 'boolean',
+      has_closure_signals: 'boolean',
+      detected_subject: 'string | null'
+    }
   }
 ];
 
@@ -183,7 +201,7 @@ export function useCRMAgentConfigs() {
       const { data, error } = await supabase
         .from('agent_configs')
         .select('*')
-        .in('agent_type', ['crm_analyzer', 'crm_extractor', 'crm_classifier', 'crm_coach'])
+        .in('agent_type', ['crm_analyzer', 'crm_extractor', 'crm_classifier', 'crm_coach', 'crm_validator'])
         .order('agent_name');
 
       if (error) throw error;
