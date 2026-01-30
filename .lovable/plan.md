@@ -1,78 +1,108 @@
 
-# Plano: Atualizar mapToOpportunityFields para Deal Extractor v1.0
+
+# Plano: Atualizar mapToOpportunityFields para Pipeline Classifier v1.0
 
 ## Resumo
 
-Atualizar a função `mapToOpportunityFields()` no `crm-agent-executor.ts` para processar a estrutura aninhada rica do novo prompt Deal Extractor v1.0, mantendo retrocompatibilidade com schemas anteriores.
+Atualizar a função `mapToOpportunityFields()` no `crm-agent-executor.ts` para processar a estrutura rica do novo prompt Pipeline Classifier v1.0, incluindo mapeamento de estágios e armazenamento de dados analíticos.
 
 ---
 
-## Estrutura do Novo Prompt vs Banco de Dados
+## Incompatibilidade Crítica: Estágios
 
-O prompt Deal Extractor v1.0 organiza dados em blocos aninhados profundos, mas a tabela `crm_opportunities` tem campos em estrutura plana. O mapper precisa "achatar" os dados:
+O prompt usa nomenclatura diferente do banco de dados. Precisamos criar um mapeamento:
 
 ```text
-PROMPT (aninhado)                              →  BANCO (plano)
-─────────────────────────────────────────────────────────────────────
-proposal.sent                                  →  proposal_sent
-proposal.total_value                           →  proposal_value
-proposal.status                                →  proposal_status (novo)
-proposal (objeto completo)                     →  proposal_details (JSONB)
-competitors.has_competitors                    →  has_competitors (novo)
-competitors.competitors_list                   →  competitors (JSONB existente)
-negotiation.discount_requested.value           →  discount_requested
-negotiation.discount_given.value               →  discount_offered
-negotiation.discount_given.percent             →  discount_percent (novo)
-payment.preferred_method                       →  payment_preference
-payment.entry_value                            →  entry_value (novo)
-payment.financed_value                         →  financed_value (novo)
-payment.installments                           →  installments (novo)
-payment (objeto completo)                      →  payment_details (JSONB)
-visits.technical_visit.scheduled               →  visit_offered / visits_scheduled
-visits.technical_visit.status                  →  visit_status (novo)
-deal_status.current_status                     →  deal_status (novo)
-deal_status.temperature                        →  temperature (existente)
-deal_status.win_probability                    →  probability (existente)
-next_steps.commitment                          →  next_step_commitment (JSONB)
-next_steps.pending_actions                     →  pending_actions (JSONB)
-loss_info.lost                                 →  is_lost (novo)
-loss_info.lost_reason                          →  lost_reason (novo)
-loss_info.lost_to_competitor                   →  lost_to_competitor (novo)
-deal_summary                                   →  deal_summary (JSONB)
+PROMPT (pipeline_stage)       →  BANCO (stage enum)
+─────────────────────────────────────────────────────
+new_lead                      →  prospecting
+qualifying                    →  qualification
+need_identified               →  qualification (merge)
+proposal_sent                 →  proposal
+negotiating                   →  negotiation
+verbal_commitment             →  negotiation (merge)
+won                           →  closed_won
+lost                          →  closed_lost
+```
+
+**Nota:** `need_identified` e `verbal_commitment` não existem no enum do banco, então são mapeados para o estágio mais próximo. O detalhe granular fica no `sub_status`.
+
+---
+
+## Estrutura do Novo Prompt vs Banco
+
+```text
+PROMPT (aninhado)                        →  BANCO (plano)
+─────────────────────────────────────────────────────────────────
+pipeline_stage                           →  stage (normalizado)
+pipeline_stage_label                     →  stage_label (novo)
+previous_stage                           →  previous_stage (novo)
+stage_confidence                         →  stage_confidence (novo)
+sub_status                               →  sub_status (novo)
+win_probability                          →  probability (existente)
+probability_factors                      →  probability_factors (JSONB novo)
+stage_evidence                           →  stage_evidence (JSONB novo)
+time_in_stage.estimated_days             →  days_in_negotiation (existente)
+time_in_stage.is_stuck                   →  is_stuck (novo)
+next_stage                               →  next_stage_analysis (JSONB novo)
+regression_risk                          →  regression_risk (JSONB novo)
+stage_history                            →  stage_history (JSONB novo)
+loss_analysis                            →  loss_analysis (JSONB novo)
+classification_summary                   →  classification_summary (novo)
+recommended_actions (do next_stage)      →  recommended_actions (JSONB existente - merge)
 ```
 
 ---
 
 ## Mudanças no crm-agent-executor.ts
 
-### Função Atualizada
-
-Substituir a função `mapToOpportunityFields` (linhas 253-329) por uma versão expandida:
+### 1. Adicionar Mapeamento de Estágios
 
 ```typescript
 /**
- * Mapeia dados extraídos para campos da tabela crm_opportunities
- * Suporta tanto estrutura flat (legado) quanto aninhada (Deal Extractor v1.0)
- * 
- * Estrutura aninhada esperada (Deal Extractor v1.0):
- * {
- *   proposal: { sent, total_value, items, status, ... },
- *   competitors: { has_competitors, competitors_list: [...] },
- *   negotiation: { discount_requested: {...}, discount_given: {...}, tradeoffs },
- *   payment: { preferred_method, entry_value, financing: {...} },
- *   visits: { technical_visit: {...}, commercial_visit: {...} },
- *   deal_status: { current_status, temperature, win_probability },
- *   next_steps: { commitment: {...}, pending_actions: [...] },
- *   loss_info: { lost, lost_reason, lost_to_competitor },
- *   deal_summary: { value_at_stake, key_factors, risks, opportunities }
- * }
+ * Mapeamento de estágios do prompt para o enum do banco
+ * Pipeline Classifier v1.0 → opportunity_stage enum
  */
-export function mapToOpportunityFields(
-  extractions: Record<AgentType, Record<string, unknown>>
-): Partial<Record<string, unknown>> {
-  const fields: Record<string, unknown> = {};
+const PIPELINE_STAGE_MAP: Record<string, string> = {
+  // Estágios principais
+  'new_lead': 'prospecting',
+  'qualifying': 'qualification',
+  'need_identified': 'qualification',  // Merge - detalhe vai para sub_status
+  'proposal_sent': 'proposal',
+  'negotiating': 'negotiation',
+  'verbal_commitment': 'negotiation',   // Merge - detalhe vai para sub_status
+  'won': 'closed_won',
+  'lost': 'closed_lost',
+  
+  // Fallbacks para compatibilidade com formato antigo
+  'prospecting': 'prospecting',
+  'qualification': 'qualification',
+  'proposal': 'proposal',
+  'negotiation': 'negotiation',
+  'closing': 'negotiation',  // closing → negotiation
+  'closed_won': 'closed_won',
+  'closed_lost': 'closed_lost',
+};
 
-  // Helper para acessar dados aninhados ou flat
+/**
+ * Normaliza estágio do prompt para o enum do banco
+ */
+function normalizeStage(promptStage: string): string {
+  return PIPELINE_STAGE_MAP[promptStage] || promptStage;
+}
+```
+
+### 2. Atualizar Seção do Pipeline Classifier
+
+Substituir linhas 528-536 por:
+
+```typescript
+// ========================================
+// PIPELINE CLASSIFIER (v1.0)
+// ========================================
+const pipeline = extractions.pipeline_classifier;
+if (pipeline) {
+  // Helper para acessar dados aninhados
   const get = (obj: unknown, ...paths: string[]): unknown => {
     for (const path of paths) {
       const keys = path.split('.');
@@ -90,272 +120,167 @@ export function mapToOpportunityFields(
     return undefined;
   };
 
-  // ========================================
-  // DEAL EXTRACTOR
-  // ========================================
-  const deal = extractions.deal_extractor;
-  if (deal) {
-    // === 1. PROPOSTA ===
-    // Suporta: proposal.sent (novo) ou proposal_sent (legado)
-    const proposalSent = get(deal, 'proposal.sent', 'proposal_sent');
-    if (typeof proposalSent === 'boolean') fields.proposal_sent = proposalSent;
-
-    // Suporta: proposal.total_value (novo) ou proposal_value (legado)
-    const proposalValue = get(deal, 'proposal.total_value', 'proposal_value');
-    if (typeof proposalValue === 'number') fields.proposal_value = proposalValue;
-
-    // Legado: proposal_requested (não existe estrutura aninhada para isso)
-    if (typeof deal.proposal_requested === 'boolean') {
-      fields.proposal_requested = deal.proposal_requested;
+  // === 1. ESTÁGIO NORMALIZADO ===
+  // Suporta: pipeline_stage (novo) ou stage (legado)
+  const promptStage = get(pipeline, 'pipeline_stage', 'stage') as string | undefined;
+  if (promptStage) {
+    fields.stage = normalizeStage(promptStage);
+    
+    // Armazenar o estágio original do prompt para granularidade
+    // Se need_identified ou verbal_commitment, colocar em sub_status
+    if (promptStage === 'need_identified') {
+      fields.sub_status = 'need_identified';
+    } else if (promptStage === 'verbal_commitment') {
+      fields.sub_status = 'verbal_commitment';
     }
+  }
 
-    // Novo: status da proposta
-    const proposalStatus = get(deal, 'proposal.status');
-    if (proposalStatus) fields.proposal_status = proposalStatus;
+  // === 2. SUB-STATUS ===
+  // Suporta: sub_status (novo)
+  const subStatus = get(pipeline, 'sub_status') as string | undefined;
+  if (subStatus && subStatus !== null) {
+    fields.sub_status = subStatus;
+  }
 
-    // Novo: armazenar objeto proposal completo para detalhes
-    const proposalObj = get(deal, 'proposal') as Record<string, unknown> | undefined;
-    if (proposalObj && typeof proposalObj === 'object') {
-      fields.proposal_details = proposalObj;
+  // === 3. ESTÁGIO ANTERIOR ===
+  const previousStage = get(pipeline, 'previous_stage') as string | undefined;
+  if (previousStage) {
+    fields.previous_stage = normalizeStage(previousStage);
+  }
+
+  // === 4. PROBABILIDADE ===
+  // Suporta: win_probability (novo) ou probability (legado)
+  const winProbability = get(pipeline, 'win_probability', 'probability');
+  if (typeof winProbability === 'number') {
+    fields.probability = winProbability;
+  }
+
+  // === 5. CONFIANÇA DO ESTÁGIO ===
+  const stageConfidence = get(pipeline, 'stage_confidence');
+  if (typeof stageConfidence === 'number') {
+    fields.stage_confidence = stageConfidence;
+  }
+
+  // === 6. TEMPERATURA (sobrescreve Deal Extractor se presente) ===
+  const temperature = get(pipeline, 'temperature');
+  if (temperature) {
+    fields.temperature = temperature;
+  }
+
+  // === 7. FATORES DE PROBABILIDADE ===
+  const probabilityFactors = get(pipeline, 'probability_factors');
+  if (probabilityFactors && typeof probabilityFactors === 'object') {
+    fields.probability_factors = probabilityFactors;
+  }
+
+  // === 8. EVIDÊNCIAS DO ESTÁGIO ===
+  const stageEvidence = get(pipeline, 'stage_evidence');
+  if (stageEvidence && typeof stageEvidence === 'object') {
+    fields.stage_evidence = stageEvidence;
+  }
+
+  // === 9. TEMPO NO ESTÁGIO ===
+  const timeInStage = get(pipeline, 'time_in_stage') as Record<string, unknown> | undefined;
+  if (timeInStage && typeof timeInStage === 'object') {
+    // Mapear para campo existente
+    if (typeof timeInStage.estimated_days === 'number') {
+      fields.days_in_negotiation = timeInStage.estimated_days;
     }
-
-    // === 2. VALOR MENCIONADO PELO CLIENTE ===
-    // Suporta apenas legado (não tem estrutura aninhada específica)
-    if (typeof deal.client_mentioned_value === 'number') {
-      fields.client_mentioned_value = deal.client_mentioned_value;
+    // Novos campos
+    if (typeof timeInStage.is_stuck === 'boolean') {
+      fields.is_stuck = timeInStage.is_stuck;
     }
-
-    // === 3. BUDGET RANGE ===
-    const budgetRange = get(deal, 'budget_range');
-    if (budgetRange) fields.budget_range = budgetRange;
-
-    // === 4. CONCORRENTES ===
-    // Suporta: competitors.competitors_list (novo) ou competitors (legado)
-    const competitorsList = get(deal, 'competitors.competitors_list');
-    if (Array.isArray(competitorsList) && competitorsList.length > 0) {
-      fields.competitors = competitorsList;
-    } else if (deal.competitors && Array.isArray(deal.competitors)) {
-      // Legado: competitors já é array
-      fields.competitors = deal.competitors;
-    } else if (deal.competitors && typeof deal.competitors === 'object') {
-      // Novo: competitors é objeto completo - armazenar
-      fields.competitors = deal.competitors;
+    if (timeInStage.stuck_reason) {
+      fields.stuck_reason = timeInStage.stuck_reason;
     }
+  }
+  // Fallback legado
+  const daysInCurrentStage = get(pipeline, 'days_in_current_stage');
+  if (typeof daysInCurrentStage === 'number' && !fields.days_in_negotiation) {
+    fields.days_in_negotiation = daysInCurrentStage;
+  }
 
-    // === 5. NEGOCIAÇÃO - DESCONTO SOLICITADO ===
-    // Suporta: negotiation.discount_requested.value (novo) ou discount_requested (legado)
-    const discountRequested = get(deal, 'negotiation.discount_requested.value', 'discount_requested');
-    if (typeof discountRequested === 'number') fields.discount_requested = discountRequested;
-
-    // Novo: percentual solicitado
-    const discountRequestedPercent = get(deal, 'negotiation.discount_requested.percent');
-    if (typeof discountRequestedPercent === 'number') {
-      fields.discount_requested_percent = discountRequestedPercent;
-    }
-
-    // === 6. NEGOCIAÇÃO - DESCONTO CONCEDIDO ===
-    // Suporta: negotiation.discount_given.value (novo) ou discount_offered (legado)
-    const discountGiven = get(deal, 'negotiation.discount_given.value', 'discount_offered');
-    if (typeof discountGiven === 'number') fields.discount_offered = discountGiven;
-
-    // Novo: percentual concedido
-    const discountGivenPercent = get(deal, 'negotiation.discount_given.percent');
-    if (typeof discountGivenPercent === 'number') {
-      fields.discount_percent = discountGivenPercent;
-    }
-
-    // Novo: valores original e final
-    const originalValue = get(deal, 'negotiation.discount_given.original_value');
-    if (typeof originalValue === 'number') fields.original_value = originalValue;
-
-    const finalValue = get(deal, 'negotiation.discount_given.final_value');
-    if (typeof finalValue === 'number') fields.final_value = finalValue;
-
-    // === 7. PAGAMENTO ===
-    // Suporta: payment.preferred_method (novo) ou payment_preference (legado)
-    const paymentMethod = get(deal, 'payment.preferred_method', 'payment_preference');
-    if (paymentMethod) fields.payment_preference = paymentMethod;
-
-    // Novo: entrada e financiamento
-    const entryValue = get(deal, 'payment.entry_value');
-    if (typeof entryValue === 'number') fields.entry_value = entryValue;
-
-    const financedValue = get(deal, 'payment.financed_value');
-    if (typeof financedValue === 'number') fields.financed_value = financedValue;
-
-    const installments = get(deal, 'payment.installments');
-    if (typeof installments === 'number') fields.installments = installments;
-
-    // Novo: armazenar objeto payment completo
-    const paymentObj = get(deal, 'payment') as Record<string, unknown> | undefined;
-    if (paymentObj && typeof paymentObj === 'object' && Object.keys(paymentObj).length > 0) {
-      fields.payment_details = paymentObj;
-    }
-
-    // === 8. VISITAS ===
-    // Suporta: visits.technical_visit.offered (novo) ou visit_offered (legado)
-    const visitOffered = get(deal, 'visits.technical_visit.offered', 'visit_offered');
-    if (typeof visitOffered === 'boolean') fields.visit_offered = visitOffered;
-
-    // Suporta: visits.technical_visit.scheduled
-    const visitScheduled = get(deal, 'visits.technical_visit.scheduled');
-    if (typeof visitScheduled === 'boolean') fields.visit_scheduled = visitScheduled;
-
-    // Novo: status da visita
-    const visitStatus = get(deal, 'visits.technical_visit.status');
-    if (visitStatus) fields.visit_status = visitStatus;
-
-    // Contar visitas realizadas
-    const visitStatusValue = get(deal, 'visits.technical_visit.status');
-    if (visitStatusValue === 'completed') {
-      fields.visits_done = 1;
-    } else if (typeof deal.visits_done === 'number') {
-      fields.visits_done = deal.visits_done;
-    }
-
-    // Novo: armazenar objeto visits completo
-    const visitsObj = get(deal, 'visits') as Record<string, unknown> | undefined;
-    if (visitsObj && typeof visitsObj === 'object') {
-      fields.visits_details = visitsObj;
-    }
-
-    // === 9. STATUS DO DEAL ===
-    // Suporta: deal_status.temperature (novo) ou temperature (via pipeline)
-    const temperature = get(deal, 'deal_status.temperature');
-    if (temperature) fields.temperature = temperature;
-
-    // Suporta: deal_status.win_probability (novo) ou probability (via pipeline)
-    const winProbability = get(deal, 'deal_status.win_probability');
-    if (typeof winProbability === 'number') fields.probability = winProbability;
-
-    // Novo: status atual da negociação (mais granular que stage)
-    const dealStatus = get(deal, 'deal_status.current_status');
-    if (dealStatus) fields.deal_status = dealStatus;
-
-    // Novo: armazenar objeto deal_status completo
-    const dealStatusObj = get(deal, 'deal_status') as Record<string, unknown> | undefined;
-    if (dealStatusObj && typeof dealStatusObj === 'object') {
-      fields.deal_status_details = dealStatusObj;
-    }
-
-    // === 10. PRÓXIMOS PASSOS ===
-    // Novo: commitment
-    const commitment = get(deal, 'next_steps.commitment');
-    if (commitment && typeof commitment === 'object') {
-      fields.next_step_commitment = commitment;
-      // Extrair descrição para next_step (campo texto existente)
-      const commitmentDesc = (commitment as Record<string, unknown>).description;
-      if (commitmentDesc) fields.next_step = commitmentDesc;
-    }
-
-    // Novo: pending_actions
-    const pendingActions = get(deal, 'next_steps.pending_actions');
-    if (Array.isArray(pendingActions) && pendingActions.length > 0) {
-      fields.pending_actions = pendingActions;
-    }
-
-    // Novo: armazenar objeto next_steps completo
-    const nextStepsObj = get(deal, 'next_steps') as Record<string, unknown> | undefined;
-    if (nextStepsObj && typeof nextStepsObj === 'object') {
-      fields.next_steps_details = nextStepsObj;
-    }
-
-    // === 11. INFORMAÇÕES DE PERDA ===
-    const lossInfo = get(deal, 'loss_info') as Record<string, unknown> | undefined;
-    if (lossInfo && typeof lossInfo === 'object') {
-      if (typeof lossInfo.lost === 'boolean' && lossInfo.lost) {
-        fields.is_lost = true;
-        fields.lost_reason = lossInfo.lost_reason || null;
-        fields.lost_to_competitor = lossInfo.lost_to_competitor || null;
-        fields.lost_details = lossInfo.lost_details || null;
-        fields.recoverable = lossInfo.recoverable || null;
-      }
-      // Armazenar objeto completo
-      fields.loss_info = lossInfo;
-    }
-
-    // === 12. RESUMO DO DEAL ===
-    const dealSummary = get(deal, 'deal_summary') as Record<string, unknown> | undefined;
-    if (dealSummary && typeof dealSummary === 'object') {
-      fields.deal_summary = dealSummary;
-      // Extrair value_at_stake se disponível
-      if (typeof dealSummary.value_at_stake === 'number') {
-        fields.value_at_stake = dealSummary.value_at_stake;
+  // === 10. ANÁLISE DO PRÓXIMO ESTÁGIO ===
+  const nextStage = get(pipeline, 'next_stage') as Record<string, unknown> | undefined;
+  if (nextStage && typeof nextStage === 'object') {
+    fields.next_stage_analysis = nextStage;
+    
+    // Extrair recommended_actions para o campo existente (merge)
+    const recommendedActions = nextStage.recommended_actions;
+    if (Array.isArray(recommendedActions)) {
+      // Merge com coaching actions se existir, ou usar direto
+      if (fields.recommended_actions) {
+        // Pipeline actions têm prioridade mais alta, colocar primeiro
+        fields.recommended_actions = [
+          ...recommendedActions,
+          ...(fields.recommended_actions as unknown[])
+        ];
+      } else {
+        fields.recommended_actions = recommendedActions;
       }
     }
-
-    // === 13. METADADOS LEGADOS ===
-    if (deal.first_contact_at) fields.first_contact_at = deal.first_contact_at;
-    if (typeof deal.total_interactions === 'number') {
-      fields.total_interactions = deal.total_interactions;
+    
+    // Extrair blockers para campo dedicado
+    if (Array.isArray(nextStage.blockers)) {
+      fields.stage_blockers = nextStage.blockers;
     }
   }
 
-  // ========================================
-  // SPIN ANALYZER (sem mudanças)
-  // ========================================
-  const spin = extractions.spin_analyzer;
-  if (spin) {
-    if (spin.spin_stage) fields.spin_stage = spin.spin_stage;
-    if (typeof spin.spin_score === 'number') fields.spin_score = spin.spin_score;
-    if (spin.spin_progress) fields.spin_progress = spin.spin_progress;
-  }
-
-  // ========================================
-  // BANT QUALIFIER (sem mudanças)
-  // ========================================
-  const bant = extractions.bant_qualifier;
-  if (bant) {
-    if (typeof bant.bant_score === 'number') fields.bant_score = bant.bant_score;
-    if (typeof bant.bant_qualified === 'boolean') fields.bant_qualified = bant.bant_qualified;
-    if (bant.bant_details) fields.bant_details = bant.bant_details;
-  }
-
-  // ========================================
-  // OBJECTION ANALYZER (sem mudanças)
-  // ========================================
-  const objections = extractions.objection_analyzer;
-  if (objections) {
-    if (Array.isArray(objections.objections)) {
-      fields.objections = objections.objections.map((o: { description?: string }) => 
-        typeof o === 'string' ? o : o.description || ''
-      );
-    }
-    if (objections.objections_analysis || objections) {
-      fields.objections_analysis = objections;
-    }
-    if (typeof objections.objection_handling_score === 'number') {
-      fields.objection_handling_score = objections.objection_handling_score;
+  // === 11. RISCO DE REGRESSÃO ===
+  const regressionRisk = get(pipeline, 'regression_risk') as Record<string, unknown> | undefined;
+  if (regressionRisk && typeof regressionRisk === 'object') {
+    fields.regression_risk = regressionRisk;
+    
+    // Extrair risk_level para campo separado
+    if (regressionRisk.risk_level) {
+      fields.risk_level = regressionRisk.risk_level;
     }
   }
 
-  // ========================================
-  // PIPELINE CLASSIFIER (sem mudanças)
-  // ========================================
-  const pipeline = extractions.pipeline_classifier;
-  if (pipeline) {
-    if (pipeline.stage) fields.stage = pipeline.stage;
-    if (typeof pipeline.probability === 'number') fields.probability = pipeline.probability;
-    if (pipeline.temperature) fields.temperature = pipeline.temperature;
+  // === 12. HISTÓRICO DE ESTÁGIOS ===
+  const stageHistory = get(pipeline, 'stage_history');
+  if (stageHistory && typeof stageHistory === 'object') {
+    fields.stage_history = stageHistory;
   }
 
-  // ========================================
-  // COACHING GENERATOR (sem mudanças)
-  // ========================================
-  const coaching = extractions.coaching_generator;
-  if (coaching) {
-    if (coaching.recommended_actions) fields.recommended_actions = coaching.recommended_actions;
-    if (coaching.coaching_priority) fields.coaching_priority = coaching.coaching_priority;
-    if (coaching.next_follow_up_date) fields.next_follow_up_date = coaching.next_follow_up_date;
+  // === 13. ANÁLISE DE PERDA (só se lost) ===
+  const lossAnalysis = get(pipeline, 'loss_analysis') as Record<string, unknown> | undefined;
+  if (lossAnalysis && typeof lossAnalysis === 'object') {
+    fields.loss_analysis = lossAnalysis;
+    
+    // Mapear campos específicos de perda
+    if (lossAnalysis.reason) {
+      fields.lost_reason = lossAnalysis.reason;
+    }
+    if (lossAnalysis.competitor) {
+      fields.lost_to_competitor = lossAnalysis.competitor;
+    }
   }
 
-  // ========================================
-  // METADADOS
-  // ========================================
-  fields.last_ai_analysis_at = new Date().toISOString();
-  fields.analysis_version = '1.0';
+  // === 14. RESUMO DA CLASSIFICAÇÃO ===
+  const classificationSummary = get(pipeline, 'classification_summary');
+  if (classificationSummary) {
+    fields.classification_summary = classificationSummary;
+  }
 
-  return fields;
+  // === 15. METADADOS LEGADOS ===
+  // stage_reasoning (legado) → manter compatibilidade
+  const stageReasoning = get(pipeline, 'stage_reasoning');
+  if (stageReasoning) {
+    fields.stage_reasoning = stageReasoning;
+  }
+
+  // blockers (legado - array simples)
+  const blockers = get(pipeline, 'blockers');
+  if (Array.isArray(blockers) && !fields.stage_blockers) {
+    fields.stage_blockers = blockers;
+  }
+
+  // risk_factors (legado)
+  const riskFactors = get(pipeline, 'risk_factors');
+  if (Array.isArray(riskFactors)) {
+    fields.risk_factors = riskFactors;
+  }
 }
 ```
 
@@ -365,33 +290,31 @@ export function mapToOpportunityFields(
 
 | Aspecto | Antes | Depois |
 |---------|-------|--------|
-| Estrutura suportada | Plana | Aninhada + plana (fallback) |
-| Proposta | `proposal_sent`, `proposal_value` | + `proposal_details` (JSONB), `proposal_status` |
-| Concorrentes | Array simples | Array de objetos detalhados com evidências |
-| Desconto | Valores absolutos | + percentuais, valores original/final |
-| Pagamento | Só `payment_preference` | + `entry_value`, `financed_value`, `installments`, `payment_details` |
-| Visitas | `visit_offered`, `visits_done` | + `visit_scheduled`, `visit_status`, `visits_details` |
-| Status | Via Pipeline Classifier | + `deal_status`, `deal_status_details` do Deal Extractor |
-| Próximos passos | Nenhum | `next_step_commitment`, `pending_actions`, `next_steps_details` |
-| Perda | Nenhum | `is_lost`, `lost_reason`, `lost_to_competitor`, `loss_info` |
-| Resumo | Nenhum | `deal_summary`, `value_at_stake` |
+| Estágios | Passados direto | Normalizados via mapeamento |
+| Estágios granulares | Perdidos | Preservados em `sub_status` |
+| Estágio anterior | Não rastreado | `previous_stage` |
+| Confiança | Não capturada | `stage_confidence` |
+| Tempo no estágio | Só dias | + `is_stuck`, `stuck_reason` |
+| Próximo estágio | Não capturado | `next_stage_analysis` (JSONB) |
+| Risco de regressão | Não capturado | `regression_risk` (JSONB) |
+| Histórico | Não capturado | `stage_history` (JSONB) |
+| Análise de perda | Não capturada | `loss_analysis` (JSONB) |
+| Ações recomendadas | Só coaching | Merge pipeline + coaching |
 
 ---
 
-## Campos Novos Que Irão para JSONB
+## Campos Novos (JSONB)
 
-Os seguintes campos serão armazenados via JSONB genérico (não precisam de colunas dedicadas inicialmente):
+Estes campos serão armazenados em colunas JSONB genéricas (não precisam de colunas dedicadas):
 
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
-| `proposal_details` | JSONB | Objeto completo da proposta (itens, validade, etc.) |
-| `payment_details` | JSONB | Detalhes de financiamento, bancos, etc. |
-| `visits_details` | JSONB | Visitas técnicas e comerciais |
-| `deal_status_details` | JSONB | Status completo com dias no status |
-| `next_steps_details` | JSONB | Compromisso e ações pendentes |
-| `loss_info` | JSONB | Informações de perda |
-| `deal_summary` | JSONB | Resumo com fatores, riscos, oportunidades |
-| `pending_actions` | JSONB | Lista de ações pendentes |
+| `probability_factors` | JSONB | Fatores positivos e negativos |
+| `stage_evidence` | JSONB | Sinais e mensagens-chave |
+| `next_stage_analysis` | JSONB | Target, requirements, blockers, actions |
+| `regression_risk` | JSONB | Nível de risco e fatores |
+| `stage_history` | JSONB | Progressão inferida de estágios |
+| `loss_analysis` | JSONB | Análise detalhada de perda |
 
 ---
 
@@ -399,17 +322,17 @@ Os seguintes campos serão armazenados via JSONB genérico (não precisam de col
 
 | Arquivo | Ação |
 |---------|------|
-| `supabase/functions/_shared/crm-agent-executor.ts` | Substituir `mapToOpportunityFields()` (linhas 253-329) |
+| `supabase/functions/_shared/crm-agent-executor.ts` | 1. Adicionar `PIPELINE_STAGE_MAP` e `normalizeStage()` <br> 2. Substituir seção Pipeline Classifier (linhas 528-536) |
 
 ---
 
 ## Benefícios
 
-1. **Dados de proposta ricos**: Itens detalhados, status, validade - não só valor total
-2. **Concorrentes detalhados**: Forças, fraquezas, percepção do cliente, evidências
-3. **Negociação completa**: Descontos solicitados vs concedidos, percentuais, contrapartidas
-4. **Pagamento estruturado**: Entrada, financiamento, parcelas, bancos discutidos
-5. **Visitas rastreáveis**: Status, propósito, resultado - não só "sim/não"
-6. **Próximos passos claros**: Compromissos e ações pendentes com responsáveis
-7. **Análise de perda**: Motivo, concorrente, recuperabilidade - aprendizado
-8. **Retrocompatibilidade**: Agentes com formato antigo continuam funcionando
+1. **Compatibilidade de estágios**: Prompt pode usar nomenclatura rica, banco recebe valores válidos
+2. **Granularidade preservada**: Estados como `need_identified` e `verbal_commitment` vão para `sub_status`
+3. **Análise de progressão**: Histórico de estágios e evidências armazenados
+4. **Gestão de risco**: Regressão e blockers rastreados
+5. **Ações priorizadas**: Merge de ações do pipeline + coaching
+6. **Análise de perda**: Motivos e lições aprendidas documentados
+7. **Retrocompatibilidade**: Formato legado continua funcionando
+
