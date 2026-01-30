@@ -1,161 +1,102 @@
 
-# Plano: Verificação e Limpeza de Oportunidades Duplicadas no CRM
+# Plano: Corrigir Detecção de Duplicatas
 
-## Diagnóstico Encontrado
+## Problema Identificado
 
-A análise do banco de dados revelou a situação atual:
+A Edge Function `crm-deduplication-cleanup` agrupa por `phone + vendor_id + product_category`, mas isso ignora casos onde uma oportunidade tem categoria `NULL` e outra tem uma categoria real.
 
-| Métrica | Valor |
-|---------|-------|
-| **Total de oportunidades** | 2.514 |
-| **Clientes únicos (telefones)** | 2.219 |
-| **Todas têm status** | `ai_generated` + `prospecting` |
+**Dados encontrados no banco:**
+| Telefone | Vendedor | Categorias | Títulos |
+|----------|----------|------------|---------|
+| 5511932303494 | 30365ae4... | `{indefinido, NULL}` | "Oportunidade - indefinido", "Oportunidade - Nova" |
+| 5515998481785 | 32e80e62... | `{saudacao, NULL}` | "Oportunidade - saudacao", "Oportunidade - Nova" |
+| ...mais 8 grupos... | | | |
 
-### Tipos de "Duplicação" Identificados
-
-**1. Mesmo telefone, DIFERENTES vendedores: 515 oportunidades (228 telefones)**
-- Isso é **comportamento esperado**: o mesmo lead foi distribuído para múltiplos vendedores
-- Exemplo: Caroline Ghessi (555181223033) tem 6 oportunidades com 6 vendedores diferentes
-- **NÃO são duplicatas reais** - são leads paralelos
-
-**2. Mesmo telefone, MESMO vendedor: 16 oportunidades (8 telefones)**
-- Isso são **duplicatas reais** que precisam ser limpas
-- Ocorreram antes do Opportunity Matcher ser implementado
-- Exemplo: "Glaucia Santa Fé" com 2 oportunidades para Gabriel Rodrigues
+**Total: 10 grupos de duplicatas reais** (20+ oportunidades afetadas)
 
 ---
 
-## Solução Proposta: 3 Partes
+## Causa Raiz
 
-### PARTE 1: Edge Function de Deduplicação (One-time Cleanup)
+1. **Edge Function (linha 71):** Agrupa por `${phone}|${vendor_id}|${product_category || 'null'}`
+2. **Resultado:** `NULL` vira string `'null'` e não agrupa com outras categorias
 
-Criar uma Edge Function `crm-deduplication-cleanup` que:
+**O problema:** Uma oportunidade "Oportunidade - Nova" com `product_category = NULL` **deveria** ser agrupada com a oportunidade que tem categoria definida (ex: `indefinido`, `ferramentas`), pois são do mesmo cliente com o mesmo vendedor.
 
-1. **Identifica duplicatas reais** (mesmo telefone + mesmo vendedor + mesma categoria)
-2. **Mantém a oportunidade mais antiga** (primeira criada)
-3. **Remove ou marca as demais** como `validation_status: 'duplicate_removed'`
-4. **Registra todas as ações** em `crm_opportunity_match_log`
+---
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│                  FLUXO DE DEDUPLICAÇÃO                       │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  1. Buscar grupos de duplicatas:                             │
-│     WHERE mesmo_telefone AND mesmo_vendor                    │
-│     GROUP BY phone, vendor_id HAVING COUNT(*) > 1            │
-│                                                              │
-│  2. Para cada grupo:                                         │
-│     • Manter a oportunidade MAIS ANTIGA (created_at ASC)     │
-│     • Marcar as demais como duplicadas                       │
-│     • Consolidar dados se necessário                         │
-│                                                              │
-│  3. Registrar no log de matching:                            │
-│     • decision: 'cleanup_duplicate_removed'                  │
-│     • Vincular IDs original e removido                       │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
+## Solução: Relaxar Critério de Categoria
+
+Mudar a lógica para agrupar **apenas por phone + vendor_id**, ignorando a categoria. Se o mesmo cliente estiver conversando com o mesmo vendedor, é a mesma negociação.
+
+### Arquivo: `supabase/functions/crm-deduplication-cleanup/index.ts`
+
+**Alteração 1: Mudar critério de agrupamento (linhas 67-77)**
+
+```typescript
+// ANTES:
+const key = `${phone}|${opp.vendor_id}|${opp.product_category || 'null'}`;
+
+// DEPOIS:
+const key = `${phone}|${opp.vendor_id}`;  // Ignorar categoria
+```
+
+**Alteração 2: Atualizar interface DuplicateGroup para refletir mudança**
+
+```typescript
+// Interface se mantém igual, product_category vem do registro mais antigo
+```
+
+**Alteração 3: Ao criar log, registrar a categoria do registro mantido**
+
+```typescript
+// Na linha 166, pegar categoria do registro mais antigo
+product_category: keepOpp.product_category,
 ```
 
 ---
 
-### PARTE 2: Interface de Gerenciamento de Duplicatas
+### Arquivo: `src/modules/crm/hooks/useDuplicateOpportunities.ts`
 
-Criar uma nova página `/crm/duplicatas` com:
+**Alteração 1: useDuplicateGroups - agrupar por phone + vendor_id apenas (linhas 131-132)**
 
-1. **Dashboard de Duplicatas**
-   - Contador de duplicatas pendentes
-   - Lista de grupos com mesmo telefone + mesmo vendedor
-   - Lista de grupos com mesmo telefone + diferentes vendedores (para auditoria)
+```typescript
+// ANTES:
+const key = `${phone}|${opp.vendor_id}|${opp.product_category || 'null'}`;
 
-2. **Ações em Lote**
-   - "Limpar duplicatas reais automaticamente" (usa a Edge Function)
-   - "Revisar duplicatas manualmente"
-   - "Exportar relatório"
+// DEPOIS:
+const key = `${phone}|${opp.vendor_id}`;
+```
 
-3. **Detalhes do Grupo**
-   - Exibir todas as oportunidades do grupo
-   - Permitir escolher qual manter
-   - Opção de merge manual (consolidar dados)
+**Alteração 2: Mostrar todas as categorias do grupo na interface**
 
----
-
-### PARTE 3: Migração de Banco de Dados
-
-Adicionar suporte para marcação de duplicatas:
-
-```sql
--- 1. Adicionar novo status de validação para duplicatas
-ALTER TABLE crm_opportunities 
-  ADD COLUMN IF NOT EXISTS duplicate_of_id UUID REFERENCES crm_opportunities(id);
-
--- 2. Índice para busca de duplicatas
-CREATE INDEX IF NOT EXISTS idx_crm_opps_duplicate_lookup 
-  ON crm_opportunities(customer_id, vendor_id, product_category)
-  WHERE duplicate_of_id IS NULL;
+```typescript
+// Adicionar campo para listar categorias do grupo
+categories: Array.from(new Set(opps.map(o => o.product_category || 'Indefinido')))
 ```
 
 ---
 
-## Arquivos a Criar/Modificar
+## Regra de Decisão: Qual Categoria Manter?
 
-| Arquivo | Ação | Descrição |
-|---------|------|-----------|
-| `supabase/functions/crm-deduplication-cleanup/index.ts` | Criar | Edge function de limpeza |
-| `src/modules/crm/pages/Duplicates.tsx` | Criar | Página de gerenciamento |
-| `src/modules/crm/hooks/useDuplicateOpportunities.ts` | Criar | Hook de dados |
-| `src/modules/crm/components/duplicates/*` | Criar | Componentes UI |
-| `src/App.tsx` | Modificar | Adicionar rota `/crm/duplicatas` |
-| Migração SQL | Criar | Adicionar coluna `duplicate_of_id` |
-
----
-
-## Fluxo de Uso
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                      FLUXO DO ADMINISTRADOR                     │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  1. Acessar /crm/duplicatas                                     │
-│     • Ver dashboard com estatísticas de duplicatas              │
-│                                                                 │
-│  2. Clicar "Executar Limpeza Automática"                        │
-│     • Sistema identifica as 8 duplicatas reais                  │
-│     • Remove/marca as oportunidades duplicadas                  │
-│     • Mantém a mais antiga de cada grupo                        │
-│                                                                 │
-│  3. Revisar logs de ações                                       │
-│     • Ver quais foram removidas e por quê                       │
-│     • Reverter se necessário                                    │
-│                                                                 │
-│  4. (Opcional) Revisar "leads paralelos"                        │
-│     • Ver casos onde mesmo cliente tem múltiplos vendedores     │
-│     • Decidir se é correto ou precisa consolidar                │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Regras de Deduplicação
-
-A função seguirá estas regras:
-
-| Cenário | Regra | Ação |
-|---------|-------|------|
-| Mesmo telefone + mesmo vendedor + mesma categoria | Duplicata real | Manter mais antiga, remover outras |
-| Mesmo telefone + mesmo vendedor + categorias diferentes | Cross-sell | Manter todas (são produtos diferentes) |
-| Mesmo telefone + diferentes vendedores | Lead paralelo | Manter todas (comportamento esperado) |
-| Oportunidade com `stage: closed_won/closed_lost` | Já fechada | Nunca remover |
+Quando houver conflito de categorias:
+1. **Manter categoria da oportunidade mais antiga** (já era a regra para o ID)
+2. Se a mais antiga tem `NULL`, usar a categoria da próxima que tiver definida
 
 ---
 
 ## Resultado Esperado
 
-Após execução:
+Após correção:
+- **Grupos detectados:** 10 (atualmente 0)
+- **Duplicatas a remover:** 10 (1 de cada grupo)
+- **Comportamento:** Interface e Edge Function sincronizados
 
-- **16 oportunidades duplicadas** serão removidas ou marcadas
-- **2.498 oportunidades únicas** permanecerão
-- Log completo de todas as ações para auditoria
-- Interface para monitoramento contínuo de duplicatas
+---
+
+## Arquivos a Modificar
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `supabase/functions/crm-deduplication-cleanup/index.ts` | Remover `product_category` do critério de agrupamento |
+| `src/modules/crm/hooks/useDuplicateOpportunities.ts` | Sincronizar lógica e mostrar categorias do grupo |
