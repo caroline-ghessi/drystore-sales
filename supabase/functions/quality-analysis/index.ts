@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
+import { callLLM, normalizeModel, type LLMMessage } from '../_shared/llm-client.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -169,51 +170,27 @@ ${conversationContext.messages.map(msg =>
 
 Analise esta conversa seguindo os critérios estabelecidos e retorne apenas o JSON solicitado.`;
 
-    // Fazer requisição para o modelo de IA
-    const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY');
-    if (!anthropicApiKey) {
-      return new Response(
-        JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicApiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: qualityAgent.llm_model || 'claude-3-5-sonnet-20241022',
-        max_tokens: qualityAgent.max_tokens || 1000,
-        temperature: qualityAgent.temperature || 0.3,
-        messages: [
-          {
-            role: 'user',
-            content: analysisPrompt
-          }
-        ]
-      })
-    });
-
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('AI API Error:', errorText);
-      return new Response(
-        JSON.stringify({ error: 'Failed to analyze conversation', details: errorText }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const aiResult = await aiResponse.json();
+    // Usar cliente LLM unificado com fallback automático
+    const configuredModel = qualityAgent.llm_model || 'claude-3-5-sonnet-20241022';
+    const { model: normalizedModel, provider } = normalizeModel(configuredModel);
     
+    console.log(`[quality-analysis] Usando modelo: ${normalizedModel} (provedor: ${provider})`);
+
+    const messages: LLMMessage[] = [
+      { role: 'user', content: analysisPrompt }
+    ];
+
     let analysisResult;
     try {
-      const content = aiResult.content[0].text;
+      const llmResponse = await callLLM(normalizedModel, messages, {
+        maxTokens: qualityAgent.max_tokens || 1000,
+        temperature: qualityAgent.temperature || 0.3,
+      });
+
+      console.log(`[quality-analysis] Resposta recebida de ${llmResponse.provider}`);
+      
       // Extrair JSON do conteúdo da resposta
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonMatch = llmResponse.content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         analysisResult = JSON.parse(jsonMatch[0]);
       } else {

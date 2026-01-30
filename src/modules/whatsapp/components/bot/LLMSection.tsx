@@ -52,25 +52,25 @@ export function LLMSection() {
         
         <div className="grid grid-cols-3 gap-6">
           <LLMCard
-            name="Grok (XAI)"
-            description="Análise rápida e inteligente"
-            status="active"
-            icon="🤖"
-            color="orange"
-          />
-          <LLMCard
             name="Claude (Anthropic)"
             description="Raciocínio avançado e contextual"
-            status="available"
+            status="active"
             icon="🧠"
             color="purple"
           />
           <LLMCard
             name="ChatGPT (OpenAI)"
             description="Conversação natural e fluida"
-            status="offline"
+            status="active"
             icon="💬"
             color="green"
+          />
+          <LLMCard
+            name="Grok (XAI)"
+            description="Análise rápida e inteligente"
+            status="active"
+            icon="🤖"
+            color="orange"
           />
         </div>
 

@@ -38,11 +38,19 @@ interface CRMAgentEditorProps {
 }
 
 const LLM_MODELS = [
-  { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash (Recomendado)' },
-  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
-  { value: 'openai/gpt-5', label: 'GPT-5' },
+  // === ANTHROPIC (Claude) ===
+  { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet (Recomendado)', provider: 'anthropic' },
+  { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku (Rápido)', provider: 'anthropic' },
+  { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus (Avançado)', provider: 'anthropic' },
+  
+  // === OPENAI (ChatGPT) ===
+  { value: 'gpt-4o', label: 'GPT-4o (Recomendado)', provider: 'openai' },
+  { value: 'gpt-4o-mini', label: 'GPT-4o Mini (Econômico)', provider: 'openai' },
+  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo', provider: 'openai' },
+  
+  // === XAI (Grok) ===
+  { value: 'grok-beta', label: 'Grok Beta', provider: 'xai' },
+  { value: 'grok-2', label: 'Grok 2', provider: 'xai' },
 ];
 
 const DEFAULT_PROMPTS: Record<string, string> = {
@@ -141,7 +149,7 @@ export function CRMAgentEditor({ definition, configId, open, onClose }: CRMAgent
     agent_name: definition.name,
     description: definition.description,
     system_prompt: DEFAULT_PROMPTS[definition.key] || '',
-    llm_model: 'google/gemini-3-flash-preview',
+    llm_model: 'claude-3-5-sonnet-20241022',
     temperature: 0.3,
     max_tokens: 2000,
     is_active: true,
@@ -153,7 +161,7 @@ export function CRMAgentEditor({ definition, configId, open, onClose }: CRMAgent
         agent_name: existingConfig.agent_name,
         description: existingConfig.description || definition.description,
         system_prompt: existingConfig.system_prompt,
-        llm_model: existingConfig.llm_model || 'google/gemini-3-flash-preview',
+        llm_model: existingConfig.llm_model || 'claude-3-5-sonnet-20241022',
         temperature: existingConfig.temperature ?? 0.3,
         max_tokens: existingConfig.max_tokens ?? 2000,
         is_active: existingConfig.is_active ?? true,
@@ -235,7 +243,20 @@ export function CRMAgentEditor({ definition, configId, open, onClose }: CRMAgent
                     <SelectContent>
                       {LLM_MODELS.map(model => (
                         <SelectItem key={model.value} value={model.value}>
-                          {model.label}
+                          <div className="flex items-center justify-between w-full gap-4">
+                            <span>{model.label}</span>
+                            <Badge 
+                              variant="outline" 
+                              className={
+                                model.provider === 'anthropic' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400' :
+                                model.provider === 'openai' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' :
+                                'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400'
+                              }
+                            >
+                              {model.provider === 'anthropic' ? 'Anthropic' : 
+                               model.provider === 'openai' ? 'OpenAI' : 'xAI'}
+                            </Badge>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>

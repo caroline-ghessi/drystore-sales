@@ -171,12 +171,23 @@ export function AgentEditor({ agent, onClose, onSave }: AgentEditorProps) {
                     <select 
                       id="model"
                       className="w-full p-2 border rounded-lg bg-background text-foreground"
-                      value={editAgent.llm_model || 'gpt-4'}
+                      value={editAgent.llm_model || 'claude-3-5-sonnet-20241022'}
                       onChange={(e) => setEditAgent({...editAgent, llm_model: e.target.value})}
                     >
-                      <option value="gpt-4">GPT-4 (OpenAI)</option>
-                      <option value="claude-3">Claude 3 (Anthropic)</option>
-                      <option value="grok">Grok (XAI)</option>
+                      <optgroup label="Anthropic (Claude)">
+                        <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Recomendado)</option>
+                        <option value="claude-3-haiku-20240307">Claude 3 Haiku (Rápido)</option>
+                        <option value="claude-3-opus-20240229">Claude 3 Opus (Avançado)</option>
+                      </optgroup>
+                      <optgroup label="OpenAI (ChatGPT)">
+                        <option value="gpt-4o">GPT-4o (Recomendado)</option>
+                        <option value="gpt-4o-mini">GPT-4o Mini (Econômico)</option>
+                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                      </optgroup>
+                      <optgroup label="xAI (Grok)">
+                        <option value="grok-beta">Grok Beta</option>
+                        <option value="grok-2">Grok 2</option>
+                      </optgroup>
                     </select>
                   </div>
 
