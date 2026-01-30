@@ -37,7 +37,7 @@ serve(async (req) => {
 
     console.log(`[CRM Deduplication] Starting cleanup - mode: ${mode}, limit: ${limit}`);
 
-    // Step 1: Find duplicate groups (same phone + same vendor + same category)
+    // Step 1: Find duplicate groups (same phone + same vendor - ignoring category)
     const { data: rawOpportunities, error: fetchError } = await supabase
       .from('crm_opportunities')
       .select(`
@@ -61,14 +61,15 @@ serve(async (req) => {
 
     console.log(`[CRM Deduplication] Fetched ${rawOpportunities?.length || 0} active opportunities`);
 
-    // Group by phone + vendor_id + product_category
+    // Group by phone + vendor_id only (ignoring product_category)
     const groups = new Map<string, typeof rawOpportunities>();
     
     for (const opp of rawOpportunities || []) {
       const phone = (opp.customer as any)?.phone;
       if (!phone || !opp.vendor_id) continue;
       
-      const key = `${phone}|${opp.vendor_id}|${opp.product_category || 'null'}`;
+      // KEY CHANGE: Ignore product_category in grouping
+      const key = `${phone}|${opp.vendor_id}`;
       
       if (!groups.has(key)) {
         groups.set(key, []);
@@ -81,15 +82,19 @@ serve(async (req) => {
     
     for (const [key, opps] of groups.entries()) {
       if (opps.length > 1) {
-        const [phone, vendor_id, category] = key.split('|');
+        const [phone, vendor_id] = key.split('|');
         const sortedOpps = opps.sort((a, b) => 
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
         
+        // Get category from oldest, or first one with a defined category
+        const keepOpp = sortedOpps[0];
+        const definedCategory = sortedOpps.find(o => o.product_category)?.product_category || keepOpp.product_category;
+        
         duplicateGroups.push({
           customer_phone: phone,
           vendor_id: vendor_id,
-          product_category: category === 'null' ? null : category,
+          product_category: definedCategory,
           opportunity_ids: sortedOpps.map(o => o.id),
           oldest_id: sortedOpps[0].id,
           duplicates_to_remove: sortedOpps.slice(1).map(o => o.id)
