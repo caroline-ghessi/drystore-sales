@@ -4,6 +4,10 @@
  * Verifica se uma nova conversa deve criar uma oportunidade nova
  * ou atualizar uma existente (merge).
  * 
+ * Compatível com Prompt v1.0:
+ * - Envia mensagens da conversa para análise de sinais de fechamento
+ * - Suporta formato estruturado de reasoning
+ * 
  * Fluxo:
  * 1. Verificação programática: busca oportunidades abertas
  * 2. Se encontrar 1 candidata do mesmo vendedor → chamar IA
@@ -30,6 +34,7 @@ export interface MatcherResult {
   decided_by: 'rule' | string; // 'rule' ou 'ai:agent_id'
 }
 
+// Interface expandida para suportar mais dados
 interface OpportunityCandidate {
   id: string;
   title: string;
@@ -38,17 +43,76 @@ interface OpportunityCandidate {
   value: number;
   created_at: string;
   updated_at: string;
-  customer?: { phone: string } | null;
+  description?: string;
+  proposal_value?: number;
+  probability?: number;
+  conversation_id?: string;
+  customer?: { 
+    phone: string;
+    name?: string;
+  } | null;
 }
 
+// Formato de reasoning estruturado conforme Prompt v1.0
+interface AIDecisionReasoning {
+  new_conversation_subject: string;
+  existing_opportunity_subject: string;
+  subject_match: boolean | null;
+  was_closed: boolean;
+  closure_signals_found: string[];
+  conclusion: string;
+}
+
+// Interface AIDecision compatível com Prompt v1.0
 interface AIDecision {
   decision: 'merge' | 'new' | 'review';
-  existing_opportunity_id?: string;
+  target_opportunity_id?: string | null;
   confidence: number;
-  reasoning: string;
-  is_same_subject: boolean;
-  has_closure_signals: boolean;
-  detected_subject?: string;
+  reasoning: AIDecisionReasoning | string; // Suporta ambos formatos
+  signals?: {
+    for_merge: string[];
+    for_new: string[];
+  };
+  recommendation?: string;
+}
+
+// Formato de mensagem para a IA
+interface ConversationMessage {
+  role: 'client' | 'vendor';
+  content: string;
+}
+
+/**
+ * Busca últimas mensagens de uma conversa
+ */
+async function getConversationMessages(
+  supabase: SupabaseClient,
+  conversationId: string | undefined,
+  limit: number = 10
+): Promise<ConversationMessage[]> {
+  if (!conversationId) return [];
+  
+  try {
+    const { data: messages, error } = await supabase
+      .from('messages')
+      .select('sender_type, content, created_at')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.warn('[OpportunityMatcher] Erro ao buscar mensagens:', error.message);
+      return [];
+    }
+
+    return (messages || []).reverse().map(m => ({
+      role: m.sender_type === 'customer' ? 'client' as const : 'vendor' as const,
+      content: m.content || ''
+    }));
+  } catch (error) {
+    console.warn('[OpportunityMatcher] Exceção ao buscar mensagens:', error);
+    return [];
+  }
 }
 
 /**
@@ -61,12 +125,15 @@ export async function checkOpportunityDuplicate(
   console.log(`[OpportunityMatcher] Verificando duplicação para ${input.customer_phone} (vendor: ${input.vendor_id})`);
 
   try {
-    // 1. Buscar oportunidades abertas para esse telefone + vendedor
+    // 1. Buscar oportunidades abertas para esse telefone + vendedor (com dados expandidos)
     const { data: openOpportunities, error: searchError } = await supabase
       .from('crm_opportunities')
       .select(`
-        id, title, product_category, stage, value, created_at, updated_at,
-        customer:crm_customers!inner(phone)
+        id, title, product_category, stage, value, 
+        created_at, updated_at, description,
+        proposal_value, probability,
+        conversation_id,
+        customer:crm_customers!inner(phone, name)
       `)
       .eq('vendor_id', input.vendor_id)
       .not('stage', 'in', '("closed_won","closed_lost")')
@@ -123,6 +190,7 @@ export async function checkOpportunityDuplicate(
       const aiResult = await callOpportunityMatcherAgent(supabase, {
         existing_opportunity: existingOpp,
         new_product_category: input.product_category,
+        new_conversation_id: input.conversation_id,
         source: input.source
       });
       
@@ -155,12 +223,14 @@ export async function checkOpportunityDuplicate(
 
 /**
  * Chama o agente de IA para decidir entre merge/new/review
+ * Compatível com Prompt v1.0
  */
 async function callOpportunityMatcherAgent(
   supabase: SupabaseClient,
   context: {
     existing_opportunity: OpportunityCandidate;
     new_product_category?: string;
+    new_conversation_id?: string;
     source: string;
   }
 ): Promise<MatcherResult> {
@@ -188,27 +258,53 @@ async function callOpportunityMatcherAgent(
       };
     }
 
-    // Preparar dados da oportunidade existente (sem dados sensíveis)
+    // Buscar mensagens da oportunidade existente (via conversation_id)
+    const existingMessages = await getConversationMessages(
+      supabase, 
+      context.existing_opportunity.conversation_id,
+      8  // últimas 8 mensagens para contexto suficiente
+    );
+
+    // Buscar mensagens da nova conversa (se tivermos conversation_id)
+    const newMessages = context.new_conversation_id 
+      ? await getConversationMessages(supabase, context.new_conversation_id, 5)
+      : [];
+
+    console.log(`[OpportunityMatcher] Mensagens carregadas - existente: ${existingMessages.length}, nova: ${newMessages.length}`);
+
+    // Preparar dados da oportunidade existente no formato do Prompt v1.0
     const existingOppData = {
       id: context.existing_opportunity.id,
       title: context.existing_opportunity.title,
+      status: context.existing_opportunity.stage,
+      pipeline_stage: context.existing_opportunity.stage,
       product_category: context.existing_opportunity.product_category,
-      stage: context.existing_opportunity.stage,
-      value: context.existing_opportunity.value,
       created_at: context.existing_opportunity.created_at,
       updated_at: context.existing_opportunity.updated_at,
+      proposal_value: context.existing_opportunity.proposal_value || null,
+      client_name: context.existing_opportunity.customer?.name || 'Desconhecido',
+      summary: context.existing_opportunity.description || null,
+      last_messages: existingMessages
     };
 
-    // Preparar prompt
+    // Preparar prompt no formato esperado pelo Prompt v1.0
     const userMessage = `
-OPORTUNIDADE EXISTENTE (aberta):
-${JSON.stringify(existingOppData, null, 2)}
+### 1. Oportunidades Existentes (do mesmo telefone)
+\`\`\`json
+{
+  "opportunities": [${JSON.stringify(existingOppData, null, 2)}]
+}
+\`\`\`
 
-NOVA CONVERSA:
+### 2. Nova Conversa
+\`\`\`json
 {
   "product_category": ${context.new_product_category ? `"${context.new_product_category}"` : 'null'},
-  "source": "${context.source}"
+  "new_messages": ${JSON.stringify(newMessages)},
+  "source": "${context.source}",
+  "timestamp": "${new Date().toISOString()}"
 }
+\`\`\`
 
 Analise e retorne sua decisão em JSON.
 `;
@@ -220,7 +316,7 @@ Analise e retorne sua decisão em JSON.
         { role: 'user', content: userMessage }
       ],
       {
-        maxTokens: agentConfig.max_tokens || 500,
+        maxTokens: agentConfig.max_tokens || 800,
         temperature: agentConfig.temperature || 0.1
       }
     );
@@ -240,14 +336,27 @@ Analise e retorne sua decisão em JSON.
       };
     }
 
+    // Extrair reasoning (pode ser objeto ou string)
+    let reasoningText: string;
+    if (typeof parsed.reasoning === 'object' && parsed.reasoning !== null) {
+      reasoningText = parsed.reasoning.conclusion || 'Decisão do agente de IA';
+    } else if (typeof parsed.reasoning === 'string') {
+      reasoningText = parsed.reasoning;
+    } else {
+      reasoningText = 'Decisão do agente de IA';
+    }
+
+    // Usar target_opportunity_id se fornecido, senão usar o ID da oportunidade existente
+    const targetOpportunityId = parsed.target_opportunity_id || context.existing_opportunity.id;
+
     console.log(`[OpportunityMatcher] Decisão da IA: ${parsed.decision} (confidence: ${parsed.confidence})`);
     
     return {
       action: parsed.decision === 'merge' ? 'merge' : 
               parsed.decision === 'new' ? 'create_new' : 'needs_review',
-      existing_opportunity_id: context.existing_opportunity.id,
+      existing_opportunity_id: targetOpportunityId,
       confidence: parsed.confidence || 0.8,
-      reasoning: parsed.reasoning || 'Decisão do agente de IA',
+      reasoning: reasoningText,
       decided_by: `ai:${agentConfig.id}`
     };
 
